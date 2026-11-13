@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?token=94G1UAG2B0)](https://codecov.io/gh/liquio/liquio)
+
 # **Platform Overview**
 
 Liquio is an innovative GovTech platform that leverages artificial intelligence and a low-code approach to drive the digital transformation of public services. It enables rapid creation, configuration, and deployment of a wide range of IT solutions, and web and mobile applications for government agencies and local governments.
@@ -25,6 +27,10 @@ The platform is developed and supported by Kitsoft, a leading GovTech company. F
 * **Battle-tested in Ukraine**
   Liquio powers over 200 government IT solutions for national and municipal authorities.  
   One of the flagship cases is Diia — Ukraine’s national e-governance portal delivering used by over 23 million people.
+
+# **Architecture**
+
+Liquio is built as a set of microservices. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full breakdown of services, externally exposed APIs, the data layer, and a C4 container diagram of cross-service connections.
 
 # **Trainings & Certifications**
 
@@ -65,7 +71,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU Affero General Public License for more details.
 
-You should have received a copy of the GNU Affero General Public License along with this program. If not, see \<https://www.gnu.org/licenses/\>.
+You should have received a copy of the GNU Affero General Public License along with this program. If not, see \<https://www.gnu.org/licenses/>.
 
 ## **Dual Licensing**
 

@@ -1,0 +1,93 @@
+import { Entity } from './entity';
+
+/**
+ * Additional data signature entity.
+ */
+export class AdditionalDataSignatureEntity extends Entity {
+  id: any;
+  documentId: any;
+  data: any;
+  signature: any;
+  certificate: any;
+  cryptCertificate: any;
+  encryptedData: any;
+  encryptedDataCertificate: any;
+  createdBy: any;
+  meta: any;
+  createdAt: any;
+  updatedAt: any;
+
+  /**
+   * Additional data signature entity constructor.
+   * @param {object} options Additional data tignatire object.
+   * @param {string} options.id ID.
+   * @param {string} options.documentId Document ID.
+   * @param {string} options.data Signed data.
+   * @param {string} options.signature Signature.
+   * @param {string} options.certificate Certificate.
+   * @param {string} options.cryptCertificate Crypt certificate.
+   * @param {string} options.encryptedData Encrypted data.
+   * @param {string} options.encryptedDataCertificate Encrypted data certificate.
+   * @param {string} options.createdBy Created by.
+   * @param {object} options.meta Meta.
+   * @param {Date} options.createdAt Created at.
+   * @param {Date} options.updatedAt Updated at.
+   */
+  constructor({
+    id,
+    documentId,
+    data,
+    signature,
+    certificate,
+    cryptCertificate,
+    encryptedData,
+    encryptedDataCertificate,
+    createdBy,
+    meta,
+    createdAt,
+    updatedAt,
+  }: any) {
+    super();
+
+    this.id = id;
+    this.documentId = documentId;
+    this.data = data;
+    this.signature = signature;
+    this.certificate = certificate;
+    this.cryptCertificate = cryptCertificate;
+    this.encryptedData = encryptedData;
+    this.encryptedDataCertificate = encryptedDataCertificate;
+    this.createdBy = createdBy;
+    this.meta = meta;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
+
+  /**
+   * Get filter properties.
+   * @returns {string[]} Filter properties list.
+   */
+  getFilterProperties() {
+    return [
+      'id',
+      'documentId',
+      'data',
+      'signature',
+      'certificate',
+      'cryptCertificate',
+      'encryptedData',
+      'encryptedDataCertificate',
+      'createdBy',
+      'createdAt',
+      'updatedAt',
+    ];
+  }
+
+  /**
+   * Get filter properties brief.
+   * @returns {string[]} Filter properties brief list.
+   */
+  getFilterPropertiesBrief() {
+    return this.getFilterProperties();
+  }
+}

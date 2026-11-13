@@ -10,7 +10,7 @@
       "logging": false,
       "dialect": "postgres"
     },
-    "port": "8100",
+    "port": "8080",
     "modules": {
       "denyToUpdateUserName": true,
       "denyToUpdateUserValidParams": true,
@@ -20,15 +20,48 @@
       "secret_key": "<REDACTED>"
     },
     "domain": ".internal",
+    "cookies": {
+      "secure": "auto",
+      "sameSite": "lax",
+      "profileHttpOnly": false
+    },
+    "trustProxy": 1,
+    "confirmCode": {
+      "ttlMinutes": 60,
+      "sendLimit": {
+        "recipientMax": 10,
+        "recipientWindowSeconds": 3600,
+        "sourceMax": 100,
+        "sourceWindowSeconds": 3600,
+        "twoFactor": { "recipientMax": 10, "recipientWindowSeconds": 3600, "sourceMax": 300, "sourceWindowSeconds": 3600 }
+      }
+    },
+    "legacyGetConfirmation": true,
+    "cors": {
+      "allowedOrigins": []
+    },
+    "internalTransport": {
+      "_comment": "Opt-in to plain http:// for notify.url, pingRoutes.notify and x509.externalUrl in production (notification and sign-tool do not serve TLS). Compensating control: NetworkPolicies restrict them to in-cluster Liquio pods. For https:// URLs set internalTransport.ca (PEM or file path); certificate verification is never disabled.",
+      "allowPlainHttp": true
+    },
     "notify": {
-      "url": "http://notification:3003",
+      "url": "http://notification:8080",
       "authorization": "Basic <removed>"
     },
     "jwt": {
       "secret": "<REDACTED>",
       "expiresIn": 60
     },
+    "user_info": {
+      "allowTwoFactorFields": false
+    },
+    "basic_auth": {
+      "allowLegacySharedSecret": true,
+      "clients": []
+    },
+    "roles": ["individual", "admin", "admin-liquio-portal"],
     "oauth": {
+      "enforceScopeConsent": false,
       "accessTokenLifetimeInSeconds": 28800,
       "refreshTokenLifetimeInSeconds": 57600,
       "secret_key": [
@@ -83,7 +116,11 @@
       }
     },
     "auth_providers": {
+      "totp": {
+        "requireUserToken": true
+      },
       "eds": {
+        "isEnabled": false,
         "authorizationURL": "https://auth.js.sign.eu.iit.com.ua/",
         "blacklistAcsk": [
           "test.gov.ua",
@@ -92,8 +129,8 @@
         ],
         "caServerList": "https://iit.com.ua/download/productfiles/CAs.json",
         "callbackURL": "http://localhost:8080/authorise/eds/callback",
-        "clientID": "U0000656581",
-        "clientSecret": "294c5b4cbeb537ab04c8111f6fa86aa6b29e5f15de521b556cda61ef505f6249",
+        "clientID": "<REDACTED>",
+        "clientSecret": "<REDACTED>",
         "customerURL": "https://auth.js.sign.eu.iit.com.ua/get-user-info",
         "passReqToCallback": "true",
         "showServerList": true,
@@ -102,8 +139,37 @@
       "local": {
         "isEnabled": true
       },
+      "ldap": {
+        "isEnabled": false,
+        "connection": {
+          "url": "ldaps://dc.domain.loc:636",
+          "tlsOptions": {
+            "ca": "/run/secrets/ldap-ca.pem"
+          },
+          "bindDN": "svc-liquio@domain.loc",
+          "bindPassword": "<REDACTED>",
+          "timeout": 5000,
+          "connectTimeout": 5000
+        },
+        "baseDN": "dc=domain,dc=loc",
+        "nestedGroups": true,
+        "attributes": {
+          "email": "mail",
+          "first_name": "givenName",
+          "last_name": "sn",
+          "phone": "telephoneNumber"
+        },
+        "accessGroups": [
+          "CN=LIQUIO-ENV-USERS,OU=Groups,DC=domain,DC=loc"
+        ],
+        "sync": {
+          "isEnabled": true,
+          "intervalMinutes": 15
+        }
+      },
       "x509": {
-        "isEnabled": true
+        "isEnabled": true,
+        "requireChallenge": true
       }
     },
     "passwordManager": {
@@ -111,10 +177,16 @@
       "maxAttempts": 5,
       "maxAttemptDelay": 3600,
       "hashingSaltRounds": 10,
-      "rememberLastPasswords": 5
+      "rememberLastPasswords": 5,
+      "allowAdminSet": true
     },
     "pingRoutes": {
-      "notify": "http://localhost:3002/test/ping"
+      "notify": "http://notification:8080/test/ping"
+    },
+    "users": {
+      "maxLimit": 100,
+      "maxBatch": 1000,
+      "fullReadClients": ["admin-api"]
     },
     "redis": {
       "isEnabled": true,
@@ -125,15 +197,14 @@
     "confirmCodeRetries": 10,
     "confirmCodeEmailTemplate": "<!DOCTYPE html> <html lang=\"uk\"> <head> <meta charset=\"UTF-8\"> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\"/> </head> <body style=\"font-size: 12px;margin: 0;font-family: 'e-Ukraine', Arial, Helvetica, sans-serif;line-height: 1;letter-spacing: -0.02em;padding-top: 20px;padding-bottom: 50px;\"> <div style=\"padding-left: 50px;padding-right: 50px;\"> <div style=\"margin-bottom: 50px;\"> <a href=\"https://cabinet.liquio.local/\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"display: inline-block; text-decoration: none;\"> <svg preserveAspectRatio=\"xMidYMid meet\" data-bbox=\"20.045 12.528 99.726 33.339\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"20.045 12.528 99.726 33.339\" height=\"59\" width=\"140\" data-type=\"color\" role=\"presentation\" aria-hidden=\"true\" aria-label=\"\" style=\"display: block;\"><defs><style>#comp-kbgakxmn_r_comp-mg0nxz1k svg [data-color=\"1\"] {fill: #FFFFFF;}</style></defs><g><path fill=\"#616FFF\" d=\"M63.248 20.018c.22 0 .379.208.323.42l-6.7 24.934a.67.67 0 0 1-.644.495h-4.299a.334.334 0 0 1-.322-.42l1.81-6.735a5.55 5.55 0 0 1-2.692.694c-5.35 0-9.689-4.34-9.689-9.694 0-5.353 4.338-9.693 9.689-9.693h7.715l-.001-.001zm7.853.002c.183 0 .333.148.333.333v8.96c0 2.744 2.115 5.04 4.918 5.087a5.005 5.005 0 0 0 5.09-5.005h.002v-9.042c0-.184.148-.333.333-.333h4.337c.183 0 .332.148.332.333v9.042c0 5.53-4.48 10.013-10.007 10.013s-10.007-4.483-10.007-10.013v-9.042c0-.184.148-.333.333-.333zm38.663-.639c5.527 0 10.007 4.483 10.007 10.014s-4.48 10.012-10.007 10.013-10.008-4.483-10.008-10.013 4.481-10.014 10.008-10.014m-70.7.692a.77.77 0 0 1 .745.971l-4.57 17.019a.67.67 0 0 1-.645.495h-4.298c-.22 0-.38-.21-.322-.422l.691-2.546h.002l4.027-15.021a.67.67 0 0 1 .645-.495zm58.875-.053c.22 0 .38.208.323.42l-4.718 17.57a.67.67 0 0 1-.645.493H88.6a.334.334 0 0 1-.323-.42l.693-2.547L93 20.514a.67.67 0 0 1 .645-.494zm-66.212-7.492c.22 0 .38.208.323.42l-6.728 25.06a.67.67 0 0 1-.645.494h-4.298c-.22 0-.38-.21-.322-.422l.692-2.544 6.034-22.514a.67.67 0 0 1 .645-.494zm78.037 11.86a5.006 5.006 0 0 0-5.004 5.007 5.006 5.006 0 0 0 5.004 5.007 5.006 5.006 0 0 0 5.003-5.007 5.006 5.006 0 0 0-5.003-5.007m-59.04-.001a5.006 5.006 0 0 0 0 10.013c2.489 0 4.018-1.096 4.937-4.199l1.564-5.814zm-9.08-11.806c.22 0 .379.21.322.421l-.926 3.45a.67.67 0 0 1-.644.495h-4.298a.334.334 0 0 1-.322-.42l.924-3.45a.67.67 0 0 1 .645-.496zm58.305-.053c.22 0 .379.208.323.42l-.927 3.45a.67.67 0 0 1-.645.495h-4.297a.334.334 0 0 1-.323-.421l.925-3.45a.67.67 0 0 1 .646-.494z\" data-color=\"1\"></path></g></svg> </a> </div> <div style=\"font-size: 21px;font-weight: bold;line-height: 26px;margin-bottom: 20px;letter-spacing: -0.02em;\"> Код підтвердження email: </div> <div style=\"font-size: 16px;line-height: 20px;color: #000;margin-top: 20px;margin-bottom: 20px;\"> <div style=\"font-size: 20px;\"></div> {{code}} </div> </div> </body> </html>",
     "confirmCodeEmailHeader": "Підтвердження реєстрації",
+    "accountExistsEmailHeader": "Обліковий запис уже існує",
+    "accountExistsEmailText": "Для цієї електронної пошти вже існує обліковий запис. Увійдіть або, якщо ви забули пароль, скористайтеся відновленням пароля.",
     "confirmCodeEmailChangeHeader": "Підтвердження електронної пошти",
     "swagger": false,
     "customer": "liquio",
     "environment": "dev",
     "x509": {
-      "caCerts": [
-        "-----BEGIN CERTIFICATE-----\nMIIDXzCCAkegAwIBAgIUC5/U/DSHdXbQPiCulgXQ30SIyT8wDQYJKoZIhvcNAQELBQAwPzELMAkGA1UEBhMCVUExFzAVBgNVBAoMDkxpcXVpbyBUZXN0IENBMRcwFQYDVQQDDA5MaXF1aW8gVGVzdCBDQTAeFw0yNTA3MTgwOTU3MjRaFw0zNTA3MTYwOTU3MjRaMD8xCzAJBgNVBAYTAlVBMRcwFQYDVQQKDA5MaXF1aW8gVGVzdCBDQTEXMBUGA1UEAwwOTGlxdWlvIFRlc3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDrNbtEdHyWqUoM5CsQO+V6GTi2J3ZflphbLqe8PrEK2ZrrOqQ2ioYJonMmqvqC2FOqZotefiCFlZlxGNTQL+KBSL5GCW+QdHZ9Xqs6SH+Rv/O59Lysk82MxsyxZhH1E4uohPyKk9AuTHPJnckYqyGIM67h+yOWqkbTo+KbZYkkyo+8zbhhDCQ4YE6fkF/2vQDG9XwzlPmyIPrs5ObnBE38pvHYbRK2tKOQQn0X+0PFOyW8kOE5pfvMUnMEV+bhDM1XDasE5vGzDnywVSLDM+CrA2I/VPpFIikFwmK3nLbdxcOWRWbaSDtD/IvoaKLvND24zx0Z/PwCHjTsJNEyjy9nAgMBAAGjUzBRMB0GA1UdDgQWBBSBz8K70XPT2o1D66btkNEUAgFrjjAfBgNVHSMEGDAWgBSBz8K70XPT2o1D66btkNEUAgFrjjAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAkBXYPFIwgzI1du5lLgj6WN0GyVYXqDarmUyfho8YKYxepzf4XijYe90Gjoo81D9xDjpYeRGZEFrVQw3FZdQ27HMlDmnZZ7t+PUie5fC9VWen3frurT7aiJCrHNFTS6n3unAwBbiLXAbo57IoNeHy+B0B6xZcxKsQ4hP03BLv1SFzGcUh/QgaGpaD+sQesrQocozAHHm/49iEH6bclyaVzxTF75HQX/9f3oIHWZt+IIEqSIifqVy154xfCUovm+bMjhLJKcb/CNeCWlik1lX3mbNU+AzRTTz3P8AvKOdfHXS0d9dGjqAAHp5O3+h12+x44XeV9KrkxTrWaiKuJw6vM\n-----END CERTIFICATE-----"
-      ],
-      "externalUrl": "http://sign-tool:3004"
+      "externalUrl": "http://sign-tool:8080"
     },
     "enabledDeleteUser": false,
     "log": {

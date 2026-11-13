@@ -1,0 +1,64 @@
+import { Exceptions } from '../exceptions';
+import { getModels } from '../lib/context';
+
+// Constants.
+const SEQUELIZE_CONSTRAINT_ERROR = 'SequelizeForeignKeyConstraintError';
+
+/**
+ * Gateway business.
+ */
+export class GatewayBusiness {
+  private static singleton: GatewayBusiness;
+
+  public config: object;
+
+  /**
+   * Constructor.
+   * @param {object} config Config object.
+   */
+  constructor(config?) {
+    // Define singleton.
+    if (!GatewayBusiness.singleton) {
+      this.config = config;
+      GatewayBusiness.singleton = this;
+    }
+
+    // Return singleton.
+    return GatewayBusiness.singleton;
+  }
+
+  /**
+   * Create or update.
+   * @param {GatewayEntity} gatewayEntity Gateway Entity.
+   * @returns {Promise<GatewayEntity>}
+   */
+  async createOrUpdate(gatewayEntity) {
+    return getModels().gatewayTemplate.create(gatewayEntity);
+  }
+
+  /**
+   * Delete gateway by ID.
+   * @param {number} id Gateway ID.
+   * @returns {Promise<GatewayEntity>}
+   */
+  async deleteById(id) {
+    try {
+      return await getModels().gatewayTemplate.deleteById(id);
+    } catch (error) {
+      if (error.name === SEQUELIZE_CONSTRAINT_ERROR) {
+        throw new Exceptions.WORKFLOW(Exceptions.WORKFLOW.Messages.CONSTRAINT);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Find gateway by ID.
+   * @param {number} id Gateway ID.
+   * @returns {Promise<GatewayEntity>}
+   */
+  async findById(id) {
+    return await getModels().gatewayTemplate.findById(id);
+  }
+}

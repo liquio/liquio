@@ -1,0 +1,150 @@
+name: E2E Tests
+
+# Component e2e suites (components/*/tests). Each one boots the NestJS/Express app
+# in-process and starts its backing services (Postgres, Redis, RabbitMQ, Dex,
+# OpenLDAP) with testcontainers against the runner's Docker daemon.
+# Playwright suites in test/ are not covered here.
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # daily, 00:00 UTC
+  workflow_dispatch:
+    inputs:
+      components:
+        description: 'Comma-separated components to run (empty = all), e.g. "task,id-api"'
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      components:
+        description: 'Comma-separated components to run (empty = all), e.g. "task,id-api"'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - name: Build component matrix
+        id: build
+        env:
+          FILTER: ${{ inputs.components }}
+        run: |
+          # images: pre-pulled before the run so a slow/rate-limited Docker Hub pull
+          # fails loudly here instead of as a testcontainers startup timeout.
+          ALL='[
+            {"name":"admin-api",       "images":"postgres:16 redis:8"},
+            {"name":"event",           "images":"postgres:16 redis:8"},
+            {"name":"external-reader", "images":""},
+            {"name":"filestorage",     "images":"postgres:16"},
+            {"name":"gateway",         "images":"postgres:16 rabbitmq:3-management"},
+            {"name":"id-api",          "images":"postgres:16 redis:8 dexidp/dex:v2.45.0 bitnamilegacy/openldap:2.6.10"},
+            {"name":"manager",         "images":"postgres:16 rabbitmq:3-management"},
+            {"name":"notification",    "images":"postgres:16"},
+            {"name":"pdf-generator",   "images":""},
+            {"name":"persist-link",    "images":"postgres:16"},
+            {"name":"register",        "images":"postgres:16 redis:8"},
+            {"name":"sign-tool",       "images":""},
+            {"name":"task",            "images":"postgres:16 redis:8"}
+          ]'
+          if [ -n "$FILTER" ]; then
+            WANT=$(echo "$FILTER" | jq -Rc 'split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(. != ""))')
+            MATRIX=$(echo "$ALL" | jq -c --argjson want "$WANT" '{include: map(select(.name as $n | $want | index($n)))}')
+          else
+            MATRIX=$(echo "$ALL" | jq -c '{include: .}')
+          fi
+          if [ "$(echo "$MATRIX" | jq '.include | length')" -eq 0 ]; then
+            echo "::error::No components matched '$FILTER'"
+            exit 1
+          fi
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  e2e:
+    needs: matrix
+    name: e2e-${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
+    defaults:
+      run:
+        working-directory: components/${{ matrix.name }}
+    steps:
+      # Full checkout: gateway/admin-api/event read manager's migrations and
+      # fixtures, notification reads config-templates/.
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: 'components/${{ matrix.name }}/package-lock.json'
+
+      - name: Pre-pull container images
+        if: matrix.images != ''
+        run: |
+          for img in ${{ matrix.images }}; do
+            for attempt in 1 2 3; do
+              docker pull -q "$img" && break
+              [ "$attempt" -eq 3 ] && exit 1
+              sleep $((attempt * 10))
+            done
+          done
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ci:e2e runs without --forceExit: leaked handles must surface, not be hidden.
+      # The step timeout is a backstop in case a leak hangs jest's main process.
+      - name: Run e2e tests
+        timeout-minutes: 30
+        run: |
+          set -o pipefail
+          npm run ci:e2e 2>&1 | tee "$RUNNER_TEMP/e2e.log"
+
+      # Jest force-kills a worker that keeps handles open after its test file and only
+      # prints a warning (exit code stays 0), so turn that warning into a failure.
+      - name: Fail on leaked handles
+        if: ${{ !cancelled() }}
+        run: |
+          if grep -E "failed to exit gracefully|did not exit one second after|open handles? potentially keeping Jest from exiting" "$RUNNER_TEMP/e2e.log"; then
+            echo "::error title=Leaked handles in ${{ matrix.name }}::Jest reported resources left open after tests (improper teardown). Reproduce with: npx jest <e2e args> --runInBand --detectOpenHandles"
+            exit 1
+          fi
+
+      # lcov SF paths are relative to the component dir; Codecov needs repo-root paths.
+      - name: Prefix lcov paths with component dir
+        id: lcov
+        if: ${{ !cancelled() }}
+        run: |
+          f=coverage/e2e/lcov.info
+          if [ -f "$f" ]; then
+            sed -i -E 's#^SF:([^/])#SF:components/${{ matrix.name }}/\1#' "$f"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload e2e coverage to Codecov
+        if: ${{ !cancelled() && steps.lcov.outputs.found == 'true' }}
+        uses: codecov/codecov-action@v7
+        with:
+          files: components/${{ matrix.name }}/coverage/e2e/lcov.info
+          flags: ${{ matrix.name }}
+          name: e2e-${{ matrix.name }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+      - name: Dump leftover containers on failure
+        if: failure()
+        run: docker ps -a --format 'table {{.Image}}\t{{.Status}}\t{{.Names}}'

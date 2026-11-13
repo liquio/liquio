@@ -42,7 +42,7 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "liquio.image" (dict "component" "register" "Values" .Values "Chart" .Chart) }}
           imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
-          command: ["npm", "run", "migration-up"]
+          command: ["node", "node_modules/.bin/sequelize", "db:migrate", "--config", "migrations-config.js"]
           env:
             - name: NODE_ENV
               value: "production"

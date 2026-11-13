@@ -12,6 +12,7 @@ metadata:
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
   "customer" .Release.Name
   "environment" .Values.config.server.environment
+  "monitoring" (dict "isEnabled" false "token" "")
 -}}
 {{ $messageQueueBase := dict
   "maxHandlingMessages" 2
@@ -35,7 +36,7 @@ metadata:
 {{ $systemNotifierBase := dict
   "adminUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
   "email" (dict
-    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
     "port" 80
     "routes" (dict
       "sendEmail" "/message/emailsList"
@@ -51,10 +52,6 @@ metadata:
 -}}
 {{ $versionsBase := dict
   "api" "1.0.0"
--}}
-{{ $logsBroadcastingBase := dict
-  "isEnabled" false
-  "port" 5000
 -}}
 data:
   # Database configuration
@@ -88,7 +85,3 @@ data:
   # Versions configuration
   versions.json: |
 {{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "gateway" "config" "versions.json" "base" $versionsBase) | nindent 4 }}
-
-  # Logs broadcasting configuration
-  logs_broadcasting.json: |
-{{ include "liquio.renderJsonConfig" (dict "ctx" . "service" "gateway" "config" "logs_broadcasting.json" "base" $logsBroadcastingBase) | nindent 4 }}

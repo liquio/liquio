@@ -11,6 +11,9 @@ metadata:
   "isSwaggerEnabled" false
   "acceptedBodySize" "10mb"
 }}
+{{- if include "liquio.internalTls.enabled" . }}
+{{- $_ := set $serverBase "tls" (include "liquio.internalTls.serverConfig" . | fromJson) }}
+{{- end }}
 data:
   # Server configuration
   server.json: |

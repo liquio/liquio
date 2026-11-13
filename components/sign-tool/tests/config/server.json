@@ -1,0 +1,9 @@
+{
+  "host": "127.0.0.1",
+  "port": 0,
+  "acceptedBodySize": "64kb",
+  "isSwaggerEnabled": true,
+  "tls": {
+    "enabled": false
+  }
+}

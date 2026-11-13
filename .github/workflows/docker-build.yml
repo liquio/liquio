@@ -1,18 +1,20 @@
 name: Build and Push Images
 
 on:
-  workflow_run:
-    workflows: [Lint]
-    types: [completed]
-    branches: [main]
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service directory name under components/ to build (leave empty for all unpublished services)'
+        required: false
+        type: string
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
-  # ── Detect which services have changed ────────────────────────────────────
+  # ── Detect which services are unpublished ────────────────────────────────────
   detect:
-    if: github.event.workflow_run.conclusion == 'success' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
@@ -20,36 +22,36 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Build service matrix from changed paths
+      - name: Build service matrix from unpublished versions
         id: build-matrix
+        env:
+          FORCE_SERVICE: ${{ inputs.service }}
         run: |
-          # Build only after the exact commit that passed lint.
-          BASE="${{ github.event.workflow_run.head_sha }}^"
-          HEAD="${{ github.event.workflow_run.head_sha }}"
-
-          CHANGED=$(git diff --name-only "${BASE}...${HEAD}")
-          BUILD_ALL=false
-
-          echo "Changed files:"
-          echo "${CHANGED:-<all>}"
-
-          # Special triggers
-          FRONT_CORE=$(echo "$CHANGED" | grep -c '^front-core/' || true)
-          WORKFLOW=$(echo "$CHANGED" | grep -c '^\.github/workflows/docker-build\.yml' || true)
+          # Returns 0 (true) if ghcr.io/liquio/<svc>:<ver> already exists
+          is_published() {
+            local svc=$1 ver=$2
+            local repo="liquio/${svc}"
+            local token
+            token=$(curl -fsS "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r .token)
+            local status
+            status=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: Bearer ${token}" \
+              -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json" \
+              "https://ghcr.io/v2/${repo}/manifests/${ver}")
+            [ "$status" = "200" ]
+          }
 
           # Returns 0 (true) if the service should be built
           should_build() {
             local svc=$1
-            [ "$BUILD_ALL" = "true" ] && return 0
-            [ "$WORKFLOW" -gt 0 ] && return 0
-            echo "$CHANGED" | grep -q "^${svc}/" && return 0
-            if [ "$FRONT_CORE" -gt 0 ]; then
-              { [ "$svc" = "admin-front" ] || [ "$svc" = "cabinet-front" ]; } && return 0
+            if [ -n "$FORCE_SERVICE" ]; then
+              [ "$svc" = "$FORCE_SERVICE" ] && return 0
+              return 1
             fi
+            local ver
+            ver=$(jq -r .version "components/${svc}/package.json")
+            ! is_published "$svc" "$ver" && return 0
             return 1
           }
 
@@ -67,12 +69,12 @@ jobs:
           # Front services that need front-core as an additional build context
           for svc in admin-front cabinet-front; do
             if should_build "$svc"; then
-              INCLUDES+=("{\"service\":\"$svc\",\"build-contexts\":\"core=./front-core\"}")
+              INCLUDES+=("{\"service\":\"$svc\",\"build-contexts\":\"core=./packages/front-core\"}")
             fi
           done
 
           if [ "${#INCLUDES[@]}" -eq 0 ]; then
-            echo "No service changes detected — skipping build."
+            echo "No unpublished service versions — skipping build."
             echo "matrix={\"include\":[]}" >> "$GITHUB_OUTPUT"
             echo "any=false" >> "$GITHUB_OUTPUT"
           else
@@ -81,7 +83,7 @@ jobs:
             echo "any=true" >> "$GITHUB_OUTPUT"
           fi
 
-  # ── Build and push only the changed services ──────────────────────────────
+  # ── Build and push the unpublished services ──────────────────────────────
   build:
     needs: detect
     if: needs.detect.outputs.any == 'true'
@@ -111,7 +113,7 @@ jobs:
       - name: Read service version
         id: pkg
         run: |
-          VERSION=$(jq -r .version ${{ matrix.service }}/package.json)
+          VERSION=$(jq -r .version components/${{ matrix.service }}/package.json)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Extract image metadata
@@ -122,14 +124,20 @@ jobs:
           tags: |
             type=raw,value=${{ steps.pkg.outputs.version }}
             type=raw,value=latest
+          labels: |
+            org.opencontainers.image.licenses=AGPL-3.0-only
 
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
-          context: ./${{ matrix.service }}
+          context: ./components/${{ matrix.service }}
           build-contexts: ${{ matrix.build-contexts }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.pkg.outputs.version }}
+            REVISION=${{ github.sha }}
+            CREATED=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}

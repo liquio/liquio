@@ -1,0 +1,108 @@
+// Import.
+import { applyFileSafetyHeaders, pipeUpstreamResponse } from '../../stream_response';
+import LinkProvider from '../link_provider';
+import OpenStackHandler from './open_stack_handler';
+
+// Constants.
+const RESPONSE_NOT_FOUND_CODE = 404;
+const RESPONSE_BAD_GATEWAY_CODE = 502;
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS_REGEXP = /[\u0000-\u001f\u007f]/;
+const RESPONSE_NOT_FOUND_OBJECT = {
+  error: {
+    message: 'Not found.',
+  },
+};
+
+/**
+ * OpenStack link provider.
+ */
+class OpenStackLinkProvider extends LinkProvider {
+  /**
+   * OpenStack link provider constructor.
+   * @param {object} config Provider config.
+   */
+  constructor(config) {
+    super(config);
+
+    // Define singleton.
+    if (!OpenStackLinkProvider.singleton) {
+      this.openStackHandler = new OpenStackHandler(config);
+      OpenStackLinkProvider.singleton = this;
+    }
+    return OpenStackLinkProvider.singleton;
+  }
+
+  /**
+   * Is valid data.
+   * @param {object} options Options.
+   * @param {string} options.serverName OpenStack server name.
+   * @param {string} options.fileName File name.
+   * @returns {boolean} Is valid options indicator.
+   */
+  isValidOptions(options) {
+    // Check if not valid.
+    if (typeof options !== 'object') {
+      return false;
+    }
+    if (typeof options.serverName !== 'string') {
+      return false;
+    }
+    if (typeof options.fileName !== 'string') {
+      return false;
+    }
+
+    // Reject CR/LF and other control chars (header injection / invalid header value).
+    if (CONTROL_CHARS_REGEXP.test(options.fileName)) {
+      return false;
+    }
+
+    // Rerturn as valid in other cases.
+    return true;
+  }
+
+  /**
+   * Open.
+   * @param {object} options Options.
+   * @param {string} options.serverName OpenStack server name.
+   * @param {string} options.fileName File name.
+   * @param {object} res HTTP response.
+   */
+  async open(options, res) {
+    // Check.
+    const isValidData = this.isValidOptions(options);
+    if (!isValidData) {
+      return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+    }
+
+    // Define params.
+    const { serverName, fileName } = options;
+    const openStackConnection = this.openStackHandler.connections[serverName];
+
+    // Check connection.
+    if (!openStackConnection) {
+      return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+    }
+
+    // Do request and pipe response in other cases.
+    const { addContentDispositionHeader = true } = this.config;
+    if (addContentDispositionHeader) res.setHeader('Content-Disposition', 'attachment; filename=' + fileName);
+    let downloadReadableStream;
+    try {
+      downloadReadableStream = await openStackConnection.downloadFile(fileName);
+    } catch {
+      return res.status(RESPONSE_BAD_GATEWAY_CODE).send({ error: { message: 'Bad gateway.' } });
+    }
+    pipeUpstreamResponse(downloadReadableStream, res, (headers) => {
+      // Our attachment disposition must win over whatever the upstream sent.
+      if (addContentDispositionHeader) {
+        delete headers['content-disposition'];
+        delete headers['Content-Disposition'];
+      }
+      applyFileSafetyHeaders(headers);
+    });
+  }
+}
+
+// Export.
+export default OpenStackLinkProvider;

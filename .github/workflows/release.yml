@@ -1,0 +1,90 @@
+name: Release
+
+# Images and the Helm chart are published only from release branches, after
+# Code Quality and E2E pass on the full tree.
+
+on:
+  push:
+    branches: ['release/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  branch:
+    name: branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a release branch
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          case "$REF" in
+            refs/heads/release/*) ;;
+            *)
+              echo "::error::Release workflow runs only on release/** branches (got ${REF})"
+              exit 1
+              ;;
+          esac
+
+  quality:
+    name: quality
+    needs: branch
+    uses: ./.github/workflows/code-quality.yml
+    with:
+      all: true
+
+  e2e:
+    name: e2e
+    needs: branch
+    uses: ./.github/workflows/e2e.yml
+    with:
+      components: ''
+
+  chart-tags:
+    name: chart-tags
+    needs: [quality, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Chart image tags match component versions
+        run: |
+          FILE=helm-chart/templates/shared/_service-helpers.tpl
+          STATUS=0
+          while read -r svc tag; do
+            ver=$(jq -r .version "components/${svc}/package.json")
+            if [ "$tag" != "$ver" ]; then
+              echo "::error::${svc}: chart tag ${tag} != package.json version ${ver}"
+              STATUS=1
+            fi
+          done < <(sed -n '/^{{- \$versions := dict/,/^-}}/p' "$FILE" | sed -nE 's/^ *"([a-z-]+)" "([^"]+)"$/\1 \2/p')
+          COUNT=$(sed -n '/^{{- \$versions := dict/,/^-}}/p' "$FILE" | grep -cE '^ *"[a-z-]+" "[^"]+"$')
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::No service tags found in $FILE"
+            STATUS=1
+          fi
+          exit $STATUS
+
+  images:
+    name: images
+    needs: [quality, e2e, chart-tags]
+    uses: ./.github/workflows/docker-build.yml
+    permissions:
+      contents: read
+      packages: write
+
+  chart:
+    name: chart
+    needs: images
+    uses: ./.github/workflows/helm.yml
+    with:
+      release: true
+    permissions:
+      contents: read
+      packages: write

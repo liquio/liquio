@@ -35,7 +35,7 @@ spec:
         - name: notification-migrations
           image: {{ include "liquio.image" (dict "component" "notification" "Values" .Values "Chart" .Chart) }}
           imagePullPolicy: {{ include "liquio.imagePullPolicy" . }}
-          command: ["npm", "run", "migration-up"]
+          command: ["node", "node_modules/.bin/sequelize", "db:migrate"]
           env:
             - name: NODE_ENV
               value: "production"

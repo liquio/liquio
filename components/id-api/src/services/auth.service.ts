@@ -1,0 +1,1319 @@
+import crypto from 'crypto';
+
+import OAuth2Server, { InvalidRequestError } from '@node-oauth/oauth2-server';
+import { matchedData, query, validationResult } from 'express-validator';
+import moment from 'moment';
+import { Op } from 'sequelize';
+
+import { Config, DEFAULT_CODE_RETRIES, DEFAULT_CODE_LENGTH } from '../config';
+import { calculateUserCode } from '../lib/calculate_user_code';
+import { generatePinCode } from '../lib/helpers';
+import { HttpError, oauthErrorBody } from '../lib/http_error';
+import { OAuthModel } from '../lib/oauth_model';
+import { publicService } from '../lib/public_services';
+import { saveSession } from '../middleware/session';
+import {
+  ClientAttributes,
+  ClientUserAttributes,
+  ClientUserCreationAttributes,
+  ConfirmCodeAttributes,
+  ConfirmCodeCreationAttributes,
+  Models,
+  UserAttributes,
+  UserServicesAttributes,
+  WhereAttributeHash,
+  WhereOptions,
+} from '../models';
+import { CallbackFn, NextFunction, Request, Response } from '../types';
+import { BaseService } from './base_service';
+
+const SMS_CODE_WORD = 'Код: ';
+const DEFAULT_CACHE_TTL = 600; // 10 minutes.
+const DEFAULT_ACCESS_TOKEN_LIFETIME = 8 * 60 * 60; // 8 hours.
+const DEFAULT_REFRESH_TOKEN_LIFETIME = 16 * 60 * 60; // 16 hours.
+const MAX_CONFIRM_CODES_TO_KEEP = 5;
+export const DEFAULT_SEND_LIMIT = {
+  recipientMax: 10, // Codes per recipient and channel per window.
+  recipientWindowSeconds: 3600,
+  sourceMax: 100, // Codes per source IP per window (shared NAT friendly).
+  sourceWindowSeconds: 3600,
+};
+// 2FA phone sends (login with a verified password): own counters, a login sends up to two codes, so the source limit is higher.
+export const DEFAULT_TWO_FACTOR_SEND_LIMIT = {
+  recipientMax: 10,
+  recipientWindowSeconds: 3600,
+  sourceMax: 300,
+  sourceWindowSeconds: 3600,
+};
+
+/**
+ * Redis key under which task caches the user info for an access token (`token.<sha256(accessToken)>`).
+ * Keys are plain strings on both sides (no prefix is applied), and id-api and task share one redis.
+ * Keep in sync with task's `AuthController`.
+ */
+export function getTaskTokenCacheKey(accessToken: string): string {
+  return `token.${crypto.createHash('sha256').update(accessToken).digest('hex')}`;
+}
+
+export interface RevokeUserAccessResult {
+  accessTokens: number;
+  refreshTokens: number;
+  sessions: number;
+}
+
+export interface UserAccessOptions {
+  // Log redis errors and go on, instead of throwing. For callers that must always finish (logout).
+  ignoreCacheErrors?: boolean;
+}
+
+export class AuthService extends BaseService {
+  public readonly accessTokenLifetime: number;
+
+  private readonly oAuth2Server!: OAuth2Server;
+  private readonly oAuth2Model!: OAuthModel;
+  private readonly mappr = require('mappr');
+  private readonly cfg!: Config['oauth'];
+
+  constructor(...args: ConstructorParameters<typeof BaseService>) {
+    super(...args);
+
+    this.accessTokenLifetime = this.config.oauth?.accessTokenLifetimeInSeconds ?? DEFAULT_ACCESS_TOKEN_LIFETIME;
+    this.cfg = this.config.oauth;
+    this.oAuth2Model = new OAuthModel();
+    this.oAuth2Server = new OAuth2Server({
+      model: this.oAuth2Model,
+      authorizationCodeLifetime: 240,
+      accessTokenLifetime: this.accessTokenLifetime,
+      refreshTokenLifetime: this.config.oauth?.refreshTokenLifetimeInSeconds ?? DEFAULT_REFRESH_TOKEN_LIFETIME,
+      allowBearerTokensInQueryString: true,
+      allowEmptyState: true,
+    });
+  }
+
+  get server(): OAuth2Server {
+    return this.oAuth2Server;
+  }
+
+  get oAuthModel(): OAuthModel {
+    return this.oAuth2Model;
+  }
+
+  async init() {
+    if (!this.cfg) {
+      throw new Error('No OAuth configuration provided: config.oauth');
+    }
+    if (!this.cfg.defaults?.client_id) {
+      throw new Error('No client_id provided in OAuth configuration: config.oauth.defaults.client_id');
+    }
+    if (!this.cfg.defaults?.redirect_uri) {
+      throw new Error('No redirect_uri provided in OAuth configuration: config.oauth.defaults.redirect_uri');
+    }
+  }
+
+  prepareUser(state: string) {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const provider = req.user?.provider;
+      if (!provider) {
+        return next();
+      }
+
+      const mappingFunctions = this.mappr(this.express.passport.mapping[provider]);
+
+      let preparedUser = {} as Record<string, any>;
+      if (state === 'approve') {
+        if (!req.isAuthenticated()) {
+          return next();
+        }
+
+        let source = req.user.services[provider];
+        if (source?.dataValues) {
+          source = source.dataValues.data;
+        }
+        if (source) {
+          preparedUser = mappingFunctions(source);
+        }
+      }
+
+      const normalization = this.express.passport.normalization[provider];
+      if (normalization) {
+        for (let key in preparedUser) {
+          const normalize = normalization[key];
+          if (typeof normalize === 'function') {
+            preparedUser[key] = normalize(preparedUser[key]);
+          }
+        }
+      }
+
+      req.prepared = { user: preparedUser };
+      next();
+    };
+  }
+
+  prepareClient() {
+    return [
+      query('client_id').isString(),
+      query('response_type').optional().default('code').isString(),
+      query('state').optional().isString(),
+      query('redirect_uri').isString().notEmpty(),
+      query('code_challenge')
+        .optional()
+        .isString()
+        .matches(/^[A-Za-z0-9_-]{43}$/),
+      query('code_challenge_method').optional().isString().equals('S256'),
+      async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        let { client_id, response_type = 'code', state, redirect_uri } = matchedData(req, { locations: ['query'] });
+        const { code_challenge, code_challenge_method } = req.query;
+
+        if (response_type !== 'code') {
+          res.status(400).send({ error: 'unsupported_response_type', message: 'Only response_type=code is supported' });
+          return;
+        }
+
+        // PKCE is optional, but a request that uses it must carry both parameters, and only S256 is supported.
+        if (
+          (code_challenge !== undefined || code_challenge_method !== undefined) &&
+          (typeof code_challenge !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(code_challenge) || code_challenge_method !== 'S256')
+        ) {
+          res.status(400).send({ error: 'invalid_request', message: 'Invalid PKCE parameters; use S256' });
+          return;
+        }
+
+        try {
+          if (!validationResult(req).isEmpty()) throw new InvalidRequestError('Invalid authorization parameters');
+          // The client secret is not accepted here: confidential clients are authenticated at /oauth/token.
+          const client = await this.oAuth2Model.getClient(client_id, null);
+
+          if (!client) {
+            res.status(400).send({ message: 'Client not found' });
+            return;
+          }
+
+          const registeredRedirectUris = [client.redirectUris ?? []].flat();
+          redirect_uri ??= registeredRedirectUris[0];
+          if (!redirect_uri || !registeredRedirectUris.includes(redirect_uri)) {
+            this.log.save('prepareClientRedirectUriRejected', { clientId: client_id }, 'error');
+            res.status(400).send({ message: 'Redirect URI is not registered for the client' });
+            return;
+          }
+
+          const session = req.session;
+          session.client_id = client_id;
+          session.redirect_uri = redirect_uri;
+          // Always overwrite so that a previous authorization's PKCE binding cannot leak into this one.
+          session.code_challenge = code_challenge;
+          session.code_challenge_method = code_challenge_method;
+          session.state = state;
+          session.client_requirements = client.requirements;
+          session.scope = client.scope;
+          session.response_type = response_type;
+          session.client_name = client.client_name;
+          session.need_scope_approve = client.need_scope_approve;
+          session.client = {
+            clientId: client.clientId,
+            client_name: client.client_name,
+            requirements: client.requirements,
+            redirectUri: registeredRedirectUris,
+          };
+          await saveSession(req);
+
+          this.log.save('preparedClient', { clientId: client_id, redirectUri: redirect_uri, responseType: response_type }, 'info');
+          next();
+        } catch (error: any) {
+          if (!error.statusCode) {
+            this.log.save('prepareClientError', { error }, 'error');
+            error.statusCode = 500;
+          }
+          const body = oauthErrorBody(error);
+          res.status(body.statusCode).send(body);
+          return;
+        }
+      },
+    ];
+  }
+
+  /**
+   * Authorization continuation needs a client prepared by `/authorise` (`prepareClient`).
+   * Without it only the configured default client is used, and it is resolved and validated explicitly here
+   * (it must exist and have the default redirect URI registered) instead of silently falling back to defaults.
+   */
+  ensureClientContext() {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      if (req.session.client_id) {
+        return next();
+      }
+
+      try {
+        const defaults = this.cfg!.defaults!;
+        const found = defaults.client_id ? await this.oAuth2Model.getClient(defaults.client_id, null) : undefined;
+        const client = found || undefined;
+        const registeredRedirectUris = [client?.redirectUris ?? []].flat();
+        const redirectUri = defaults.redirect_uri?.[0];
+
+        if (!client || !redirectUri || !registeredRedirectUris.includes(redirectUri)) {
+          this.log.save('ensureClientContextRejected', { clientId: defaults.client_id }, 'error');
+          res.status(400).send({ message: 'Authorization request is not prepared' });
+          return;
+        }
+
+        const session = req.session;
+        session.client_id = client.clientId;
+        session.redirect_uri = redirectUri;
+        session.client_requirements = client.requirements;
+        session.scope = client.scope;
+        session.response_type = 'code';
+        session.client_name = client.client_name;
+        session.need_scope_approve = client.need_scope_approve;
+        session.client = {
+          clientId: client.clientId,
+          client_name: client.client_name,
+          requirements: client.requirements,
+          redirectUri: registeredRedirectUris,
+        };
+        await saveSession(req);
+        next();
+      } catch (error: any) {
+        this.log.save('ensureClientContextError', { error: error?.message }, 'error');
+        res.status(500).send({ message: 'Unable to resolve the authorization client' });
+      }
+    };
+  }
+
+  readyClient() {
+    return [
+      query('redirect_uri').optional().isString(),
+      (req: Request, res: Response, next: NextFunction) => {
+        if (typeof req.body !== 'object') {
+          req.body = {};
+        }
+        // Express 5 re-parses `req.query` on every access, so the client params are passed via `req.body` only
+        // (@node-oauth/oauth2-server reads `request.body` before `request.query`).
+        req.body.client_id = req.session.client_id ?? this.cfg!.defaults!.client_id;
+        req.body.code_challenge = req.session.code_challenge;
+        req.body.code_challenge_method = req.session.code_challenge_method;
+        req.body.state = req.session.state ?? '';
+        req.body.response_type = req.session.response_type ?? 'code';
+        req.body.need_scope_approve = 'need_scope_approve' in req.session ? req.session.need_scope_approve : this.cfg!.defaults!.need_scope_approve;
+        req.body.client_name = req.session.client_name ?? this.cfg!.defaults!.client_name;
+        req.body.scope = req.session.scope ?? (this.cfg!.defaults!.scope || []);
+
+        // The destination comes only from the session (validated in `prepareClient`) or the config, never from the request query.
+        const redirectUri = req.session.redirect_uri ?? this.cfg!.defaults!.redirect_uri?.[0];
+        const registeredRedirectUris = req.session.client?.redirectUri;
+        if (!redirectUri || (registeredRedirectUris && !registeredRedirectUris.includes(redirectUri))) {
+          this.log.save('readyClientRedirectUriRejected', { clientId: req.body.client_id }, 'error');
+          res.status(400).send({ message: 'Redirect URI is not registered for the client' });
+          return;
+        }
+        req.body.redirect_uri = redirectUri;
+
+        this.log.save('readyClient', { clientId: req.body.client_id, redirectUri, responseType: req.body.response_type }, 'info');
+        next();
+      },
+    ];
+  }
+
+  getConfirmCode(params: Record<string, any>, callback: CallbackFn<ConfirmCodeAttributes | null>) {
+    this.model('confirmCode')
+      .findOne({ where: params })
+      .catch((err: Error) => {
+        callback(err, null);
+      })
+      .then((confirmCode) => {
+        callback(null, confirmCode?.dataValues);
+      });
+  }
+
+  async getConfirmCodeAsync(params: Record<string, any>) {
+    return new Promise((resolve, reject) => {
+      this.getConfirmCode(params, (err, confirmCode) => {
+        if (err) return reject(err);
+        resolve(confirmCode);
+      });
+    });
+  }
+
+  async getValidConfirmCode(params: Record<string, any>) {
+    // An array would be compiled into `IN (...)` and match any of the candidate codes.
+    if (typeof params?.code !== 'string' || !params.code || !hasOnlyStringValues(params)) {
+      return undefined;
+    }
+
+    const queryParams = {
+      ...params,
+      counter: { [Op.lte]: this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES },
+      expiresIn: { [Op.gt]: Models.db.fn('NOW') },
+    };
+
+    const confirmCode = await this.model('confirmCode').findOne({ where: queryParams });
+
+    return confirmCode?.dataValues;
+  }
+
+  saveConfirmCode(params: ConfirmCodeCreationAttributes, callback: CallbackFn<ConfirmCodeAttributes | null>) {
+    this.model('confirmCode')
+      .create(params)
+      .catch((err) => {
+        callback(err, null);
+      })
+      .then((confirmCode) => {
+        callback(null, confirmCode?.dataValues);
+      });
+  }
+
+  async saveConfirmCodeAsync(params: ConfirmCodeCreationAttributes) {
+    let expiresIn = params.expiresIn;
+
+    if (expiresIn instanceof Date) {
+      const minutes = Math.round((expiresIn.getTime() - Date.now()) / 60000);
+      expiresIn = Models.db.literal(`NOW() + INTERVAL '1 MINUTE' * ${minutes}`) as any;
+    }
+
+    const processedParams = {
+      ...params,
+      expiresIn,
+    };
+
+    return new Promise((resolve, reject) => {
+      this.saveConfirmCode(processedParams, (err, confirmCode) => {
+        if (err) return reject(err);
+        resolve(confirmCode);
+      });
+    });
+  }
+
+  /**
+   * Removes old confirmation codes for the given email or phone, keeping only the latest N entries.
+   * @param {object} params Params.
+   */
+  async removePreviousConfirmCodes(params: { email?: string; phone?: string }) {
+    const { email, phone } = params;
+
+    if (!email && !phone) return;
+
+    const idsToDelete = (await this.model('confirmCode')
+      .findAll({
+        where: {
+          ...(email && { email }),
+          ...(phone && { phone }),
+        },
+        order: [['id', 'DESC']],
+        offset: MAX_CONFIRM_CODES_TO_KEEP - 1,
+        attributes: ['id'],
+      })
+      .then((records) => records.map((record) => record.get('id')))) as number[];
+
+    if (idsToDelete.length === 0) {
+      return;
+    }
+
+    await this.model('confirmCode').destroy({
+      where: { id: idsToDelete },
+    });
+
+    this.log.save('previous-confirm-codes|deleted', { ids: idsToDelete }, 'info');
+  }
+
+  /**
+   * Remove confirm code.
+   * @param {object} params Params.
+   */
+  async removeConfirmCode(params: { code?: string; email?: string; phone?: string }) {
+    const { code, email, phone } = params;
+
+    if (!code && !email && !phone) {
+      return;
+    }
+
+    return this.model('confirmCode').destroy({
+      where: {
+        ...(!!code && { code }),
+        ...(!!email && { email }),
+        ...(!!phone && { phone }),
+      },
+    });
+  }
+
+  /**
+   * Count a failed attempt against the active confirmation codes of the email or phone.
+   * One atomic UPDATE ... RETURNING, so parallel failures never lose an increment. Expired codes are not touched.
+   * Codes that exceeded the retries limit are deleted (awaited).
+   * Resolves to the new counter, or null if there is no active code.
+   */
+  async incrementConfirmCodeCounterAsync(params: Record<string, any>): Promise<number | null> {
+    const { email, phone } = params ?? {};
+    if (!email && !phone) {
+      throw new Error('Email or phone should be defined.');
+    }
+    if (!hasOnlyStringValues(params)) {
+      throw new Error('Email and phone should be strings.');
+    }
+
+    const column = email ? 'email' : 'phone';
+    const recipient = email ?? phone;
+    const maxCounter = this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES;
+
+    const [rows] = (await Models.db.query(
+      `UPDATE confirmation_codes SET counter = counter + 1
+       WHERE "${column}" = :recipient AND "expiresIn" > NOW()
+       RETURNING counter`,
+      { replacements: { recipient } },
+    )) as [{ counter: number }[], unknown];
+
+    if (!rows?.length) {
+      return null;
+    }
+
+    const nextCounter = Math.max(...rows.map((row) => Number(row.counter)));
+    if (nextCounter > maxCounter) {
+      await this.model('confirmCode').destroy({ where: { [column]: recipient, counter: { [Op.gt]: maxCounter } } });
+      this.log.save('confirm-code-counter-max-value|deleted', { [column]: recipient, nextCounter, maxCounter }, 'warning');
+    }
+
+    return nextCounter;
+  }
+
+  /**
+   * Count one confirmation-code send for the recipient (per channel) and for the source.
+   * Fixed windows, atomic in redis (shared by all instances); with redis disabled the counters are per instance.
+   * Returns false when a limit is exceeded: the caller must not send the code.
+   */
+  async consumeSendQuota(channel: 'phone' | 'email' | 'twoFactor', recipient: string, source?: string): Promise<boolean> {
+    const isTwoFactor = channel === 'twoFactor';
+    const sendLimit = this.config.confirmCode?.sendLimit;
+    const configured: Partial<typeof DEFAULT_SEND_LIMIT> = (isTwoFactor ? sendLimit?.twoFactor : sendLimit) ?? {};
+    const defaults = isTwoFactor ? DEFAULT_TWO_FACTOR_SEND_LIMIT : DEFAULT_SEND_LIMIT;
+    const limit = (name: keyof typeof DEFAULT_SEND_LIMIT) => {
+      const value = Number(configured[name]);
+      return Number.isFinite(value) && value > 0 ? value : defaults[name];
+    };
+    const limits = {
+      recipientMax: limit('recipientMax'),
+      recipientWindowSeconds: limit('recipientWindowSeconds'),
+      sourceMax: limit('sourceMax'),
+      sourceWindowSeconds: limit('sourceWindowSeconds'),
+    };
+    const normalized = channel === 'email' ? recipient.trim().toLowerCase() : recipient.replace(/\D/g, '');
+    const digest = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
+
+    const checks: [string, number, number][] = [
+      [`confirm-send.${channel}.${digest(normalized)}`, limits.recipientWindowSeconds, limits.recipientMax],
+    ];
+    if (source) {
+      checks.push([`confirm-send-source.${isTwoFactor ? 'twoFactor.' : ''}${digest(source)}`, limits.sourceWindowSeconds, limits.sourceMax]);
+    }
+
+    let allowed = true;
+    for (const [key, windowSeconds, max] of checks) {
+      const count = await this.incrementSendWindow(key, windowSeconds);
+      if (count > max) allowed = false;
+    }
+    if (!allowed) {
+      this.log.save('confirm-code-send|rate-limited', { channel, hasSource: !!source }, 'warning');
+    }
+    return allowed;
+  }
+
+  private sendWindows = new Map<string, { count: number; resetAt: number }>();
+
+  private async incrementSendWindow(key: string, windowSeconds: number): Promise<number> {
+    const shared = await this.service('redis').incrementWindow([key], windowSeconds);
+    if (shared !== null && shared !== undefined) return shared;
+
+    // Redis is disabled: per-instance fixed window.
+    const now = Date.now();
+    if (this.sendWindows.size > 10000) {
+      for (const [k, v] of this.sendWindows) if (v.resetAt <= now) this.sendWindows.delete(k);
+    }
+    const current = this.sendWindows.get(key);
+    if (!current || current.resetAt <= now) {
+      this.sendWindows.set(key, { count: 1, resetAt: now + windowSeconds * 1000 });
+      return 1;
+    }
+    return ++current.count;
+  }
+
+  /**
+   * Generate pin code with default length or custom length from config.
+   * @returns {string} Generated pin code.
+   */
+  generatePinCode(): string {
+    const length = this.config.confirmCodeLength ?? DEFAULT_CODE_LENGTH;
+    return generatePinCode(length);
+  }
+
+  async generateCustomAuthorizationCode(user: any, clientId: any, scope: any, expiresIn = 60, redirectUri = this.cfg?.defaults?.redirect_uri?.[0]) {
+    const code = {
+      authorizationCode: crypto.randomBytes(20).toString('hex'),
+      expiresAt: Models.db.literal(`NOW() + INTERVAL '${expiresIn} SECOND'`),
+      scope,
+      redirectUri,
+    };
+
+    await this.oAuth2Model.saveAuthorizationCode(code as any, { clientId } as any, user);
+
+    return code.authorizationCode;
+  }
+
+  addressToString({ index, region, district, street, city, building, korp, apt } = {} as any) {
+    const { label: cityLabel } = city?.registerRecord ?? {};
+    const { label: districtLabel } = district?.registerRecord ?? {};
+    const streetFullName = street && [street.type, street.name].filter(Boolean).join(' ');
+    const buildingFull = [building, korp].filter(Boolean).join('-');
+    const aptFull = apt && `кв. ${apt}`;
+
+    return [index, region?.name, districtLabel ?? district?.name, cityLabel ?? city?.name, streetFullName, buildingFull, aptFull]
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  /**
+   * Get user by where condition.
+   * @throws {Error} If user not found.
+   */
+  async getUser(where: WhereOptions): Promise<UserAttributes> {
+    try {
+      this.log.save('get-user', { where }, 'info');
+      const { data } = await this.service('redis').getOrSetWithTimestamp(
+        ['oauthmodel', 'getUser', where],
+        () =>
+          this.model('user')
+            .findOne({ where, attributes: ['updatedAt'] })
+            .then((row) => {
+              const updatedAt = row?.dataValues.updatedAt;
+              return updatedAt ? updatedAt.getTime() : Date.now();
+            }),
+        () =>
+          this.model('user')
+            .findAll({
+              where,
+              include: [{ model: this.model('userServices') }],
+            })
+            .then((rows) =>
+              rows.map((row) => {
+                const user: any = row.dataValues;
+                user.user_services = user.user_services.map((row: any) => row.dataValues);
+                return user;
+              }),
+            ),
+        DEFAULT_CACHE_TTL,
+      );
+
+      if (!Array.isArray(data) || data.length === 0) {
+        this.log.save('get-user-not-found', { where }, 'error');
+        throw new Error('user not found');
+      }
+
+      let [user] = data;
+
+      if (user.email) user.email = user.email.toLowerCase();
+      if (user.birthday) user.birthday = moment(user.birthday).format('DD/MM/YYYY');
+      if (user.addressStruct && Object.keys(user.addressStruct).length && this.addressToString(user.addressStruct)) {
+        user.address = this.addressToString(user.addressStruct);
+      }
+      if (user.legalEntityDateRegistration) user.legalEntityDateRegistration = moment(user.legalEntityDateRegistration).format('DD/MM/YYYY');
+
+      user.services = {};
+      for (const service of user.user_services) {
+        // Allowlist only public service fields; never return stored credentials.
+        user.services[service.provider] = publicService(service);
+        user.provider ??= service.provider;
+      }
+
+      user._id = user.userId;
+      delete user.user_services;
+      // Internal credential version; never exposed to API consumers.
+      delete user.authorizationVersion;
+
+      return user;
+    } catch (error: any) {
+      this.log.save('get-user-error', { where, error: error?.message ?? error.toString(), name: error?.name, stack: error?.stack }, 'error');
+      throw error;
+    }
+  }
+
+  getUsers(query: WhereOptions, callback: CallbackFn<UserAttributes[] | null>, params = {} as any) {
+    this.model('user')
+      .findAll({
+        where: query,
+        include: params.attributes ? [] : [{ model: this.model('userServices') }],
+        ...params,
+      })
+      .then((rows) => rows.map((row) => row.dataValues as UserAttributes & { user_services: UserAttributes[] }))
+      .then((rows) => {
+        let users = [] as any;
+        if (rows.length === 0) {
+          this.log.save('get-users-empty-response', { query }, 'error');
+          return callback(null, users);
+        }
+        for (let user of rows) {
+          if (user.email) user.email = user.email.toLowerCase();
+          if (user.birthday) user.birthday = moment(user.birthday).format('DD/MM/YYYY');
+          if (user.legalEntityDateRegistration) user.legalEntityDateRegistration = moment(user.legalEntityDateRegistration).format('DD/MM/YYYY');
+
+          const services: Record<string, any> = {};
+          if (user.user_services) {
+            for (let service of user.user_services) {
+              services[service.provider!] = publicService(service);
+            }
+          }
+
+          users.push({
+            ...user,
+            user_services: undefined,
+            services,
+          });
+        }
+        callback(null, users);
+      });
+  }
+
+  async getUsersAsync(query: WhereOptions, params = {}) {
+    return new Promise((resolve, reject) => {
+      this.getUsers(
+        query,
+        (err, users) => {
+          if (err) return reject(err);
+          resolve(users);
+        },
+        params,
+      );
+    });
+  }
+
+  getUsersWithCount(query: WhereOptions, callback: CallbackFn<{ count: number; users: UserAttributes[] }>, params = {}) {
+    this.model('user')
+      .findAndCountAll({
+        where: query,
+        ...params,
+      })
+      .then(({ count, rows }) => {
+        let users = [] as UserAttributes[];
+        if (rows.length === 0) {
+          this.log.save('get-users-empty-response', { query }, 'error');
+          return callback(null, { count, users });
+        }
+        for (let row of rows) {
+          const user = row.get();
+          if (user.email) user.email = user.email.toLowerCase();
+          if (user.birthday) user.birthday = moment(user.birthday).format('DD/MM/YYYY');
+          if (user.legalEntityDateRegistration) user.legalEntityDateRegistration = moment(user.legalEntityDateRegistration).format('DD/MM/YYYY');
+          users.push(user);
+        }
+        callback(null, { count, users });
+      });
+  }
+
+  async getUsersWithCountAsync(query: WhereOptions, params = {}) {
+    return new Promise((resolve, reject) => {
+      this.getUsersWithCount(
+        query,
+        (err, users) => {
+          if (err) return reject(err);
+          resolve(users);
+        },
+        params,
+      );
+    });
+  }
+
+  findUser(id: string, callback: CallbackFn<UserAttributes | null>) {
+    this.model('user')
+      .findOne({
+        where: { userId: id },
+      })
+      .then((user) => {
+        return callback(null, user?.dataValues);
+      });
+  }
+
+  saveUser(query: WhereAttributeHash, callback: CallbackFn<UserAttributes | null>) {
+    this.log.save('save-user', { query }, 'info');
+    if (query.email) {
+      query.email = query.email.toLowerCase();
+    }
+    const { ipn, edrpou } = query;
+
+    const userCode = calculateUserCode(ipn, edrpou);
+
+    query.ipn = userCode;
+
+    this.model('user')
+      .create(query)
+      .then((user) => {
+        this.log.save('save-user-response', { user }, 'info');
+        callback(null, user?.dataValues);
+      })
+      .catch((e) => {
+        this.log.save('save-user-error', { error: e }, 'error');
+        callback(e, null);
+      });
+  }
+
+  saveUserWithServices(query: WhereAttributeHash, callback: CallbackFn<(UserAttributes & { user_services: UserServicesAttributes[] }) | null>) {
+    this.log.save('save-user-with-services', { query }, 'info');
+    if ('birthday' in query && query.birthday) {
+      query.birthday = moment(query.birthday, 'DD.MM.YYYY').format('YYYY-MM-DD');
+    }
+    const { ipn, edrpou } = query;
+
+    const userCode = calculateUserCode(ipn, edrpou);
+
+    query.ipn = userCode;
+
+    this.model('user')
+      .create(query, {
+        include: [this.model('userServices')],
+      })
+      .then((user) => user?.dataValues as UserAttributes & { user_services: UserServicesAttributes[] })
+      .then((user) => {
+        this.log.save('save-user-with-services-response', { user }, 'info');
+        callback(null, user);
+      })
+      .catch((err) => {
+        this.log.save('save-user-with-services-error', { error: err }, 'error');
+        if (err.name === 'SequelizeUniqueConstraintError') {
+          this.model('user')
+            .findOne({ where: { ipn: query.ipn } })
+            .then((row) => row?.dataValues)
+            .then((user) => {
+              if (!user) {
+                return callback(new Error('Can not save user or find user with defined IPN.'), null);
+              }
+              const [userServices] = query.user_services;
+              const userServicesQuery = {
+                ...userServices,
+                userId: user.userId,
+              };
+              this.log.save('save-user-services', { query: userServicesQuery }, 'info');
+              this.model('userServices')
+                .create(userServicesQuery, { returning: true })
+                .then((row) => row?.dataValues)
+                .then((services) => {
+                  this.log.save('save-user-services-response', { services }, 'info');
+                  callback(null, { ...user, user_services: [services] });
+                })
+                .catch((err) => {
+                  this.log.save('save-user-services-error', { error: err }, 'error');
+                  callback(err, null);
+                });
+            })
+            .catch((err) => {
+              this.log.save('get-user-to-append-user-services-error', { error: err }, 'error');
+              callback(err, null);
+            });
+        } else {
+          this.log.save('save-user-with-services-error-not-create-services', { error: err }, 'error');
+          callback(err, null);
+        }
+      });
+  }
+
+  async saveUserWithServicesAsync(query: WhereAttributeHash): Promise<(UserAttributes & { user_services: UserServicesAttributes[] }) | null> {
+    return new Promise((resolve, reject) => {
+      this.saveUserWithServices(query, (err, user) => {
+        if (err) return reject(err);
+        resolve(user as any);
+      });
+    });
+  }
+
+  async updateUser(query: WhereAttributeHash, update: any): Promise<UserAttributes | null> {
+    this.log.save('update-user', { query, updateQuery: update }, 'info');
+
+    if (update.birthday) {
+      update['birthday'] = moment(update['birthday'], 'DD/MM/YYYY').format('YYYY-MM-DD');
+    }
+    if (update.legalEntityDateRegistration) {
+      update['legalEntityDateRegistration'] = moment(update['legalEntityDateRegistration'], 'DD/MM/YYYY').format('YYYY-MM-DD');
+    }
+    if (query.email) {
+      query.email = query.email.toLowerCase();
+    }
+
+    try {
+      await this.model('user').update(update, { where: query });
+      this.log.save('update-user-response', { query }, 'info');
+      // Invalidate cache for this user
+      await this.service('redis').delete(['oauthmodel', 'getUser', query]);
+      return await this.getUser(query);
+    } catch (error: any) {
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        const [uniqueFieldError] = error.errors ?? [];
+        const message = uniqueFieldError.message.charAt(0).toUpperCase() + uniqueFieldError.message.slice(1);
+        throw new HttpError(400, `Can not update user. ${message}`);
+      }
+      this.log.save('update-user-error', { error: error }, 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * Delete task's cached user info (`token.*` redis keys) for every access token of the user, tokens stay valid.
+   * The next request of the user to task misses the cache and builds the user info (and syncs units) again.
+   * @return {Promise<number>} Number of access tokens whose cache entry was deleted.
+   **/
+  async invalidateUserTokenCache(userId: string, options: UserAccessOptions = {}): Promise<number> {
+    const redis = this.service('redis');
+    if (!redis.isEnabled || !userId) {
+      return 0;
+    }
+
+    const tokens = await this.model('accessToken')
+      .findAll({ where: { userId } })
+      .then((rows) => rows.map((row) => row.dataValues));
+
+    this.log.save('delete-user-info-cache', { userId, tokens: tokens.length }, 'info');
+
+    for (const { accessToken } of tokens) {
+      try {
+        await redis.delete(getTaskTokenCacheKey(accessToken));
+      } catch (error: any) {
+        if (!options.ignoreCacheErrors) {
+          throw error;
+        }
+        this.log.save('delete-user-info-cache-error', { userId, error: error?.message ?? `${error}` }, 'error');
+      }
+    }
+
+    return tokens.length;
+  }
+
+  /**
+   * Delete id-api's own cached user (the `getUser` cache holds `user_services`, so it goes stale when they change).
+   **/
+  async invalidateUserCache(userId: string): Promise<void> {
+    await this.service('redis').delete(['oauthmodel', 'getUser', { userId }]);
+  }
+
+  /**
+   * Cut the user off: delete task's cached user info, then access tokens, refresh tokens and sessions.
+   * The user itself (`isActive` too) is not touched. The cache goes first, because the keys are derived from the tokens;
+   * if it fails (and errors are not ignored) nothing is deleted, so the call can be repeated.
+   **/
+  async revokeUserAccess(userId: string, options: UserAccessOptions = {}): Promise<RevokeUserAccessResult> {
+    await this.invalidateUserTokenCache(userId, options);
+
+    const accessTokens = await this.model('accessToken').destroy({ where: { userId } });
+    const refreshTokens = await this.model('refreshToken').destroy({ where: { userId } });
+    const sessions = await this.model('sessions').destroy({ where: { userId } });
+
+    return { accessTokens, refreshTokens, sessions };
+  }
+
+  removeServiceFromUser(where: WhereAttributeHash, callback: CallbackFn) {
+    this.model('userServices')
+      .destroy({ where })
+      .then((rows) => {
+        this.log.save('remove-service-from-user-response', { rows }, 'info');
+        callback(null, null);
+      });
+  }
+
+  async removeServiceFromUserAsync(where: WhereAttributeHash): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.removeServiceFromUser(where, (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+  }
+
+  async createClientFromApi(body: ClientAttributes): Promise<ClientAttributes> {
+    try {
+      let client = await this.model('client').create(body);
+      this.log.save('create-client-response', { client }, 'info');
+      return client?.dataValues;
+    } catch (error) {
+      this.log.save('create-client-error', { error }, 'error');
+      throw error;
+    }
+  }
+
+  async removeClientFromApi(clientId: string): Promise<boolean> {
+    try {
+      await this.model('clientUser').destroy({
+        where: { clientId },
+        cascade: true,
+      });
+      await this.model('client').destroy({
+        where: { clientId },
+        cascade: true,
+      });
+      this.log.save('remove-client-response', { clientId }, 'info');
+      return true;
+    } catch (error) {
+      this.log.save('remove-client-error', { error }, 'error');
+      throw error;
+    }
+  }
+
+  /**
+   * All redirect URIs registered by OAuth clients.
+   */
+  async getRegisteredRedirectUris(): Promise<string[]> {
+    const clients = await this.model('client').findAll();
+    return clients.flatMap((client) => client.dataValues.redirectUri ?? []);
+  }
+
+  async getClientByRedirectUri(redirectUri: string, callback?: CallbackFn<ClientAttributes | null>) {
+    if (callback) {
+      this.model('client')
+        .findOne({
+          where: { redirectUri: { [Op.contains]: [redirectUri] } },
+        })
+        .then((client) => client?.dataValues)
+        .then((client) => {
+          if (client) {
+            client.requirements ??= [];
+          }
+          callback(null, client);
+        });
+      return;
+    }
+
+    try {
+      let client = await this.model('client')
+        .findOne({
+          where: {
+            redirectUri: { [Op.contains]: redirectUri as any },
+          },
+        })
+        .then((client) => client?.dataValues);
+      if (!client) {
+        this.log.save('get-client-by-redirect-uri', { error: 'client not found' }, 'error');
+        return null;
+      }
+      client.requirements ??= [];
+      this.log.save('get-client-by-redirect-uri-response', { client }, 'info');
+      return client;
+    } catch (error) {
+      this.log.save('get-client-by-redirect-uri-error', { error }, 'error');
+      return null;
+    }
+  }
+
+  removeUser(email: string) {
+    this.log.save('remove-user', { email }, 'info');
+    return this.model('user').destroy({
+      where: { email },
+      force: true,
+      cascade: true,
+    });
+  }
+
+  async getUserScopeByClient(userId: string, clientId: string): Promise<ClientUserAttributes | undefined> {
+    try {
+      const user = await this.model('clientUser')
+        .findOne({
+          where: { userId, clientId },
+        })
+        .then((row) => row?.dataValues);
+      return user;
+    } catch (error) {
+      this.log.save('get-user-scope-by-client-error', { error }, 'error');
+      throw error;
+    }
+  }
+
+  async upsertUserByClient(user: ClientUserCreationAttributes): Promise<ClientUserAttributes> {
+    this.log.save('save-user-by-client', { user }, 'info');
+    try {
+      const clientUser = await this.getUserScopeByClient(user.userId, user.clientId);
+      if (!clientUser) {
+        return await this.model('clientUser')
+          .create(user)
+          .then((row) => row.dataValues);
+      } else {
+        return await this.model('clientUser')
+          .update(
+            { scope: user.scope },
+            {
+              where: { id: clientUser.id },
+              returning: true,
+            },
+          )
+          .then((row) => row[1][0].dataValues);
+      }
+    } catch (error: any) {
+      this.log.save('upsert-user-by-client-error', { error: error.message }, 'error');
+      throw error;
+    }
+  }
+
+  async sendPhoneConfirmCode(phoneNumber: string, userId?: string) {
+    // Define test confirmation code if exist.
+    const testConfirmations = this.config.testConfirmations?.codes || [];
+    let testCodeObj: any;
+    testConfirmations.forEach((v: any) => {
+      if (v.phones?.includes(phoneNumber)) testCodeObj = v;
+    });
+
+    let code = testCodeObj?.confirmationCode ?? this.generatePinCode();
+
+    const ttlMinutes = this.config.confirmCode?.ttlMinutes ?? 60;
+    const expiresIn = new Date(Date.now() + ttlMinutes * 60 * 1000);
+
+    await this.removePreviousConfirmCodes({ phone: phoneNumber });
+    await this.saveConfirmCodeAsync({ phone: phoneNumber, userId: userId ?? null, code, counter: 0, expiresIn });
+
+    if (testCodeObj) {
+      return { sendBySms: { testUser: true } };
+    }
+
+    return this.service('notify').sendSms(phoneNumber, SMS_CODE_WORD + code);
+  }
+
+  /**
+   * Verify an SMS challenge bound to this user and phone, and apply it to the profile.
+   * The challenge is consumed and the user updated in one transaction (row locks make it single-use).
+   * Returns the updated user, or null (changing nothing) for any invalid, expired, exhausted, replayed,
+   * cross-user or cross-number code.
+   */
+  async confirmUserPhone(userId: string, phone: unknown, code: unknown): Promise<UserAttributes | null> {
+    if (typeof userId !== 'string' || !userId || typeof phone !== 'string' || !phone.trim() || typeof code !== 'string' || !code.trim()) {
+      return null;
+    }
+
+    const maxRetries = this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES;
+    const confirmed = await Models.db.transaction(async (transaction) => {
+      const user = await this.model('user').findOne({ where: { userId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!user || user.dataValues.isActive === false) return false;
+
+      const challenge = await this.model('confirmCode').findOne({
+        where: { userId, phone, code, counter: { [Op.lte]: maxRetries }, expiresIn: { [Op.gt]: Models.db.fn('NOW') } },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!challenge) {
+        await this.model('confirmCode').increment('counter', { by: 1, where: { userId, phone }, transaction });
+        return false;
+      }
+
+      await user.update({ phone, valid: { email: false, ...user.dataValues.valid, phone: true } }, { transaction });
+      await this.model('confirmCode').destroy({ where: { userId, phone }, transaction });
+      return true;
+    });
+
+    if (!confirmed) return null;
+    await this.service('redis').delete(['oauthmodel', 'getUser', { userId }]);
+    return this.getUser({ userId });
+  }
+
+  /**
+   * Consume an SMS challenge issued to this user for exactly this phone, without changing the profile.
+   * Used as proof for sensitive changes (e.g. turning phone 2FA off). Single-use; wrong codes count against the retry limit.
+   */
+  async consumePhoneChallenge(userId: string, phone: unknown, code: unknown): Promise<boolean> {
+    if (typeof userId !== 'string' || !userId || typeof phone !== 'string' || !phone.trim() || typeof code !== 'string' || !code.trim()) {
+      return false;
+    }
+
+    const maxRetries = this.config.confirmCodeRetries ?? DEFAULT_CODE_RETRIES;
+    return Models.db.transaction(async (transaction) => {
+      const challenge = await this.model('confirmCode').findOne({
+        where: { userId, phone, code, counter: { [Op.lte]: maxRetries }, expiresIn: { [Op.gt]: Models.db.fn('NOW') } },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!challenge) {
+        await this.model('confirmCode').increment('counter', { by: 1, where: { userId, phone }, transaction });
+        return false;
+      }
+      await this.model('confirmCode').destroy({ where: { userId, phone }, transaction });
+      return true;
+    });
+  }
+
+  /**
+   * Check if the string is a valid internal user ID.
+   */
+  isUserId(userId: string): boolean {
+    if (userId.length === 24) {
+      return /^[0-9a-fA-F]{24}$/.test(userId);
+    }
+    return false;
+  }
+
+  /**
+   * Update local credentials and revoke all preceding authorization in one transaction.
+   * The user's authorization version is incremented, and sessions, codes and tokens are deleted.
+   * Returns false, changing nothing, when the expectations do not hold (e.g. a reset token that
+   * is unknown, already consumed or expired, or a password hash that changed concurrently).
+   */
+  async updateLocalPassword(
+    userId: string,
+    data: Record<string, any>,
+    expected: { passwordHash?: string; resetToken?: string; providerId?: string; email?: string } = {},
+  ): Promise<boolean> {
+    const changed = await Models.db.transaction(async (transaction) => {
+      const user = await this.model('user').findOne({ where: { userId }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!user) return false;
+      const local = await this.model('userServices').findOne({ where: { userId, provider: 'local' }, transaction, lock: transaction.LOCK.UPDATE });
+      const current = local?.dataValues.data as any;
+      if (expected.passwordHash !== undefined && current?.password !== expected.passwordHash) return false;
+      if (
+        expected.resetToken !== undefined &&
+        (typeof expected.resetToken !== 'string' ||
+          !expected.resetToken ||
+          !this.service('passwordManager').verifyToken(expected.resetToken, current?.resetPasswordTokenHash) ||
+          typeof current?.resetPasswordTokenExpireAt !== 'number' ||
+          !Number.isFinite(current.resetPasswordTokenExpireAt) ||
+          current.resetPasswordTokenExpireAt < Date.now())
+      ) {
+        return false;
+      }
+
+      if (local) await local.update({ data }, { transaction });
+      else if (expected.providerId)
+        await this.model('userServices').create({ userId, provider: 'local', provider_id: expected.providerId, data }, { transaction });
+      else return false;
+
+      if (expected.email) await user.update({ email: expected.email }, { transaction });
+      await user.increment('authorizationVersion', { transaction });
+      await this.model('accessToken').destroy({ where: { userId }, transaction });
+      await this.model('refreshToken').destroy({ where: { userId }, transaction });
+      await this.model('authCode').destroy({ where: { userId }, transaction });
+      await this.model('sessions').destroy({ where: { userId }, transaction });
+      return true;
+    });
+
+    if (changed) await this.service('redis').delete(['oauthmodel', 'getUser', { userId }]);
+    return changed;
+  }
+
+  /**
+   * Destroy session data.
+   */
+  async destroySession(userId: string, loginHistoryData: object): Promise<void> {
+    await this.model('accessToken').destroy({ where: { userId: userId } });
+    await this.model('refreshToken').destroy({ where: { userId: userId } });
+    await this.model('sessions').destroy({ where: { userId: userId } });
+
+    // Save login history record (login blocked).
+    if (loginHistoryData) {
+      await this.model('loginHistory').create(loginHistoryData as any);
+    }
+  }
+
+  /**
+   * Check email confirmation code.
+   */
+  async getCodeByEmailOnConfirmation(req: Request) {
+    const { email, code_email } = req.body;
+
+    if (code_email) {
+      const code = await this.service('auth').getValidConfirmCode({
+        email,
+        code: req.body.code_email,
+      });
+
+      if (!code) {
+        try {
+          const counter = await this.service('auth').incrementConfirmCodeCounterAsync({ email });
+          this.log.save('confirm-email-code-counter-incremented', { email, counter }, 'warning');
+        } catch (error: any) {
+          this.log.save('check-email-confirmation-code-error', { email, code: req.body.code_email, error: error.message }, 'error');
+        }
+        throw new HttpError(400, "Email confirmation code doesn't match");
+      }
+    } else {
+      req.prepared!.user.valid = {
+        ...req.prepared!.user.valid,
+        phone: false,
+      };
+    }
+  }
+
+  /**
+   * Check phone confirmation code.
+   */
+  async getCodeByPhoneOnConfirmation(req: Request) {
+    const { provider, code_phone } = req.body;
+
+    // Skip step on certain providers
+    if (provider === 'google' || provider === 'linkedin') {
+      return;
+    }
+
+    if (code_phone) {
+      const code = await this.service('auth').getValidConfirmCode({
+        phone: req.prepared!.user.phone,
+        code: req.body.code_phone,
+      });
+
+      if (!code) {
+        try {
+          const counter = await this.service('auth').incrementConfirmCodeCounterAsync({
+            phone: req.prepared!.user.phone,
+          });
+          this.log.save('confirm-phone-code-counter-incremented', { phone: req.prepared!.user.phone, counter }, 'warning');
+        } catch (error: any) {
+          this.log.save(
+            'check-phone-confirmation-code-error',
+            { phone: req.prepared!.user.phone, code: req.body.code_phone, error: error.message },
+            'error',
+          );
+        }
+        throw new HttpError(400, "Phone confirmation code doesn't match");
+      }
+
+      req.prepared!.user.valid = { phone: true };
+    } else {
+      req.prepared!.user.valid = {
+        ...req.prepared!.user.valid,
+        email: false,
+      };
+    }
+  }
+
+  /**
+   * Check if user with the phone number already exists.
+   */
+  async checkUserByPhoneExistsOnConfirmation(req: Request) {
+    if (req.prepared!.user.phone) {
+      const user = await this.service('auth')
+        .getUser({ phone: req.prepared!.user.phone })
+        .catch(() => null);
+
+      if (user) {
+        throw new HttpError(400, 'Phone is already taken');
+      }
+    }
+  }
+
+  async getUserToSaveOnConfirmation(req: Request) {
+    const preparedUser = req.session?.preparedUser;
+    const authInfo = req.session?.authInfo;
+    if (!preparedUser || !authInfo) {
+      throw new HttpError(400, 'User session should be defined.');
+    }
+    let userToSave = {
+      ...(req.prepared!.user ?? {}),
+      ...(preparedUser ?? {}),
+      ...{ user_services: authInfo?.services },
+      ...{
+        role: undefined,
+        onboardingTaskId: undefined,
+        needOnboarding: undefined,
+        isActive: undefined,
+      },
+    };
+    userToSave.birthday = userToSave.birthday ?? null;
+
+    let profile = req.user!.services['eds'] ?? req.user!.services['govid'] ?? req.user!.services['diia'];
+    userToSave.user_services = [
+      {
+        provider: req.user!.provider,
+        provider_id: (req.user as any).user_id,
+        data: profile,
+      },
+    ];
+
+    return userToSave;
+  }
+}
+
+/** Confirm code lookups compare values for equality, so arrays and objects are not allowed. */
+function hasOnlyStringValues(params: Record<string, unknown>): boolean {
+  return Object.values(params).every((v) => v === undefined || typeof v === 'string');
+}

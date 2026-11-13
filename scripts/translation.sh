@@ -51,9 +51,9 @@ main() {
     esac
   done
 
-  local uk_file="$PROJECT_ROOT/front-core/translation/uk-UA.js"
-  local en_file="$PROJECT_ROOT/front-core/translation/en-GB.js"
-  local fr_file="$PROJECT_ROOT/front-core/translation/fr-FR.js"
+  local uk_file="$PROJECT_ROOT/packages/front-core/translation/uk-UA.js"
+  local en_file="$PROJECT_ROOT/packages/front-core/translation/en-GB.js"
+  local fr_file="$PROJECT_ROOT/packages/front-core/translation/fr-FR.js"
 
   for file in "$uk_file" "$en_file" "$fr_file"; do
     if [[ ! -f "$file" ]]; then

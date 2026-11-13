@@ -1,0 +1,33 @@
+import { getModels } from '../lib/context';
+
+/**
+ * Workflow status business.
+ */
+export class WorkflowStatusBusiness {
+  private static singleton: WorkflowStatusBusiness;
+
+  public config: any;
+
+  /**
+   * Constructor.
+   * @param {object} config Config object.
+   */
+  constructor(config?) {
+    // Define singleton.
+    if (!WorkflowStatusBusiness.singleton) {
+      this.config = config;
+      WorkflowStatusBusiness.singleton = this;
+    }
+
+    // Return singleton.
+    return WorkflowStatusBusiness.singleton;
+  }
+
+  /**
+   * Get all.
+   * @returns {Promise<WorkflowStatusEntity[]>}
+   */
+  async getAll() {
+    return await getModels().workflowStatus.getAll();
+  }
+}
