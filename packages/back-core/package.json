@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "acorn": "^8.18.0",
+    "amqplib": "^2.2.0",
     "buffer": "^6.0.3",
     "iconv-lite": "^0.7.3",
     "isolated-vm": "^6.1.2",

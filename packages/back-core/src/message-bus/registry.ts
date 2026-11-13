@@ -1,5 +1,6 @@
 import { MessageBusProviderFactory } from './provider';
 import { createMemoryProvider } from './providers/memory';
+import { RabbitMqMessageBusProvider } from './providers/rabbitmq';
 
 const providers = new Map<string, MessageBusProviderFactory>();
 
@@ -22,3 +23,4 @@ export function getMessageBusProviderFactory(name: string): MessageBusProviderFa
 }
 
 registerMessageBusProvider('memory', createMemoryProvider);
+registerMessageBusProvider('rabbitmq', (context) => new RabbitMqMessageBusProvider(context));

@@ -7,3 +7,4 @@ export * from './bus';
 export * from './factory';
 export * from './registry';
 export * from './providers/memory';
+export { RabbitMqMessageBusProvider, RabbitMqProviderOptions, RabbitMqDedupOptions, RabbitMqDedupStore } from './providers/rabbitmq';

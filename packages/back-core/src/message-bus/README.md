@@ -65,7 +65,41 @@ Only `rabbitmq` is for production. `memory` is for development and tests and ref
 
 ### rabbitmq
 
-Options are described together with the provider.
+Persistent JSON messages, a confirm channel for publishing (a publish resolves on the broker ack), one channel per consumer with `prefetch` set to the subscription concurrency. A close of the connection or of any channel reconnects after `reconnectDelayMs`; settles for deliveries of a dropped connection are skipped and the broker redelivers them.
+
+`providerOptions` is a component's whole `message_queue.json`; keys that are not listed here are ignored.
+
+| Option | Description |
+|---|---|
+| `amqpConnection` | Connection URL. Required (`MessageBusConfigError` otherwise). Contains credentials and is never logged. |
+| `amqpConnectionParams` | Query parameters appended to the URL, e.g. `{ "heartbeat": 300 }`. With amqplib 2.x `heartbeat=0` disables heartbeats. |
+| `queueParams` | `[{ queueName, params }]`: `params` is merged over the declare options of the queue with exactly that physical name. |
+| `maxMessageBytes` | Provider payload limit. Default `134217728`. |
+| `dedup` | Duplicate suppression, see below. |
+
+Delay tiers: for a destination with address `A` and tier `T`, the queue `A-T` is declared with `x-message-ttl` = the tier delay, `x-dead-letter-exchange` = `''` and `x-dead-letter-routing-key` = `A`. A delayed publish goes to `A-T`. Arbitrary delays are not supported.
+
+Legacy compatibility: queue names and declare arguments match the old per-component clients, so in-flight messages and existing queues keep working. A different declare argument would make RabbitMQ answer `PRECONDITION_FAILED` and close the channel, which results in a reconnect every `reconnectDelayMs`.
+
+#### Duplicate suppression (`dedup`)
+
+Active only with `isEnabled: true`. Uses a key-value store with `get(key)` and `set(key, value, ttlSeconds)`: pass `getStore` (e.g. a back-core `RedisClient` the component already has) or `redis: { host, port }` and the provider opens and closes its own `RedisClient`.
+
+| Option | Description |
+|---|---|
+| `isEnabled` | Default `false`. |
+| `ttl` | TTL of the processed marker, seconds. Default `7200`. |
+| `inProgress.isEnabled` | Default `false`. Marks a message as being processed. |
+| `inProgress.ttl` | Seconds. Default `600`. |
+| `inProgress.waitMs` | How long a delivery waits when the marker exists, before it is redelivered. Default `300000`. |
+| `getStore` | Returns the store per message; a falsy result skips dedup for that message. Takes precedence over `redis`. |
+| `redis` | `{ host, port }` of a store the provider opens itself. |
+
+Keys: `amqp-message-id.<id>` (processed) and `amqp-message-id.<id>.wip` (in progress, not deleted after handling, it expires). A message without an id is not deduplicated. A processed message is acked without calling the handler; the processed key is written before the ack, so a lost ack is still deduplicated on redelivery.
+
+Fail-open: a store error is logged as a warning and processing continues as if the key were missing, so handlers must stay idempotent while the store is down.
+
+Log events: `message-bus-duplicate`, `message-bus-in-progress-wait`, `message-bus-dedup-error` (destination, messageId, operation, key and the error name only). Mapped from `message-from-queue-handled-from-redis`, `message-from-queue-not-handled-waited-wip` and `message-from-queue-id-*-redis-error`.
 
 ### memory
 
