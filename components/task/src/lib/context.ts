@@ -1,4 +1,4 @@
-import type { Log } from '@liquio/back-core';
+import type { Log, MessageBus } from '@liquio/back-core';
 
 import type { WorkflowBusiness } from '../businesses/workflow';
 import type { WorkflowTemplateBusiness } from '../businesses/workflow_template';
@@ -93,7 +93,7 @@ type AppContext = {
   db?: any;
   redisClient?: any;
   redisClientCommonBpmn?: any;
-  messageQueue?: any;
+  messageBus?: MessageBus;
   typeOf?: any;
   moment?: any;
   JEST_ENV?: string;
@@ -119,7 +119,7 @@ const getConfig = () => context.config;
 const getDb = () => context.db;
 const getRedisClient = () => context.redisClient;
 const getRedisClientCommonBpmn = () => context.redisClientCommonBpmn;
-const getMessageQueue = () => context.messageQueue;
+const getMessageBus = () => context.messageBus;
 const getTypeOf = () => context.typeOf;
 const getMoment = () => context.moment;
 const getJestEnv = () => context.JEST_ENV;
@@ -135,7 +135,7 @@ export {
   getDb,
   getRedisClient,
   getRedisClientCommonBpmn,
-  getMessageQueue,
+  getMessageBus,
   getTypeOf,
   getMoment,
   getJestEnv,

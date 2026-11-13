@@ -16,7 +16,7 @@ import jsonwebtoken from 'jsonwebtoken';
 import { resetIdApiClient, resetRegisterApiClient } from '@liquio/back-core';
 
 import { BpmnTaskCore } from '../src/bootstrap';
-import { getConfig, getMessageQueue } from '../src/lib/context';
+import { getConfig, getMessageBus } from '../src/lib/context';
 
 const httpCommon = require('node:_http_common');
 
@@ -370,12 +370,11 @@ export class TestApp extends BpmnTaskCore {
   async destroy() {
     await this.testAmqpChannel?.close().catch(() => undefined);
     await this.testAmqpConnection?.close().catch(() => undefined);
-    const messageQueue: any = getMessageQueue();
-    if (messageQueue) {
-      await messageQueue.close();
-      // Closing fires channel/connection close events which schedule a reconnect; drop it.
-      messageQueue.isClosing = true;
-      clearTimeout(messageQueue.reconnectTimeout);
+    // The bus connects in the background; let it settle so closing does not race the handshake.
+    const bus = getMessageBus();
+    if (bus) {
+      await this.waitFor(() => bus.health().status !== 'connecting', 10000, 50).catch(() => undefined);
+      await bus.close();
     }
     // Drop keep-alive sockets so close() can't hang, then stop (awaits server close).
     (this as any).routerService?.server?.closeAllConnections?.();

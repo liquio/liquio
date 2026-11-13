@@ -6,7 +6,6 @@ import { Db } from './lib/db';
 import { PgPubSub } from './lib/pgpubsub';
 import { PaymentService } from './services/payment';
 import { freezeObjectPrototype } from './lib/freeze_object_prototype';
-import { MessageQueue } from './lib/message_queue';
 import { RedisClient } from './lib/redis_client';
 import { Models } from './models';
 import { DictionaryModels as DictionariesModel } from './models/dictionaries';
@@ -24,7 +23,16 @@ import { assertBasicAuthConfig, assertDownloadTokenConfig, assertTestAuthConfig,
 import * as JSONPath from './lib/jsonpath';
 import { Keywords } from './services/document_validator/keywords';
 import { initIdApiClient } from './lib/id_api';
-import { setAppContext, getModels, getConfig, getLog, getRedisClient, getRedisClientCommonBpmn } from './lib/context';
+import { setAppContext, getModels, getConfig, getLog, getMessageBus, getRedisClient, getRedisClientCommonBpmn } from './lib/context';
+import {
+  createTaskMessageBus,
+  isPdfReadingEnabled,
+  recordHandlerFailure,
+  DESTINATION_TASK,
+  DESTINATION_TASK_PDF,
+  DESTINATION_TASK_DELAYED_AUTO_COMMIT,
+} from './lib/message_bus';
+import { registerShutdown } from './lib/shutdown';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/task';
 
@@ -219,31 +227,28 @@ export class BpmnTaskCore {
     const taskBusiness = businesses.businesses.task;
     const documentBusiness = businesses.businesses.document;
 
-    // Init message queue.
-    const messageQueue: any = new MessageQueue(config.message_queue, {
-      onInit: () => {
-        messageQueue.subscribeToConsuming(taskBusiness.createFromMessage.bind(taskBusiness));
-        if (
-          typeof config.message_queue.enabledReadingGeneratingPdfMessages === 'undefined' ||
-          config.message_queue.enabledReadingGeneratingPdfMessages === true
-        ) {
-          messageQueue.subscribeToConsuming(
-            documentBusiness.files.createPdfFromMessage.bind(documentBusiness.files),
-            'readingPdf',
-            'bpmn-task-incoming-generating-pdf',
-          );
-        }
-        if (Object.keys(config.message_queue?.delayedAutoCommitQueues || {})?.length) {
-          messageQueue.subscribeToConsuming(
-            taskBusiness.delayedAutoCommitFromMessage.bind(taskBusiness),
-            'delayedAutoCommit',
-            `${config.message_queue.readingQueueName}-delayed-auto-commit`,
-          );
-        }
-      },
+    // Init message bus.
+    const mq = config.message_queue;
+    const messageBus = createTaskMessageBus(config);
+    const concurrency = mq.maxHandlingMessages || 1;
+    await messageBus.subscribe(DESTINATION_TASK, taskBusiness.createFromMessage.bind(taskBusiness), {
+      concurrency,
+      onFailure: recordHandlerFailure,
     });
+    if (isPdfReadingEnabled(mq)) {
+      await messageBus.subscribe(DESTINATION_TASK_PDF, documentBusiness.files.createPdfFromMessage.bind(documentBusiness.files), {
+        concurrency: mq.maxHandlingGeneratingPdfMessages || 1,
+        onFailure: recordHandlerFailure,
+      });
+    }
+    if (Object.keys(mq.delayedAutoCommitQueues || {}).length) {
+      await messageBus.subscribe(DESTINATION_TASK_DELAYED_AUTO_COMMIT, taskBusiness.delayedAutoCommitFromMessage.bind(taskBusiness), {
+        concurrency,
+        onFailure: recordHandlerFailure,
+      });
+    }
 
-    setAppContext({ messageQueue });
+    setAppContext({ messageBus });
 
     // Init file generator.
     new FileGeneratorService();
@@ -260,8 +265,8 @@ export class BpmnTaskCore {
     // Setup is complete: freeze Object.prototype before any input (queue messages, HTTP requests) is processed.
     freezeObjectPrototype();
 
-    // Start consuming the message queue.
-    await messageQueue.init();
+    // Start consuming the message bus.
+    await messageBus.init();
 
     // Start external service statuses daemon.
     if (getConfig().external_services?.daemon?.isEnbaled) {
@@ -274,8 +279,9 @@ export class BpmnTaskCore {
     return this.routerService.listen();
   }
 
-  async stop() {
+  async stop(drainTimeoutMs: number = getConfig()?.message_queue?.shutdownDrainTimeoutMs ?? 25000) {
     await this.routerService?.stop();
+    await getMessageBus()?.close({ drainTimeoutMs });
     await this.db?.close();
     await this.pgpubsub?.cleanup?.();
     const redisClients = new Set([getRedisClient(), getRedisClientCommonBpmn()].filter(Boolean));
@@ -294,4 +300,7 @@ export async function bootstrap(): Promise<void> {
 
   // Start.
   await bpmnTaskCore.listen();
+
+  // Drain in-flight work on termination signals.
+  registerShutdown({ core: bpmnTaskCore });
 }

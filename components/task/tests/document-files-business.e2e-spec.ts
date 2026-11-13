@@ -1,7 +1,7 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
 import { DownloadToken } from '../src/lib/download_token';
-import { getBusinesses, getMessageQueue, getModels } from '../src/lib/context';
+import { getBusinesses, getMessageBus, getModels } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 const MISSING = '00000000-0000-4000-8000-000000000000';
@@ -235,12 +235,13 @@ describe('Document files business', () => {
     it('queues pdf generation once and stores an external pdf', async () => {
       const task = await draft();
       const document = await getModels().document.findById(task.documentId);
-      const produce = jest.spyOn(getMessageQueue(), 'produce').mockResolvedValue(undefined as any);
+      const publish = jest.spyOn(getMessageBus() as any, 'publish').mockResolvedValue({ messageId: 'x' });
       await files().addGeneratingPdfToQueue(document, USER);
-      expect(produce).toHaveBeenCalledTimes(1);
+      expect(publish).toHaveBeenCalledTimes(1);
+      expect(publish).toHaveBeenCalledWith('task-pdf', { documentId: task.documentId, userId: USER });
       expect((await app.model('document').findByPk(task.documentId)).file_id).toBe('generating');
       await files().addGeneratingPdfToQueue({ ...document, fileId: 'generating' }, USER);
-      expect(produce).toHaveBeenCalled();
+      expect(publish).toHaveBeenCalled();
 
       jest.spyOn(provider(), 'uploadFileFromStream').mockResolvedValue({ id: 'ext-pdf', name: 'ext.pdf', contentType: 'application/pdf' } as any);
       await files().saveExternalPdf(

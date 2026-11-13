@@ -14,7 +14,8 @@ import { TaskActivity } from '../../types/task_activity';
 import { Business } from '../business';
 import type { DocumentBusiness } from './index';
 import type { UserUnitIds } from './types';
-import { getLog, getModels, getBusinesses, getConfig, getMessageQueue, getHttpClient } from '../../lib/context';
+import { getLog, getModels, getBusinesses, getConfig, getHttpClient } from '../../lib/context';
+import { publishOrLog, DESTINATION_MANAGER } from '../../lib/message_bus';
 
 // Constants.
 const CALCULATED_PAYMENT_PATH = 'calculated';
@@ -523,9 +524,9 @@ export class DocumentPaymentBusiness extends Business {
               );
             }
 
-            // Send message to RabbitMQ.
+            // Notify manager.
             const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-            getMessageQueue().produce(message);
+            void publishOrLog(DESTINATION_MANAGER, message);
           }
         }
       }

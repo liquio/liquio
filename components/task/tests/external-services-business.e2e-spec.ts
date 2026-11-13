@@ -1,5 +1,5 @@
 import { TestApp } from './test-app';
-import { getBusinesses, getConfig, getMessageQueue, getModels } from '../src/lib/context';
+import { getBusinesses, getConfig, getMessageBus, getModels } from '../src/lib/context';
 
 const BODY = 'soapenv:Envelope.soapenv:Body.0';
 const CLAIM = `${BODY}.ext:claimStatus`;
@@ -135,13 +135,13 @@ describe('External services business', () => {
       jest.spyOn(getBusinesses().task, 'setStatusFinished').mockResolvedValue({ id: 't-target' } as any);
       jest.spyOn(getBusinesses().userInbox, 'sendToInboxesIfNeedIt').mockResolvedValue(undefined as any);
       jest.spyOn(models().document, 'setStatusFinal').mockResolvedValue(true as any);
-      return jest.spyOn(getMessageQueue(), 'produce').mockResolvedValue(undefined as any);
+      return jest.spyOn(getMessageBus() as any, 'publish').mockResolvedValue({ messageId: 'x' });
     };
 
     it('stores the certificate, finishes the task and notifies the queue', async () => {
-      const produce = happy();
+      const publish = happy();
       await run();
-      expect(produce).toHaveBeenCalledWith({ workflowId: 'wf', taskId: 't-target' });
+      expect(publish).toHaveBeenCalledWith('manager', { workflowId: 'wf', taskId: 't-target' });
       expect(models().workflow.setNumber).toHaveBeenCalledWith('wf', '42');
     });
 

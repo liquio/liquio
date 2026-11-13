@@ -1,6 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
-import { getBusinesses, getConfig, getMessageQueue } from '../src/lib/context';
+import { getBusinesses, getConfig, getMessageBus } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 const SERVICE = 'readerService';
@@ -216,11 +216,11 @@ describe('Document external reader business', () => {
 
     it('starts the delayed auto commit timer for a configured queue only', async () => {
       const config = getConfig();
-      config.message_queue = { ...config.message_queue, delayedAutoCommitQueues: { fast: {} } };
-      const produce = jest.spyOn(getMessageQueue(), 'produce').mockResolvedValue(undefined as any);
+      config.message_queue = { ...config.message_queue, delayedAutoCommitQueues: { fast: 1 } };
+      const publish = jest.spyOn(getMessageBus() as any, 'publish').mockResolvedValue({ messageId: 'x' });
       const task = await draft({ onResponse: { startAutoCommitTimer: { isExecute: '() => true', timer: '() => "fast"' } } });
       await run(task);
-      expect(produce).toHaveBeenCalledWith({ taskId: task.id }, 'delayedAutoCommit', expect.stringContaining('delayed-auto-commit-fast'));
+      expect(publish).toHaveBeenCalledWith('task-delayed-auto-commit', { taskId: task.id }, { delayMs: 1000 });
       const unknown = await draft({ onResponse: { startAutoCommitTimer: { isExecute: '() => true', timer: '() => "slow"' } } });
       await expect(run(unknown)).rejects.toThrow('Invalid');
       const skipped = await draft({ onResponse: { startAutoCommitTimer: { isExecute: '() => false', timer: '() => "slow"' } } });

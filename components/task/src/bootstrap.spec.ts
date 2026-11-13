@@ -6,6 +6,7 @@ jest.mock('./lib/context', () => ({
   getRedisClient: jest.fn(),
   getRedisClientCommonBpmn: jest.fn(),
   getLog: jest.fn(() => ({ save: jest.fn() })),
+  getMessageBus: jest.fn(),
 }));
 
 describe('BpmnTaskCore.stop redis cleanup', () => {
@@ -53,7 +54,23 @@ describe('BpmnTaskCore.init order', () => {
     const at = (needle: string) => source.indexOf(needle);
     expect(at('this.routerService.init(')).toBeGreaterThan(-1);
     expect(at('freezeObjectPrototype();')).toBeGreaterThan(at('this.routerService.init('));
-    expect(at('await messageQueue.init();')).toBeGreaterThan(at('freezeObjectPrototype();'));
-    expect(at('externalServicesStatusesDaemon.start()')).toBeGreaterThan(at('await messageQueue.init();'));
+    expect(at('await messageBus.init();')).toBeGreaterThan(at('freezeObjectPrototype();'));
+    expect(at('externalServicesStatusesDaemon.start()')).toBeGreaterThan(at('await messageBus.init();'));
+  });
+});
+
+describe('BpmnTaskCore.stop order', () => {
+  it('stops the router, then drains the message bus, then closes the database', async () => {
+    const order: string[] = [];
+    (context.getMessageBus as jest.Mock).mockReturnValue({ close: jest.fn(async () => void order.push('bus')) });
+    const core: any = new BpmnTaskCore();
+    core.routerService = { stop: jest.fn(async () => void order.push('router')) };
+    core.db = { close: jest.fn(async () => void order.push('db')) };
+
+    await core.stop(4321);
+
+    expect(order).toEqual(['router', 'bus', 'db']);
+    expect((context.getMessageBus() as any).close).toHaveBeenCalledWith({ drainTimeoutMs: 4321 });
+    (context.getMessageBus as jest.Mock).mockReset();
   });
 });
