@@ -5,7 +5,7 @@ import { Db } from './lib/db';
 import { Log } from './lib/log';
 import { buildSandboxConfig } from './lib/sandbox_config';
 import { ConsoleLogProvider } from './lib/log/providers/console';
-import { MessageQueue } from './lib/message_queue';
+import { createGatewayMessageBus, recordHandlerFailure, DESTINATION_GATEWAY } from './lib/message_bus';
 import { RouterService } from './services/router';
 import { GatewayBusiness } from './businesses/gateway';
 import { RedisClient } from './lib/redis_client';
@@ -34,19 +34,18 @@ export async function bootstrap(config: Record<string, any>) {
   const gatewayBusiness = new GatewayBusiness();
   await gatewayBusiness.init();
 
-  // Init message queue.
-  const messageQueue = new MessageQueue(config.message_queue, {
-    onInit: () => {
-      messageQueue.subscribeToConsuming(gatewayBusiness.createFromMessage.bind(gatewayBusiness));
-    },
+  // Init message bus.
+  const messageBus = createGatewayMessageBus(config);
+  await messageBus.subscribe(DESTINATION_GATEWAY, gatewayBusiness.createFromMessage.bind(gatewayBusiness), {
+    concurrency: config.message_queue.maxHandlingMessages || 1,
+    onFailure: recordHandlerFailure,
   });
-
-  await messageQueue.init();
-  setAppContext({ messageQueue });
+  await messageBus.init();
+  setAppContext({ messageBus });
 
   // Init router.
   const routerService = new RouterService(config);
   await routerService.init();
 
-  return { log, gatewayBusiness, messageQueue, routerService };
+  return { log, gatewayBusiness, messageBus, routerService };
 }

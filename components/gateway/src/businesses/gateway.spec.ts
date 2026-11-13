@@ -1,9 +1,12 @@
-import { setAppContext, getLog, getMessageQueue } from '../lib/context';
+import { setAppContext, getLog, getMessageBus } from '../lib/context';
 import { GatewayBusiness } from './gateway';
 
 const mockEval = jest.fn();
 
-jest.mock('@liquio/back-core', () => ({ Sandbox: { getInstance: () => ({ evalWithArgs: (...args: any[]) => mockEval(...args) }) } }));
+jest.mock('@liquio/back-core', () => ({
+  ...jest.requireActual('@liquio/back-core'),
+  Sandbox: { getInstance: () => ({ evalWithArgs: (...args: any[]) => mockEval(...args) }) },
+}));
 jest.mock('../lib/system_notifier', () => ({
   SystemNotifier: class {
     sendEmails = jest.fn();
@@ -23,7 +26,7 @@ describe('GatewayBusiness', () => {
 
   beforeEach(() => {
     mockEval.mockReset();
-    setAppContext({ log: { save: jest.fn() }, messageQueue: { produce: jest.fn() } });
+    setAppContext({ log: { save: jest.fn() }, messageBus: { publish: jest.fn().mockResolvedValue({ messageId: 'x' }) } as any });
     (GatewayBusiness as any).singleton = undefined;
     business = new GatewayBusiness({});
   });
@@ -74,7 +77,7 @@ describe('GatewayBusiness', () => {
       setup({ workflowTemplateId: 7 }, bpmn(5));
       await business.createFromMessage(message);
       expect(business.gatewayModel.create).toHaveBeenCalledTimes(1);
-      expect(getMessageQueue().produce).toHaveBeenCalledWith({ workflowId: WORKFLOW_ID, gatewayId: 99 });
+      expect(getMessageBus().publish).toHaveBeenCalledWith('manager', { workflowId: WORKFLOW_ID, gatewayId: 99 });
     });
 
     it('logs only identifiers of the created gateway (GW-06b)', async () => {
@@ -88,6 +91,48 @@ describe('GatewayBusiness', () => {
       expect(JSON.stringify(call)).not.toContain('secretPayload');
     });
 
+    it('runs the error path when publish rejects', async () => {
+      setup({ workflowTemplateId: 7 }, bpmn(5));
+      (getMessageBus().publish as jest.Mock).mockRejectedValueOnce(new Error('bus down'));
+      business.workflowErrorModel = { create: jest.fn().mockResolvedValue(12) } as any;
+      await expect(business.createFromMessage(message)).resolves.toBe(true);
+      expect(business.workflowErrorModel.create).toHaveBeenCalledWith(expect.objectContaining({ error: 'bus down' }), { workflowId: WORKFLOW_ID });
+      expect(business.workflowModel.setError).toHaveBeenCalledWith(WORKFLOW_ID);
+      const call = getLog().save.mock.calls.find(([type]) => type === 'document-creating-by-message-from-queue-error');
+      expect(call[1]).toMatchObject({ workflowId: WORKFLOW_ID, errorId: 12, error: { name: 'Error' } });
+      expect(JSON.stringify(call)).not.toContain('bus down');
+    });
+
+    it('does not link or notify through a foreign workflow when failing before the check', async () => {
+      setup({ workflowTemplateId: 7 }, bpmn(15));
+      business.gatewayTemplateModel = { findById: jest.fn().mockRejectedValue(new Error('boom')) } as any;
+      business.workflowErrorModel = { create: jest.fn().mockResolvedValue(3) } as any;
+      await business.createFromMessage(message);
+      expect(business.workflowErrorModel.create).toHaveBeenCalledWith(expect.anything(), { workflowId: null });
+      expect(business.workflowModel.setError).not.toHaveBeenCalled();
+      expect(business.systemNotifier.sendEmails).not.toHaveBeenCalled();
+      const call = getLog().save.mock.calls.find(([type]) => type === 'document-creating-by-message-from-queue-error');
+      expect(call[1]).toMatchObject({ errorId: 3, workflowLinked: false });
+    });
+
+    it('links, marks and notifies on a normal failure', async () => {
+      setup({ workflowTemplateId: 7 }, bpmn(5));
+      business.gatewayTypeModel = { findById: jest.fn().mockResolvedValue({ name: 'unknown' }) } as any;
+      business.workflowErrorModel = { create: jest.fn().mockResolvedValue(4) } as any;
+      business.workflowTemplateModel = {
+        findById: jest.fn().mockResolvedValue({ xmlBpmnSchema: bpmn(5) }),
+        findIdAndNameAndErrorsSubscribersById: jest.fn().mockResolvedValue({ name: 'wt' }),
+      } as any;
+      business.gatewayTemplateModel = {
+        findById: jest.fn().mockResolvedValue({ gatewayTypeId: 1, name: 'g', jsonSchema: '{}' }),
+        findIdAndNameById: jest.fn().mockResolvedValue({ id: 5, name: 'g' }),
+      } as any;
+      await business.createFromMessage(message);
+      expect(business.workflowErrorModel.create).toHaveBeenCalledWith(expect.anything(), { workflowId: WORKFLOW_ID });
+      expect(business.workflowModel.setError).toHaveBeenCalledWith(WORKFLOW_ID);
+      expect(business.systemNotifier.sendEmails).toHaveBeenCalledWith(expect.objectContaining({ workflowId: WORKFLOW_ID }));
+    });
+
     it.each([
       ['gateway is not in the workflow template', { workflowTemplateId: 7 }, bpmn(15)],
       ['workflow is missing', undefined, bpmn(5)],
@@ -96,11 +141,44 @@ describe('GatewayBusiness', () => {
       setup(workflow, xml);
       await expect(business.createFromMessage(message)).resolves.toBe(true);
       expect(business.gatewayModel.create).not.toHaveBeenCalled();
-      expect(getMessageQueue().produce).not.toHaveBeenCalled();
+      expect(getMessageBus().publish).not.toHaveBeenCalled();
       expect(business.workflowErrorModel.create).not.toHaveBeenCalled();
       expect(business.workflowModel.setError).not.toHaveBeenCalled();
       const logged = JSON.stringify(getLog().save.mock.calls);
       expect(logged).toContain('template-workflow-mismatch');
+    });
+  });
+
+  describe('verifyMessageWorkflowId', () => {
+    const message = { workflowId: WORKFLOW_ID, workflowTemplateId: 7, gatewayTemplateId: 5 };
+    const setup = (workflow: any, xml: any = bpmn(5)) => {
+      business.workflowModel = { findById: jest.fn().mockResolvedValue(workflow) } as any;
+      business.workflowTemplateModel = { findById: jest.fn().mockResolvedValue({ xmlBpmnSchema: xml }) } as any;
+    };
+
+    it('returns the workflow id when everything matches', async () => {
+      setup({ workflowTemplateId: 7 });
+      await expect(business.verifyMessageWorkflowId(message)).resolves.toBe(WORKFLOW_ID);
+    });
+
+    it('returns null when the workflow is missing', async () => {
+      setup(undefined);
+      await expect(business.verifyMessageWorkflowId(message)).resolves.toBeNull();
+    });
+
+    it('returns null on a template mismatch', async () => {
+      setup({ workflowTemplateId: 8 });
+      await expect(business.verifyMessageWorkflowId(message)).resolves.toBeNull();
+    });
+
+    it('returns null when the gateway is not in the schema', async () => {
+      setup({ workflowTemplateId: 7 }, bpmn(15));
+      await expect(business.verifyMessageWorkflowId(message)).resolves.toBeNull();
+    });
+
+    it('returns null when a lookup throws', async () => {
+      business.workflowModel = { findById: jest.fn().mockRejectedValue(new Error('db')) } as any;
+      await expect(business.verifyMessageWorkflowId(message)).resolves.toBeNull();
     });
   });
 

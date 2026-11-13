@@ -82,6 +82,18 @@ export class RouterService {
   }
 
   /**
+   * Stop listening and close idle connections.
+   */
+  async stop(): Promise<void> {
+    const server = this.httpServer;
+    if (!server || !server.listening) return;
+    await new Promise<void>((resolve, reject) => {
+      server.close((error?: Error) => (error ? reject(error) : resolve()));
+      server.closeIdleConnections?.();
+    });
+  }
+
+  /**
    * Listen.
    * @private
    * @param {object} app Express app.

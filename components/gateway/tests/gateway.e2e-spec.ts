@@ -1,6 +1,9 @@
 import { randomUUID, randomBytes } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 
-import { getDb } from '../src/lib/context';
+import { getDb, getMessageBus, setAppContext } from '../src/lib/context';
+import { createGatewayMessageBus, recordHandlerFailure } from '../src/lib/message_bus';
+import { registerShutdown } from '../src/lib/shutdown';
 import { TestApp } from './test-app';
 
 // Gateway template 988194001, seeded by this suite: a parallel-type gateway with no branching logic.
@@ -99,6 +102,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
     const outMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueName);
     expect(outMessage).toMatchObject({ workflowId });
     expect(typeof outMessage.gatewayId).toBe('string');
+    expect(typeof outMessage.amqpMessageId).toBe('string');
 
     const [gatewayRow] = await getDb().query('SELECT gateway_type_id, gateway_template_id, "data" FROM gateways WHERE id = :id', {
       replacements: { id: outMessage.gatewayId },
@@ -241,6 +245,45 @@ describe('Gateway Business (via RabbitMQ)', () => {
     expect(rows).toHaveLength(0);
   });
 
+  // Wait for a log entry of the given type that matches the predicate.
+  async function waitForLogWhere(type: string, predicate: (data: any) => boolean, timeoutMs = 5000): Promise<any> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const entry = app.log.getLogs().find(([entryType, data]) => entryType === type && predicate(data));
+      if (entry) return entry[1];
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error(`Timed out waiting for a "${type}" log entry.`);
+  }
+
+  async function insertWorkflow(workflowTemplateId: number): Promise<string> {
+    const workflowId = randomUUID();
+    await getDb().query(
+      `INSERT INTO workflows (id, workflow_template_id, is_final, data, created_by, updated_by, created_at, updated_at)
+       VALUES (:workflowId, :workflowTemplateId, false, '{}'::jsonb, 'system', 'system', NOW(), NOW())`,
+      { replacements: { workflowId, workflowTemplateId } },
+    );
+    return workflowId;
+  }
+
+  async function errorRows(workflowId: string) {
+    return getDb().query(
+      `SELECT id, workflow_id, service_name, "data" FROM workflow_errors WHERE "data"->'queueMessage'->>'workflowId' = :workflowId`,
+      {
+        replacements: { workflowId },
+        type: 'SELECT',
+      },
+    );
+  }
+
+  async function hasUnresolvedErrors(workflowId: string) {
+    const [row] = await getDb().query('SELECT has_unresolved_errors FROM workflows WHERE id = :workflowId', {
+      replacements: { workflowId },
+      type: 'SELECT',
+    });
+    return row.has_unresolved_errors;
+  }
+
   it('logs and swallows a gateway-template-not-found error instead of crashing the consumer', async () => {
     const workflowId = randomUUID();
 
@@ -250,12 +293,178 @@ describe('Gateway Business (via RabbitMQ)', () => {
       sequenceIds: [],
     });
 
-    const [, logData] = await app.log.waitForLog('document-creating-by-message-from-queue-error');
-    expect(logData).toMatchObject({ workflowId, gatewayTemplateId: 999999999 });
+    const logData = await waitForLogWhere('document-creating-by-message-from-queue-error', (data) => data.workflowId === workflowId);
+    expect(logData).toMatchObject({ workflowId, gatewayTemplateId: 999999999, error: { name: 'TypeError' }, workflowLinked: false });
+    expect(typeof logData.errorId).toBe('number');
     expect(logData.messageObject).toBeUndefined();
+    expect(JSON.stringify(logData)).not.toContain('Cannot read');
+  });
 
-    // The system notifier attempts a real HTTP call to a non-listening test host and fails,
-    // which is itself logged rather than crashing the consumer.
-    await app.log.waitForLog('system-notifier-error');
+  it('discards a message whose handler fails, records it unlinked and logs no payload (once, no redelivery)', async () => {
+    const workflowId = await insertWorkflow(PARALLEL_GATEWAY_TEMPLATE_ID);
+    // Force a throw out of the handler itself (from the catch block).
+    const spy = jest.spyOn(app.gatewayBusiness, 'verifyMessageWorkflowId').mockRejectedValueOnce(new Error('forced failure'));
+
+    await app.publishToReadingQueue({
+      workflowId,
+      gatewayTemplateId: 999999998,
+      workflowTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID,
+      sequenceIds: ['SENTINEL-U'],
+    });
+
+    const logData = await waitForLogWhere('message-bus-handler-error', (data) => data.workflowId === workflowId);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(logData).toMatchObject({ workflowId, gatewayTemplateId: 999999998, failure: 'threw', error: { name: 'Error' } });
+    expect(JSON.stringify(logData)).not.toContain('forced failure');
+
+    const connection = await app.getTestConnection();
+    const channel = await connection.createChannel();
+    const { messageCount } = await channel.checkQueue(app.config.message_queue.readingQueueName);
+    await channel.close();
+    expect(messageCount).toBe(0);
+    expect(getMessageBus().health().counters.handlerErrors).toBe(1);
+    expect(getMessageBus().health().lastHandlerErrorAt).toBeDefined();
+
+    const rows = await errorRows(workflowId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ workflow_id: null, service_name: 'gateway' });
+    expect(rows[0].data.error).toBe('forced failure');
+    expect(rows[0].data.queueMessage.workflowId).toBe(workflowId);
+    expect(logData.errorId).toBe(rows[0].id);
+    expect(await hasUnresolvedErrors(workflowId)).toBeFalsy();
+
+    // Bus logs never carry message bodies.
+    const busLogs = app.log.getLogs().filter(([type]) => String(type).startsWith('message-bus'));
+    expect(JSON.stringify(busLogs)).not.toContain('SENTINEL');
+  });
+
+  it('does not link, mark or notify a foreign workflow when failing before the template check', async () => {
+    const foreignWorkflowId = await insertWorkflow(INCLUSIVE_GATEWAY_TEMPLATE_ID);
+
+    // Valid gateway template that is not part of the foreign workflow; fails on the unknown type id before the check passes.
+    await app.publishToReadingQueue({
+      workflowId: foreignWorkflowId,
+      gatewayTemplateId: 999999997,
+      workflowTemplateId: INCLUSIVE_GATEWAY_TEMPLATE_ID,
+    });
+
+    const logData = await waitForLogWhere('document-creating-by-message-from-queue-error', (data) => data.workflowId === foreignWorkflowId);
+    expect(logData.workflowLinked).toBe(false);
+    const rows = await errorRows(foreignWorkflowId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].workflow_id).toBeNull();
+    expect(await hasUnresolvedErrors(foreignWorkflowId)).toBeFalsy();
+    expect(app.log.getLogs().some(([type, data]) => type === 'system-notifier-error' && data)).toBe(false);
+  });
+
+  it('links and marks the workflow on a normal failure (invalid gateway type)', async () => {
+    const workflowId = await insertWorkflow(PARALLEL_GATEWAY_TEMPLATE_ID);
+    const spy = jest.spyOn(app.gatewayBusiness.gatewayTypeModel, 'findById').mockResolvedValueOnce({ name: 'unknown' });
+    const notifier = jest.spyOn(app.gatewayBusiness.systemNotifier, 'sendEmails').mockResolvedValue(undefined);
+
+    await app.publishToReadingQueue({
+      workflowId,
+      gatewayTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID,
+      workflowTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID,
+      sequenceIds: ['Flow_a'],
+    });
+
+    const logData = await waitForLogWhere('document-creating-by-message-from-queue-error', (data) => data.workflowId === workflowId);
+    expect(logData.workflowLinked).toBeUndefined();
+    const rows = await errorRows(workflowId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].workflow_id).toBe(workflowId);
+    expect(await hasUnresolvedErrors(workflowId)).toBe(true);
+    expect(notifier).toHaveBeenCalledWith(expect.objectContaining({ workflowId }));
+    spy.mockRestore();
+    notifier.mockRestore();
+  });
+
+  it('consumes from queues declared raw before the bus starts', async () => {
+    const config = {
+      ...app.config,
+      message_queue: { ...app.config.message_queue, readingQueueName: `compat-in-${randomUUID()}`, writingQueueName: `compat-out-${randomUUID()}` },
+    };
+    const connection = await app.getTestConnection();
+    const channel = await connection.createChannel();
+    const channelError = jest.fn();
+    channel.on('error', channelError);
+    await channel.assertQueue(config.message_queue.readingQueueName, { durable: true });
+    await channel.assertQueue(config.message_queue.writingQueueName, { durable: true });
+
+    const bus = createGatewayMessageBus(config);
+    const handler = jest.fn().mockResolvedValue(true);
+    await bus.subscribe('gateway', handler, { concurrency: 1, onFailure: recordHandlerFailure });
+    await bus.init();
+    try {
+      channel.sendToQueue(config.message_queue.readingQueueName, Buffer.from(JSON.stringify({ workflowId: 'w' })), { persistent: true });
+      const start = Date.now();
+      while (!handler.mock.calls.length && Date.now() - start < 5000) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(channelError).not.toHaveBeenCalled();
+    } finally {
+      await bus.close();
+      await channel.close().catch(() => undefined);
+    }
+  });
+
+  it('handles a redelivered raw body once when dedup is enabled with a store', async () => {
+    const store = new Map<string, string>();
+    const fake = { get: async (key: string) => store.get(key) ?? null, set: async (key: string, value: string) => void store.set(key, value) };
+    setAppContext({ redisClient: fake });
+    app.config.redis = { ...app.config.redis, amqpMessageCache: { isEnabled: true, ttl: 60 } };
+    const spy = jest.spyOn(app.gatewayBusiness.gatewayTemplateModel, 'findById');
+    const workflowId = randomUUID();
+    const message = { workflowId, gatewayTemplateId: 999999996, sequenceIds: [], amqpMessageId: `dedup-${randomUUID()}` };
+
+    try {
+      await app.publishToReadingQueue(message);
+      await waitForLogWhere('document-creating-by-message-from-queue-error', (data) => data.workflowId === workflowId);
+      await app.publishToReadingQueue(message);
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      app.config.redis.amqpMessageCache.isEnabled = false;
+      spy.mockRestore();
+    }
+  });
+
+  it('drains in-flight work on SIGTERM, then exits', async () => {
+    const workflowId = await insertWorkflow(PARALLEL_GATEWAY_TEMPLATE_ID);
+    const model = app.gatewayBusiness.gatewayTemplateModel;
+    const original = model.findById.bind(model);
+    let started: () => void;
+    const startedPromise = new Promise<void>((resolve) => (started = resolve));
+    jest.spyOn(model, 'findById').mockImplementation(async (...args: any[]) => {
+      started();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return original(...args);
+    });
+
+    const emitter = new EventEmitter();
+    const exit = jest.fn();
+    registerShutdown({ routerService: app.routerService, messageBus: getMessageBus() }, { processLike: emitter, exit });
+
+    await app.publishToReadingQueue({
+      workflowId,
+      gatewayTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID,
+      workflowTemplateId: PARALLEL_GATEWAY_TEMPLATE_ID,
+      sequenceIds: ['Flow_drain'],
+    });
+    await startedPromise;
+    emitter.emit('SIGTERM');
+    expect(exit).not.toHaveBeenCalled();
+
+    const start = Date.now();
+    while (!exit.mock.calls.length && Date.now() - start < 10000) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(exit).toHaveBeenCalledTimes(1);
+
+    const outMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueName);
+    expect(outMessage).toMatchObject({ workflowId });
   });
 });
