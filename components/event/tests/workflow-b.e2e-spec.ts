@@ -3,7 +3,7 @@ import nock from 'nock';
 import { EventWorkflow } from '../src/services/event/workflow';
 import { FileStorage } from '../src/lib/filestorage';
 import { TestApp } from './test-app';
-import { getConfig, getMessageQueue, getModels } from '../src/lib/context';
+import { getConfig, getMessageBus, getModels } from '../src/lib/context';
 
 const WF = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
 
@@ -43,15 +43,16 @@ describe('Group B - event workflow service', () => {
 
   describe('createWorkflows', () => {
     it('produces one message per workflow and loads files', async () => {
-      const produce = jest.spyOn(getMessageQueue(), 'produce').mockImplementation((() => undefined) as any);
+      const publish = jest.spyOn(getMessageBus(), 'publish').mockResolvedValue({ messageId: 'x' });
       const res = await service.createWorkflows({
         workflowParentId: WF,
         createWorkflows: [{ initData: { a: 1 }, fileIds: ['f1'], filesMeta: [{ m: 1 }], p7sFileIds: ['p1'] }, { workflowTemplateId: 1 }],
       });
       expect(res.status).toBe(true);
       expect(res.workflowIds).toHaveLength(2);
-      expect(produce).toHaveBeenCalledTimes(2);
-      const first = produce.mock.calls[0][0] as any;
+      expect(publish).toHaveBeenCalledTimes(2);
+      expect(publish).toHaveBeenCalledWith('manager', expect.objectContaining({ workflowParentId: WF }));
+      const first = publish.mock.calls[0][1] as any;
       expect(first.initData.files).toHaveLength(2);
       expect(first.workflowParentId).toBe(WF);
     });
@@ -150,7 +151,7 @@ describe('Group B - event workflow service', () => {
       jest.spyOn(g().workflowTemplate, 'findByIdCached').mockResolvedValue({ id: 1, data: { statuses: [] } });
       jest.spyOn(g().task, 'getDocumentsByWorkflowId').mockResolvedValue([]);
       jest.spyOn(g().event, 'getEventsByWorkflowId').mockResolvedValue([]);
-      jest.spyOn(getMessageQueue(), 'produce').mockImplementation((() => undefined) as any);
+      jest.spyOn(getMessageBus(), 'publish').mockResolvedValue({ messageId: 'x' });
       return task;
     };
 

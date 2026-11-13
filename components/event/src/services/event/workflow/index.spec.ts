@@ -1,6 +1,6 @@
 jest.mock('../../../models/task', () => ({ TaskModel: jest.fn() }));
 jest.mock('../../../lib/filestorage', () => ({ FileStorage: jest.fn() }));
-jest.mock('@liquio/back-core', () => ({ Sandbox: { getInstance: jest.fn() } }));
+jest.mock('@liquio/back-core', () => ({ ...jest.requireActual('@liquio/back-core'), Sandbox: { getInstance: jest.fn() } }));
 
 import { EventWorkflow } from './index';
 import { setAppContext, resetAppContext } from '../../../lib/context';

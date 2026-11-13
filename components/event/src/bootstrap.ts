@@ -1,9 +1,9 @@
 import moment from 'moment';
-import { Log, ConsoleLogProvider, getTraceId, Sandbox } from '@liquio/back-core';
+import { Log, ConsoleLogProvider, getTraceId, Sandbox, registerGracefulShutdown } from '@liquio/back-core';
 import { PluginLoader } from '@liquio/plugin-sdk';
 
 import { Db } from './lib/db';
-import { MessageQueue } from './lib/message_queue';
+import { createEventMessageBus, recordHandlerFailure, DESTINATION_EVENT } from './lib/message_bus';
 import { Models } from './models';
 import { RouterService } from './services/router';
 import { EventService } from './services/event';
@@ -29,7 +29,7 @@ export class App {
   pluginRegistry: any;
   eventService: any;
   eventBusiness: any;
-  messageQueue: any;
+  messageBus: any;
   routerService: any;
 
   constructor(config: any) {
@@ -139,33 +139,26 @@ export class App {
     }
   }
 
-  // Init message queue.
-  async useMessageQueue() {
-    let messageQueue: any;
-
+  // Init message bus.
+  async useMessageBus() {
     if (!this.eventBusiness) {
       throw new Error('Event business is not initialized');
     }
 
+    const messageBus = createEventMessageBus(this.config);
+
     // If enabled read message queue mode in config/app.json file.
-    if (!this.config.app.enabledReadMessageQueueMode && this.config.app.enabledRunDaemonMode) {
-      // Init message queue.
-      messageQueue = new MessageQueue(this.config.message_queue, {
-        onInit: () => {},
-      });
-    } else {
-      // Init message queue.
-      messageQueue = new MessageQueue(this.config.message_queue, {
-        onInit: () => {
-          messageQueue.subscribeToConsuming(this.eventBusiness.createFromMessage.bind(this.eventBusiness));
-        },
+    if (this.config.app.enabledReadMessageQueueMode || !this.config.app.enabledRunDaemonMode) {
+      await messageBus.subscribe(DESTINATION_EVENT, (payload: any) => this.eventBusiness.createFromMessage(payload), {
+        concurrency: this.config.message_queue.maxHandlingMessages || 1,
+        onFailure: recordHandlerFailure,
       });
     }
 
-    await messageQueue.init();
-    this.messageQueue = messageQueue;
+    await messageBus.init();
+    this.messageBus = messageBus;
 
-    setAppContext({ messageQueue });
+    setAppContext({ messageBus });
   }
 
   // Init router.
@@ -176,6 +169,20 @@ export class App {
     await routerService.init();
 
     this.routerService = routerService;
+  }
+
+  // Drain in-flight work on termination signals.
+  useGracefulShutdown(overrides: { processLike?: any; exit?: (code: number) => void } = {}) {
+    const drainTimeoutMs = this.config.message_queue?.shutdownDrainTimeoutMs ?? 25000;
+    return registerGracefulShutdown({
+      getLog,
+      steps: [
+        { name: 'daemon', run: () => this.eventBusiness.stopDaemon() },
+        { name: 'http', run: () => this.routerService.stop() },
+        { name: 'message-bus', run: () => this.messageBus.close({ drainTimeoutMs }) },
+      ],
+      ...overrides,
+    });
   }
 }
 
@@ -193,6 +200,7 @@ export async function bootstrap(config: any) {
   await app.usePlugins();
   app.useEventService();
   app.useEventBusiness();
-  await app.useMessageQueue();
+  await app.useMessageBus();
   await app.useRouter();
+  app.useGracefulShutdown();
 }

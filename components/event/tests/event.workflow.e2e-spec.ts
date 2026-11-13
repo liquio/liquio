@@ -120,7 +120,7 @@ describe('EventBusiness - Workflow type events', () => {
           id: WORKFLOW_TEMPLATE_ID,
           name: 'External Workflow Creation',
           description: 'Workflow for testing createWorkflowsExternal event',
-          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          xml_bpmn_schema: `<?xml version="1.0" encoding="UTF-8"?><definitions><serviceTask id="event-${WORKFLOW_EVENT_TEMPLATE_ID}" /></definitions>`,
           data: {},
           is_active: true,
           errors_subscribers: [],
@@ -191,7 +191,7 @@ describe('EventBusiness - Workflow type events', () => {
           id: WORKFLOW_TEMPLATE_ID,
           name: 'Send Status External Workflow',
           description: 'Workflow for testing sendStatusExternal event',
-          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          xml_bpmn_schema: `<?xml version="1.0" encoding="UTF-8"?><definitions><serviceTask id="event-${WORKFLOW_EVENT_TEMPLATE_ID}" /></definitions>`,
           data: {},
           is_active: true,
           errors_subscribers: [],
@@ -264,7 +264,7 @@ describe('EventBusiness - Workflow type events', () => {
           id: WORKFLOW_TEMPLATE_ID,
           name: 'Send Status Workflow',
           description: 'Workflow for testing sendStatus event',
-          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          xml_bpmn_schema: `<?xml version="1.0" encoding="UTF-8"?><definitions><serviceTask id="event-${WORKFLOW_EVENT_TEMPLATE_ID}" /></definitions>`,
           data: {
             statuses: [
               {
@@ -343,7 +343,7 @@ describe('EventBusiness - Workflow type events', () => {
           id: WORKFLOW_TEMPLATE_ID,
           name: 'Set Task Performers Workflow',
           description: 'Workflow for testing setNewTasksPerformers event',
-          xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+          xml_bpmn_schema: `<?xml version="1.0" encoding="UTF-8"?><definitions><serviceTask id="event-${WORKFLOW_EVENT_TEMPLATE_ID}" /></definitions>`,
           data: {},
           is_active: true,
           errors_subscribers: [],

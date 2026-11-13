@@ -14,7 +14,6 @@ import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 
 import { App } from '../src/bootstrap';
 import { Db } from '../src/lib/db';
-import { MessageQueue } from '../src/lib/message_queue';
 import { prepareFixtures } from './fixtures';
 
 // E2E tests are slow, so we increase the timeout
@@ -370,26 +369,14 @@ class TestApp extends App {
     this.useModels();
     this.useEventService();
     this.useEventBusiness();
-    await this.useMessageQueue();
+    await this.useMessageBus();
   }
 
   // Destroy the application
   async destroy() {
     this.eventBusiness.stopDaemon();
 
-    // Close the message queue connection and stop its reconnect timer
-    const messageQueue = this.messageQueue;
-    if (messageQueue) {
-      clearTimeout(messageQueue.reconnectTimeout);
-      messageQueue.isClosing = true;
-      if (messageQueue.connection) {
-        await messageQueue.close();
-      }
-      // close() resets isClosing and the close event may schedule a reconnect; cancel both.
-      messageQueue.isClosing = true;
-      clearTimeout(messageQueue.reconnectTimeout);
-      MessageQueue.singleton = undefined;
-    }
+    await this.messageBus?.close();
 
     await this.db?.close();
     Db.singleton = undefined;

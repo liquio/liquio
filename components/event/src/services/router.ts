@@ -18,6 +18,8 @@ export class RouterService {
 
   controllers: any;
 
+  httpServer: any;
+
   /**
    * Route service constructor.
    * @param {object} config Config object.
@@ -85,6 +87,18 @@ export class RouterService {
   }
 
   /**
+   * Stop listening and close idle connections.
+   */
+  async stop(): Promise<void> {
+    const server = this.httpServer;
+    if (!server || !server.listening) return;
+    await new Promise<void>((resolve, reject) => {
+      server.close((error?: Error) => (error ? reject(error) : resolve()));
+      server.closeIdleConnections?.();
+    });
+  }
+
+  /**
    * Listen.
    * @private
    * @param {express.Application} app Express app.
@@ -95,7 +109,7 @@ export class RouterService {
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
       // Express 5 passes listen errors (e.g. EADDRINUSE) to the callback instead of throwing.
-      app.listen(port, hostname, (error?: Error) => {
+      this.httpServer = app.listen(port, hostname, (error?: Error) => {
         if (error) {
           return reject(error);
         }
