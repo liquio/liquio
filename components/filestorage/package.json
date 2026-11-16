@@ -28,7 +28,7 @@
     "@liquio/back-core": "^1.0.2",
     "adm-zip": "^0.6.1",
     "axios": "^1.19.0",
-    "body-parser": "^2.3.0",
+    "body-parser": "^2.4.0",
     "express": "^5.2.1",
     "jsontoxml": "^1.0.1",
     "jszip": "^3.10.2",
