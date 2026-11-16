@@ -18,7 +18,7 @@ concurrency:
 jobs:
   branch:
     name: branch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Require a release branch
         env:
@@ -49,7 +49,7 @@ jobs:
   chart-tags:
     name: chart-tags
     needs: [quality, e2e]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 

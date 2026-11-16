@@ -15,7 +15,7 @@ env:
 jobs:
   # ── Detect which services are unpublished ────────────────────────────────────
   detect:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
       any: ${{ steps.build-matrix.outputs.any }}
@@ -88,7 +88,7 @@ jobs:
     needs: detect
     if: needs.detect.outputs.any == 'true'
     name: ${{ matrix.service }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
