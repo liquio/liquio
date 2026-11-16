@@ -15,7 +15,7 @@ import StarBorderIcon from '@mui/icons-material/StarBorder';
 import StarIcon from '@mui/icons-material/Star';
 import InfoIcon from '@mui/icons-material/Info';
 
-import queueFactory from 'helpers/queueFactory';
+import queueFactory, { addQueueListener, removeQueueListeners, type Queue } from 'helpers/queueFactory';
 import { requestUnit, updateUnitData, saveUnit } from 'application/actions/units';
 import unitListControlEndPoint from 'application/endPoints/unitListControl';
 import dataTableConnect from 'services/dataTable/connect';
@@ -152,16 +152,10 @@ interface UnitPageState {
   changingName?: boolean;
 }
 
-interface QueueLike {
-  removeAllListeners: (event: string) => void;
-  on: (event: string, cb: (...args: unknown[]) => void) => void;
-  push: (action: () => void) => void;
-}
-
 class UnitPage extends ModulePage<UnitPageProps> {
   state: UnitPageState;
   setUserList: { control: string; callback: (data: unknown) => void } | null;
-  queue: QueueLike;
+  queue: Queue;
   ref: React.RefObject<HTMLInputElement | null>;
 
   constructor(props: UnitPageProps) {
@@ -182,9 +176,9 @@ class UnitPage extends ModulePage<UnitPageProps> {
     } = props;
 
     this.setUserList = null;
-    this.queue = queueFactory.get(unitId) as unknown as QueueLike;
-    this.queue.removeAllListeners('end');
-    this.queue.on('end', async () => {
+    this.queue = queueFactory.get(unitId);
+    removeQueueListeners(this.queue, 'end');
+    addQueueListener(this.queue, 'end', async () => {
       this.setState({ loadingProgressBar: true });
 
       const result = await this.getUnitData();

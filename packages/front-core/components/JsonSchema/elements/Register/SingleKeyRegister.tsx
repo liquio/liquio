@@ -19,7 +19,7 @@ import sleep from 'helpers/sleep';
 import evaluate from 'helpers/evaluate';
 import equilPath from 'helpers/equilPath';
 import waiter from 'helpers/waitForAction';
-import queueFactory from 'helpers/queueFactory';
+import queueFactory, { addQueueListener, removeQueueListeners } from 'helpers/queueFactory';
 import uniqArrayDefault, { uniqbyValue as uniq } from 'helpers/arrayUnique';
 import processList from 'services/processList';
 import { loadTask, updateTaskDocumentValues } from 'application/actions/task';
@@ -193,9 +193,9 @@ class SingleKeyRegister extends React.Component<SingleKeyRegisterProps, SingleKe
 
     this.listened_diffs = [];
 
-    this.queue.removeAllListeners('end');
+    removeQueueListeners(this.queue, 'end');
 
-    this.queue.on('end', async () => {
+    addQueueListener(this.queue, 'end', async () => {
       const { options } = this.state;
 
       if (options) {
@@ -332,7 +332,7 @@ class SingleKeyRegister extends React.Component<SingleKeyRegisterProps, SingleKe
       this.queue.slice(jobIndex, jobIndex);
     }
 
-    this.queue.removeAllListeners('end');
+    removeQueueListeners(this.queue, 'end');
   };
 
   getEvaluatedKey = (keyId?: number | null) => {

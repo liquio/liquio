@@ -2,7 +2,7 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 import { useTranslate } from 'react-translate';
-import queue from 'queue';
+import { createQueue } from 'helpers/queueFactory';
 import {
   Dialog,
   DialogTitle,
@@ -100,7 +100,7 @@ const ExportRegisterKeys = ({
 
   const queueFactory = React.useMemo(
     () =>
-      queue({
+      createQueue({
         autostart: true,
         concurrency: 1,
       }),

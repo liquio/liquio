@@ -39,7 +39,7 @@ import ConfirmDialog from 'components/ConfirmDialog';
 import Message from 'components/Snackbars/Message';
 import toCamelCase from 'helpers/toCamelCase';
 import flatten from 'helpers/flatten';
-import queueFactory from 'helpers/queueFactory';
+import queueFactory, { addQueueListener, removeQueueListeners } from 'helpers/queueFactory';
 import gatewayElementTypes from 'application/modules/workflow/variables/gatewayElementTypes';
 import eventElementTypes from 'application/modules/workflow/variables/eventElementTypes';
 import taskElementTypes from 'application/modules/workflow/variables/taskElementTypes';
@@ -237,9 +237,9 @@ const ProcessesListPage = ({
 
     setLoading(true);
 
-    queue.removeAllListeners('end');
+    removeQueueListeners(queue, 'end');
 
-    queue.on('end', () => {
+    addQueueListener(queue, 'end', () => {
       handleCloseRestart();
       importActions.addMessage(
         new Message(t('CheckAsNotErrorSuccess'), 'success'),
@@ -261,7 +261,9 @@ const ProcessesListPage = ({
 
     setLoading(true);
 
-    queue.on('end', () => {
+    removeQueueListeners(queue, 'end');
+
+    addQueueListener(queue, 'end', () => {
       handleCloseRestart();
       importActions.addMessage(
         new Message(t('RestartSuccessSuccess'), 'success'),

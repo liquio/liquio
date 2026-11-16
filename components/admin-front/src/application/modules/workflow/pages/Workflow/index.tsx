@@ -2,8 +2,8 @@ import React from 'react';
 import { connect } from 'react-redux';
 import { translate } from 'react-translate';
 import { bindActionCreators, Dispatch } from 'redux';
-import queue from 'queue';
 import diff from 'helpers/diff';
+import { addQueueListener, createQueue, isQueueRunning, pendingJobsCount, type Queue } from 'helpers/queueFactory';
 import moment from 'moment';
 import objectPath from 'object-path';
 import hotkeys from 'hotkeys-js';
@@ -295,8 +295,8 @@ class WorkflowPage extends ModulePage<WorkflowPageProps> {
   config: Record<string, unknown>;
   interval: ReturnType<typeof setInterval> | null = null;
   timeout?: ReturnType<typeof setTimeout>;
-  delQueue: ReturnType<typeof queue>;
-  queue: ReturnType<typeof queue>;
+  delQueue: Queue;
+  queue: Queue;
   modeler?: BpmnJsInstance;
   workflowDisabled: boolean;
 
@@ -341,25 +341,28 @@ class WorkflowPage extends ModulePage<WorkflowPageProps> {
       });
     };
 
-    this.delQueue = queue({ autostart: false });
-    this.queue = queue({ autostart: true, concurrency: 1 });
+    this.delQueue = createQueue({ autostart: false });
+    this.queue = createQueue({ autostart: true, concurrency: 1 });
 
-    this.delQueue.on('start', onStartSave);
+    addQueueListener(this.delQueue, 'start', onStartSave);
 
-    this.delQueue.on('end', onFinishSave);
+    addQueueListener(this.delQueue, 'end', onFinishSave);
 
-    this.queue.on('end', () => {
-      // `queue`'s shipped .d.ts omits its own `.jobs` array property, even
-      // though the real source assigns/reads `this.jobs` throughout (same
-      // gap documented in an earlier batch's ExportReport.tsx).
-      if ((this.delQueue as unknown as { jobs: unknown[] }).jobs.length) {
+    addQueueListener(this.queue, 'end', () => {
+      if (isQueueRunning(this.delQueue)) {
+        return;
+      }
+
+      if (pendingJobsCount(this.delQueue)) {
         this.delQueue.start();
       } else {
         onFinishSave();
       }
     });
 
-    this.queue.on('success', (result: unknown) => {
+    addQueueListener(this.queue, 'success', ({ detail }) => {
+      const result = detail.result[0];
+
       if (result instanceof Error) {
         if (result.message === 'Header Last-Workflow-History-Id expired.') {
           const error = new Error('WorkflowOldVersionError') as Error & { details?: React.ReactNode };

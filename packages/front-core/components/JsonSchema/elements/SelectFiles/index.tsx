@@ -1,6 +1,6 @@
 import React from 'react';
 import { translate, Translate } from 'react-translate';
-import queueFactory from 'helpers/queueFactory';
+import queueFactory, { addQueueListener } from 'helpers/queueFactory';
 import renderHTML from 'helpers/renderHTML';
 import evaluate from 'helpers/evaluate';
 import sleep from 'helpers/sleep';
@@ -154,8 +154,6 @@ class SelectFiles extends React.Component<SelectFilesProps, SelectFilesState> {
     typography: 'h6',
   };
 
-  deletedItems: Set<string | number>;
-
   queue: ReturnType<typeof queueFactory.get>;
 
   constructor(props: SelectFilesProps) {
@@ -167,50 +165,11 @@ class SelectFiles extends React.Component<SelectFilesProps, SelectFilesState> {
       loading: false,
     };
 
-    this.deletedItems = new Set();
     this.queue = queueFactory.get(taskId as string);
-    this.queue.on('end', () => {
+    addQueueListener(this.queue, 'end', () => {
       this.setState({ loading: false });
-      this.deletedItems.clear();
     });
   }
-
-  debounce = (func: (...args: unknown[]) => void) => {
-    let timerId: ReturnType<typeof setTimeout>;
-    return (...args: unknown[]) => {
-      if (timerId) clearTimeout(timerId);
-      timerId = setTimeout(() => func(...args), 300);
-    };
-  };
-
-  componentDidMount() {
-    this.handleRemoveHidden = this.debounce(this.handleRemoveHidden);
-  }
-
-  componentDidUpdate(prevProps: SelectFilesProps) {
-    const { value } = this.props;
-
-    if (
-      (prevProps.value && (prevProps.value as FileAttach[]).length) !== (value && (value as FileAttach[]).length)
-    ) {
-      this.handleRemoveHidden = this.debounce(this.handleRemoveHidden);
-    }
-  }
-
-  handleRemoveHidden = () => {
-    const { value, hidden } = this.props;
-
-    if (value && (value as FileAttach[]).length && hidden) {
-      (value as FileAttach[]).forEach((item) => {
-        if (!this.deletedItems.has(item.id as string | number)) {
-          this.deletedItems.add(item.id as string | number);
-          this.queue.push(async () => {
-            await this.handleDeleteFile(item);
-          });
-        }
-      });
-    }
-  };
 
   handleDeleteFile = async (attach: FileAttach) => {
     const { actions, value } = this.props;

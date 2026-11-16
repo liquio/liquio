@@ -5,7 +5,7 @@ import { IconButton, Tooltip, CircularProgress } from '@mui/material';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 
-import queueFactory from 'helpers/queueFactory';
+import queueFactory, { addQueueListener, removeQueueListeners } from 'helpers/queueFactory';
 import LeftSidebarLayoutRaw from 'layouts/LeftSidebar';
 import DataTableRaw from 'components/DataTable';
 import ConfirmDialogRaw from 'components/ConfirmDialog';
@@ -228,7 +228,8 @@ const WorkflowListPage = ({
     setLoading(true);
     setOpen(false);
 
-    queue.on('end', () => setLoading(false));
+    removeQueueListeners(queue, 'end');
+    addQueueListener(queue, 'end', () => setLoading(false));
 
     selectedRowsData.forEach((workflow) => {
       const userExists = (workflow?.errorsSubscribers || []).find(
