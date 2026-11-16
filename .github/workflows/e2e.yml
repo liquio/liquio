@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
     steps:
@@ -72,7 +72,7 @@ jobs:
   e2e:
     needs: matrix
     name: e2e-${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false

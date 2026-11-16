@@ -24,7 +24,7 @@ env:
 jobs:
   helm-lint:
     if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 
@@ -63,7 +63,7 @@ jobs:
   helm-release:
     needs: helm-lint
     if: inputs.release == true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write

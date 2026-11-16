@@ -17,7 +17,7 @@ jobs:
   detect:
     # PRs from release/* branches are already fully checked by release.yml
     if: github.event_name != 'pull_request' || !startsWith(github.head_ref, 'release/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.build-matrix.outputs.matrix }}
       any: ${{ steps.build-matrix.outputs.any }}
@@ -103,7 +103,7 @@ jobs:
     needs: detect
     if: needs.detect.outputs.any == 'true'
     name: lint-${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
@@ -142,7 +142,7 @@ jobs:
     needs: [detect, lint]
     if: needs.detect.outputs.any == 'true'
     name: test-${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
