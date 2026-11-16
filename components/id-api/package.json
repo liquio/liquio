@@ -49,7 +49,7 @@
     "node-jose": "^2.2.0",
     "node-rsa": "^2.0.0",
     "node-schedule": "^2.1.1",
-    "otpauth": "^9.5.2",
+    "otpauth": "^9.6.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "passport-oauth2": "^1.8.0",
