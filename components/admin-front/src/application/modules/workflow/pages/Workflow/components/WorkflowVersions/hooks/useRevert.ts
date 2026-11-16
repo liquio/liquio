@@ -74,7 +74,11 @@ const useRevert = (
     });
 
     addQueueListener(queue, 'success', ({ detail }) => {
-      const { data, revert, name } = detail.result[0] as Change & { name?: string };
+      const jobResult = detail.result[0] as (Change & { name?: string }) | undefined;
+
+      if (!jobResult) return;
+
+      const { data, revert, name } = jobResult;
       const dataOrRevert = data || revert || { name };
       const progressName =
         dataOrRevert?.taskTemplateEntity?.name || dataOrRevert?.name;

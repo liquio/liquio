@@ -76,6 +76,17 @@ describe('ExportReport (real queue@7)', () => {
     expect(print).toHaveBeenCalledTimes(1);
   });
 
+  it('skips jobs resolving undefined and still prints the other rows', async () => {
+    const jobs = [async () => row(1), async () => undefined, async () => row(3)];
+    renderReport(() => jobs);
+
+    fireEvent.click(screen.getByRole('button', { name: '' }));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    const html = print.mock.calls[0][0] as string;
+    expect(html).toContain('10.0.0.1');
+    expect(html).toContain('10.0.0.3');
+  });
+
   it('cancel stops the export without printing and a later export still works', async () => {
     const g = gate();
     const second = vi.fn(async () => row(1));

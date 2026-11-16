@@ -133,6 +133,9 @@ const ExportReport = ({
 
     addQueueListener(processQueue, 'success', ({ detail }) => {
       state.process = state.total - pendingJobsCount(processQueue) + 1;
+
+      if (detail.result[0] === undefined || detail.result[0] === null) return;
+
       state.results = ([] as LogRow[]).concat(state.results, detail.result[0] as LogRow);
     });
 

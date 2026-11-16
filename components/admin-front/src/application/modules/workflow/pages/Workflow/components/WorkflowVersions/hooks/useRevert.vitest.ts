@@ -84,6 +84,20 @@ describe('useRevert (real queue@7)', () => {
     await waitFor(() => expect(result.current.busy).toBe(false));
   });
 
+  it('ignores a job resolving undefined without throwing', async () => {
+    getChanges.mockReturnValue([{ id: 1, type: 'task', data: { name: 'first' } }]);
+    revertHandlers.mockImplementation((change) => async () => change);
+    const onRevert = vi.fn(async () => undefined);
+    const [cur, rev] = nextVersions();
+
+    const { result } = renderHook(() => useRevert(cur, rev, { t, workflowId: 'w', onRevert }));
+    act(() => result.current.start());
+
+    await waitFor(() => expect(onRevert).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.busy).toBe(false));
+    expect(result.current.error).toBeUndefined();
+  });
+
   it('captures the error from detail.error and keeps running the remaining jobs', async () => {
     getChanges.mockReturnValue([
       { id: 1, type: 'task', data: { name: 'bad' } },
