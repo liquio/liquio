@@ -99,6 +99,7 @@ The tests are written in TypeScript and Playwright runs them directly, so there 
 - `template-current-date.spec.ts`: `{{currentDate}}` helper in document PDFs (default and custom format, not overridable by document data). Uses `fixtures/workflow-900006.bpmn`
 - `service-logs.spec.ts`: checks that service logs (task, admin-api, event, notification, persist-link, filestorage, register) contain no secret values from the local config. Needs containers started from the current images; it reads logs since container start.
 - `security.spec.ts`: security checks (CORS, headers, file download token); also checks that the register records `sort` parameter cannot smuggle security flags and rejects unknown columns. It needs `trustedCallers: ["register"]` in `config/register/auth.json` (see Prerequisites)
+- `email-exact-lookup.spec.ts`: `GET /user?email=` of id-api is an exact match (not a prefix match) and `emailPrefix` is the prefix search. Sets two user emails in the id database and restores them in `afterAll`
 - `helpers/`: shared helpers (auth, workflow and register import, cabinet API client, docker logs, PDF text)
 
 ## Debugging

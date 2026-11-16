@@ -248,3 +248,123 @@ describe('TaskBusiness.create in an existing workflow', () => {
     expect(workflow.hasAccess).not.toHaveBeenCalled();
   });
 });
+
+describe('TaskBusiness.create performer resolution by email', () => {
+  const VICTIM_EMAIL = 'victim@x.test';
+  const STOP = new Error('stop after task.create');
+  let taskBusiness: TaskBusiness;
+  let taskCreate: jest.Mock;
+  let getUserByEmail: jest.Mock;
+  let requestedEmails: string[];
+  let log: { save: jest.Mock };
+
+  const victim = { userId: 'victim-user-id', name: 'Victim', email: VICTIM_EMAIL };
+  const attacker = { userId: 'attacker-user-id', name: 'Attacker', email: `${VICTIM_EMAIL}.evil.example` };
+  const baseOptions = { workflowId: 'wf-id', workflowTemplateId: 5, taskTemplateId: 7, userId: 'creator-id', userInfo: {}, unitIds: {} };
+
+  const createdArgs = async (): Promise<any> => {
+    await expect(taskBusiness.create(baseOptions as any)).rejects.toBe(STOP);
+    return taskCreate.mock.calls[0][0];
+  };
+
+  beforeEach(() => {
+    new Sandbox();
+    requestedEmails = [VICTIM_EMAIL];
+    log = { save: jest.fn() };
+    setAppContext({ log: log as any });
+
+    taskBusiness = Object.create(TaskBusiness.prototype);
+    taskBusiness.sandbox = Sandbox.getInstance();
+    jest.spyOn(taskBusiness as any, '_assertOnboarding').mockResolvedValue(undefined);
+    jest.spyOn(taskBusiness as any, 'appendTraceMeta').mockImplementation(() => undefined);
+    jest.spyOn(taskBusiness as any, 'getTraceId').mockReturnValue('trace');
+    jest.spyOn(taskBusiness as any, 'calculateAndUpdateDraftExpiredAt').mockResolvedValue(undefined);
+    jest.spyOn(taskBusiness as any, 'calculateNewTaskParams').mockResolvedValue({});
+    jest.spyOn(taskBusiness as any, 'getTaskPermissions').mockImplementation(async () => ({
+      performerUnits: [],
+      requiredPerformerUnits: [],
+      performerUsers: [],
+      performerUsersIpn: [],
+      performerUsersEmail: requestedEmails,
+      signerUsers: [],
+      onlyForHeads: [],
+    }));
+    getUserByEmail = jest.fn().mockResolvedValue([attacker, victim]);
+    (taskBusiness as any).idApiClient = { getUserByEmail, getUsersByIds: jest.fn().mockResolvedValue([]), getUserByCode: jest.fn() };
+
+    taskCreate = jest.fn().mockRejectedValue(STOP);
+    const workflow = { workflowTemplateId: 5, hasAccess: jest.fn().mockReturnValue(true) };
+    setAppContext({ config: {} as any });
+    setAppContext({
+      models: {
+        workflowTemplate: { findById: jest.fn().mockResolvedValue({ id: 5, isActive: true, data: {} }) },
+        taskTemplate: { findById: jest.fn().mockResolvedValue({ jsonSchema: {} }) },
+        workflow: { findById: jest.fn().mockResolvedValue(workflow) },
+        workflowHistory: { findLastVersionByWorkflowTemplateId: jest.fn().mockResolvedValue(undefined) },
+        task: {
+          findCurrentTaskByWorkflowIdAndTaskTemplateID: jest.fn().mockResolvedValue(undefined),
+          findLastTaskId: jest.fn().mockResolvedValue(undefined),
+          changeIsCurrentStateToOld: jest.fn(),
+          getDocumentsByWorkflowId: jest.fn().mockResolvedValue([]),
+          create: taskCreate,
+        },
+        event: { getEventsByWorkflowId: jest.fn().mockResolvedValue([]) },
+      } as any,
+      businesses: { task: { handleActivityTypeEvents: jest.fn() } } as any,
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('does not grant access to a user whose email only starts with the requested one', async () => {
+    const { performerUsers, performerUserNames, performerUsersEmail } = await createdArgs();
+
+    expect(performerUsers).not.toContain('attacker-user-id');
+    expect(performerUsers).toContain('victim-user-id');
+    expect(performerUserNames).toEqual(['Victim']);
+    expect(performerUsersEmail).toEqual([]);
+  });
+
+  it('resolves the owner when the requested email differs only in case and spaces', async () => {
+    requestedEmails = [' Victim@X.test '];
+
+    const { performerUsers, performerUsersEmail } = await createdArgs();
+
+    expect(performerUsers).toEqual(['victim-user-id']);
+    expect(performerUsersEmail).toEqual([]);
+  });
+
+  it('adds no performer and keeps the email unresolved when only a prefix sibling is returned', async () => {
+    getUserByEmail.mockResolvedValue([attacker]);
+
+    const { performerUsers, performerUsersEmail } = await createdArgs();
+
+    expect(performerUsers).toEqual([]);
+    expect(performerUsersEmail).toEqual([VICTIM_EMAIL]);
+  });
+
+  it('drops a returned user without email', async () => {
+    getUserByEmail.mockResolvedValue([{ userId: 'no-email-user-id', name: 'No Email' }, victim]);
+
+    const { performerUsers } = await createdArgs();
+
+    expect(performerUsers).toEqual(['victim-user-id']);
+  });
+
+  it('logs only counts when returned users are dropped', async () => {
+    await createdArgs();
+
+    expect(log.save).toHaveBeenCalledWith('create-task-performer-email-mismatch', { returned: 2, verified: 1 }, 'warn');
+    expect(JSON.stringify(log.save.mock.calls)).not.toContain(VICTIM_EMAIL);
+  });
+
+  it('does not log when every returned user matches', async () => {
+    getUserByEmail.mockResolvedValue([victim]);
+
+    await createdArgs();
+
+    expect(log.save).not.toHaveBeenCalledWith('create-task-performer-email-mismatch', expect.anything(), 'warn');
+  });
+});

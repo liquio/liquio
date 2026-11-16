@@ -68,7 +68,7 @@ export class UserBusiness {
   async getUsers({ id, email, phone, search, ipn, role, offset, limit }) {
     const { headers, body: users } = await this.idApiClient.getUsersPage({
       id,
-      email,
+      emailPrefix: email || undefined,
       phone,
       search,
       ipn,

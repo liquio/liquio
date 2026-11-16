@@ -17,6 +17,9 @@ export type { TestUser } from './user';
 // Docker helpers
 export { getConfirmationPinFromNotifyDb, getDockerComposeLogs } from './docker';
 
+// id-api helpers
+export { ID_API_URL, getTaskIdApiBasicAuthHeader, setUserEmail, getUserEmail, pickOtherUserId } from './id_api';
+
 // Cabinet API helpers
 export { createCabinetApi } from './cabinet_api';
 export type { CabinetApi, CabinetApiResponse } from './cabinet_api';

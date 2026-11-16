@@ -1141,19 +1141,28 @@ export class TaskBusiness extends Business {
       throw wrappedError;
     }
 
+    // Keep only users whose email exactly matches a requested one.
+    const normalizeEmail = (v: unknown): string => (typeof v === 'string' ? v.trim().toLowerCase() : '');
+    const requestedEmails = new Set((performerUsersEmail || []).map(normalizeEmail).filter(Boolean));
+    const verifiedByEmail = performerUsersDataByEmail.filter((v) => requestedEmails.has(normalizeEmail(v?.email)));
+    if (verifiedByEmail.length < performerUsersDataByEmail.length) {
+      getLog().save('create-task-performer-email-mismatch', { returned: performerUsersDataByEmail.length, verified: verifiedByEmail.length }, 'warn');
+    }
+
     // Define performers user names.
     const performerUserNames = performerUsersData.map((v) => v.name);
     const performerUserNamesByIpn = performerUsersDataByIpn.map((v) => v.name);
-    const performerUserNamesByEmail = performerUsersDataByEmail.map((v) => v.name);
+    const performerUserNamesByEmail = verifiedByEmail.map((v) => v.name);
 
     // Normalize performer users.
     const performerUserIpnsByIpn = performerUsersDataByIpn.map((v) => v.ipn);
-    const performerUserEmailsByEmail = performerUsersDataByEmail.map((v) => v.email);
+    const performerUserEmailsByEmail = verifiedByEmail.map((v) => v.email);
+    const verifiedEmails = new Set(performerUserEmailsByEmail.map(normalizeEmail));
     const performerUserIdsByIpn = performerUsersDataByIpn.map((v) => v.userId);
-    const performerUserIdsByEmail = performerUsersDataByEmail.map((v) => v.userId);
+    const performerUserIdsByEmail = verifiedByEmail.map((v) => v.userId);
     const normalizedPerformerUsers = [...performerUsers, ...performerUserIdsByIpn, ...performerUserIdsByEmail];
     const normalizedPerformerUsersByIpn = performerUsersIpn.filter((v) => !performerUserIpnsByIpn.includes(v));
-    const normalizedPerformerUsersByEmail = performerUsersEmail.filter((v) => !performerUserEmailsByEmail.includes(v));
+    const normalizedPerformerUsersByEmail = performerUsersEmail.filter((v) => !verifiedEmails.has(normalizeEmail(v)));
     const normalizedPerformerUsersNames = [
       ...calculatedPerformerUserNames,
       ...performerUserNames,

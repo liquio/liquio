@@ -419,6 +419,27 @@ describe('AuthController', () => {
         });
     });
 
+    it('matches email exactly and not as a prefix', async () => {
+      const email = users.local1!.email as string;
+      const get = (q: Record<string, string>) => app.request().get('/user').query(q).set('Authorization', `Basic ${adminToken}`);
+      for (const q of [email, email.toUpperCase(), `${email},`, ` ${email} `]) {
+        const { body } = await get({ email: q }).expect(200);
+        expect(body.map((u: any) => u.userId)).toEqual([users.local1!.userId]);
+      }
+      expect((await get({ email: email.slice(0, -3) }).expect(200)).body).toEqual([]);
+      expect((await get({ email: '%' }).expect(200)).body).toEqual([]);
+    });
+
+    it('searches by emailPrefix literally and requires 3 characters', async () => {
+      const get = (q: Record<string, string>) => app.request().get('/user').query(q).set('Authorization', `Basic ${adminToken}`);
+      const email = users.local1!.email as string;
+      const { body } = await get({ emailPrefix: email.slice(0, 5) }).expect(200);
+      expect(body.map((u: any) => u.userId)).toContain(users.local1!.userId);
+      expect((await get({ emailPrefix: '%%%' }).expect(200)).body).toEqual([]);
+      expect((await get({ emailPrefix: '___' }).expect(200)).body).toEqual([]);
+      await get({ emailPrefix: 'ab' }).expect(400);
+    });
+
     it('should be able to get a list of users with filters - by ipn', async () => {
       await app
         .request()

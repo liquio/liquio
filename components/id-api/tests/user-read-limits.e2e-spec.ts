@@ -126,7 +126,7 @@ describe('Basic user read routes are bounded (KS-25)', () => {
   it('drops services for a named client without full read access', async () => {
     const one = await app.request().get(`/user/${firstId}`).set('Authorization', READER).expect(200);
     expect(one.body).not.toHaveProperty('services');
-    const list = await app.request().get('/user').query({ email: 'ks25-0' }).set('Authorization', READER).expect(200);
+    const list = await app.request().get('/user').query({ email: 'ks25-0@example.com' }).set('Authorization', READER).expect(200);
     expect(list.body).toHaveLength(1);
     expect(list.body[0]).not.toHaveProperty('services');
     const byId = await app.request().post('/user/info/id').set('Authorization', READER).send({ id: firstId }).expect(200);
@@ -146,7 +146,7 @@ describe('Basic user read routes are bounded (KS-25)', () => {
   });
 
   it('refuses a client without the user:read scope', async () => {
-    await app.request().get('/user').query({ email: 'ks25' }).set('Authorization', NO_SCOPE).expect(403);
+    await app.request().get('/user').query({ emailPrefix: 'ks25' }).set('Authorization', NO_SCOPE).expect(403);
     await app.request().get(`/user/${firstId}`).set('Authorization', NO_SCOPE).expect(403);
   });
 });
