@@ -611,6 +611,38 @@ describe('X509Service signature verification', () => {
       await expect(service.getSignatureInfo(cms)).rejects.toThrow('No signed content to verify');
     });
   });
+
+  describe('verifyHash without embedded content', () => {
+    it('returns false when a verified signature carries no encapsulated content', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, detached: true });
+      const signedData = await service.parseSignature(cms);
+      jest.spyOn(service as any, 'verifySignature').mockResolvedValueOnce({ signedData });
+      await expect(service.verifyHash(sha256b64(nonce), cms)).resolves.toBe(false);
+    });
+
+    it('returns false for a detached signature verified without content', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, detached: true });
+      await expect(service.verifyHash(sha256b64(nonce), cms)).resolves.toBe(false);
+    });
+  });
+
+  describe('hashToInternalSignature', () => {
+    it('embeds the supplied content into a detached signature', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, detached: true });
+      const internal = await service.hashToInternalSignature(cms, Buffer.from(nonce).toString('base64'));
+      const parsed = await service.parseSignature(internal);
+      expect(Buffer.from(parsed.encapContentInfo.eContent.valueBlock.valueHexView).toString()).toBe(nonce);
+    });
+
+    it('throws when content is missing', async () => {
+      const cms = await buildCms({ cert: person1Cert, key: person1Key, content: nonce, detached: true });
+      await expect(service.hashToInternalSignature(cms)).rejects.toThrow('Content is required to create an internal signature');
+    });
+
+    it('throws when the signature is not valid', async () => {
+      await expect(service.hashToInternalSignature('not-asn1', 'AAAA')).rejects.toThrow('Failed to create internal signature');
+    });
+  });
 });
 
 function sha256b64(data: string) {
