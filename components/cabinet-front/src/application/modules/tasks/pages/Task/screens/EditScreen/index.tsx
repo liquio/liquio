@@ -10,7 +10,7 @@ import diff from 'deep-diff';
 import awaitDelay from 'helpers/awaitDelay';
 import evaluate from 'helpers/evaluate';
 import renderHTML from 'helpers/renderHTML';
-import queueFactory from 'helpers/queueFactory';
+import queueFactory, { addQueueListener } from 'helpers/queueFactory';
 import Preloader from 'components/Preloader';
 import ErrorScreen from 'components/ErrorScreen';
 import * as api from 'services/api';
@@ -285,16 +285,16 @@ class EditScreen extends React.Component<EditScreenProps, EditScreenState> {
 
     this.queue = queueFactory.get(taskId as string);
 
-    this.queue.on('error', (error: unknown, job: unknown) => {
+    addQueueListener(this.queue, 'error', ({ detail: { error, job } }) => {
       console.log('job error:', error, job);
       this.setState({ storeEventError: error });
     });
 
-    this.queue.on('start', async () => {
+    addQueueListener(this.queue, 'start', async () => {
       this.setState({ processing: true });
     });
 
-    this.queue.on('end', async () => {
+    addQueueListener(this.queue, 'end', async () => {
       this.setState({ processing: false });
     });
 

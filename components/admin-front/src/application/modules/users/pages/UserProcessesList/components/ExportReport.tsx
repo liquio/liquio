@@ -15,7 +15,7 @@ import {
   Typography,
 } from '@mui/material';
 
-import queue from 'queue';
+import { addQueueListener, createQueue, pendingJobsCount, removeQueueListeners } from 'helpers/queueFactory';
 import { print } from 'html-to-printer';
 import dotToPath from 'helpers/dotToPath';
 import { formatUserName } from 'helpers/userName';
@@ -26,7 +26,7 @@ import moment from 'moment';
 
 const DATETIME_FORMAT = 'DD.MM.YYYY HH:mm:ss';
 
-const processQueue = queue({ autostart: true, concurrency: 1 });
+const processQueue = createQueue({ autostart: true, concurrency: 1 });
 
 interface LogRow {
   createdAt: string;
@@ -76,7 +76,7 @@ const ExportReport = ({
   const state = useRS(initialState);
 
   React.useEffect(() => {
-    processQueue.on('end', async () => {
+    addQueueListener(processQueue, 'end', async () => {
       if (state.canceled) {
         state.loading = false;
       } else {
@@ -131,16 +131,17 @@ const ExportReport = ({
       }
     });
 
-    processQueue.on('success', (result: unknown) => {
-      // `.jobs` is a real runtime property of the `queue` package (see its
-      // source), just not declared in its shipped `.d.ts`.
-      state.process = state.total - (processQueue as unknown as { jobs: unknown[] }).jobs.length + 1;
-      state.results = ([] as LogRow[]).concat(state.results, result as LogRow);
+    addQueueListener(processQueue, 'success', ({ detail }) => {
+      state.process = state.total - pendingJobsCount(processQueue) + 1;
+
+      if (detail.result[0] === undefined || detail.result[0] === null) return;
+
+      state.results = ([] as LogRow[]).concat(state.results, detail.result[0] as LogRow);
     });
 
     return () => {
-      processQueue.removeAllListeners('end');
-      processQueue.removeAllListeners('success');
+      removeQueueListeners(processQueue, 'end');
+      removeQueueListeners(processQueue, 'success');
     };
   });
 

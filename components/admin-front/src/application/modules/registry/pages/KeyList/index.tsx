@@ -2,7 +2,7 @@ import React from 'react';
 import { translate } from 'react-translate';
 import { useDispatch, connect } from 'react-redux';
 import _ from 'lodash/fp';
-import queue from 'queue';
+import { createQueue } from 'helpers/queueFactory';
 import withStyles from '@mui/styles/withStyles';
 import { Button } from '@mui/material';
 
@@ -98,7 +98,7 @@ const KeyListPage = (props: KeyListPageProps) => {
 
   const queueFactory = React.useMemo(
     () =>
-      queue({
+      createQueue({
         autostart: true,
         concurrency: 1
       }),

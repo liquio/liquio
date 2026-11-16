@@ -2,7 +2,7 @@ import React from 'react';
 import { useDispatch, connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 import { useTranslate } from 'react-translate';
-import queue from 'queue';
+import { createQueue } from 'helpers/queueFactory';
 import {
   Dialog,
   Typography,
@@ -125,7 +125,7 @@ const ImportRegisterKeys = ({ ColorButton, actions, loading: loadingOrigin }: Im
 
   const queueFactory = React.useMemo(
     () =>
-      queue({
+      createQueue({
         autostart: true,
         concurrency: 1
       }),

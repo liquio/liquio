@@ -1,6 +1,6 @@
 import React from 'react';
 
-import queueFactory from 'helpers/queueFactory';
+import queueFactory, { addQueueListener, removeQueueListeners } from 'helpers/queueFactory';
 
 import revertHandlers from 'modules/workflow/pages/Workflow/components/WorkflowVersions/revertHandlers';
 import getChanges from 'modules/workflow/pages/Workflow/components/WorkflowVersions/helpers/getChanges';
@@ -59,21 +59,26 @@ const useRevert = (
 
     setProgress(0);
 
-    queue.removeAllListeners('end');
-    queue.removeAllListeners('error');
-    queue.removeAllListeners('start');
-    queue.removeAllListeners('success');
+    removeQueueListeners(queue, 'end');
+    removeQueueListeners(queue, 'error');
+    removeQueueListeners(queue, 'start');
+    removeQueueListeners(queue, 'success');
 
-    queue.on('start', () => setBusy(true));
-    queue.on('error', setError as never);
+    addQueueListener(queue, 'start', () => setBusy(true));
+    addQueueListener(queue, 'error', ({ detail }) => setError(detail.error));
 
-    queue.on('end', async () => {
+    addQueueListener(queue, 'end', async () => {
       setBusy(false);
       setProgress(undefined);
       setProgressText(undefined);
     });
 
-    queue.on('success', (({ data, revert, name }: Change & { name?: string }) => {
+    addQueueListener(queue, 'success', ({ detail }) => {
+      const jobResult = detail.result[0] as (Change & { name?: string }) | undefined;
+
+      if (!jobResult) return;
+
+      const { data, revert, name } = jobResult;
       const dataOrRevert = data || revert || { name };
       const progressName =
         dataOrRevert?.taskTemplateEntity?.name || dataOrRevert?.name;
@@ -83,7 +88,7 @@ const useRevert = (
           changesFiltered.length,
       );
       setProgressText(progressName);
-    }) as never);
+    });
 
     changesFiltered.forEach((change) => queue.push(revertHandlers(change as never) as never));
     queue.push(onRevert as never);

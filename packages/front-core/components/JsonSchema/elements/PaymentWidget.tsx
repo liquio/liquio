@@ -3,7 +3,7 @@ import { translate } from 'react-translate';
 import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 import objectPath from 'object-path';
-import queue from 'queue';
+import { createQueue, type Queue } from 'helpers/queueFactory';
 import classNames from 'classnames';
 import {
   Typography,
@@ -236,9 +236,9 @@ class PaymentWidget extends React.Component<PaymentWidgetProps, PaymentWidgetSta
 
   triggerTokenizer: React.RefObject<HTMLButtonElement | null>;
 
-  queue: ReturnType<typeof queue>;
+  queue: Queue;
 
-  queueAppleGoogle: ReturnType<typeof queue>;
+  queueAppleGoogle: Queue;
 
   broadcastChannel: BroadcastChannel;
 
@@ -291,8 +291,8 @@ class PaymentWidget extends React.Component<PaymentWidgetProps, PaymentWidgetSta
     };
 
     this.triggerTokenizer = React.createRef<HTMLButtonElement>();
-    this.queue = queue({ autostart: true, concurrency: 1 });
-    this.queueAppleGoogle = queue({ autostart: true, concurrency: 1 });
+    this.queue = createQueue({ autostart: true, concurrency: 1 });
+    this.queueAppleGoogle = createQueue({ autostart: true, concurrency: 1 });
 
     this.broadcastChannel = new BroadcastChannel(
       ([props.rootDocument?.id] as Array<string | number | undefined>).concat(props.path || []).join()
@@ -724,7 +724,7 @@ class PaymentWidget extends React.Component<PaymentWidgetProps, PaymentWidgetSta
       return;
     }
 
-    this.queue.push(() => {
+    this.queue.push(async () => {
       this.initWidget();
       this.initWidgetEvents();
     });

@@ -4,7 +4,7 @@ import { connect } from 'react-redux';
 import { bindActionCreators, Dispatch } from 'redux';
 import objectPath from 'object-path';
 import moment from 'moment';
-import queue from 'queue';
+import { createQueue, type Queue } from 'helpers/queueFactory';
 import { FormControl, TextField, Typography } from '@mui/material';
 import withStyles, { WithStyles } from '@mui/styles/withStyles';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
@@ -114,7 +114,7 @@ class ContactConfirmation extends React.Component<ContactConfirmationProps, Cont
 
   config: ReturnType<typeof getConfig>;
 
-  queue: ReturnType<typeof queue>;
+  queue: Queue;
 
   constructor(props: ContactConfirmationProps) {
     super(props);
@@ -128,7 +128,7 @@ class ContactConfirmation extends React.Component<ContactConfirmationProps, Cont
       inited: false,
       tabFocused: false,
     };
-    this.queue = queue({ autostart: true, concurrency: 1 });
+    this.queue = createQueue({ autostart: true, concurrency: 1 });
   }
 
   get codeLength() {
