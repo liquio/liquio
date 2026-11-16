@@ -103,11 +103,11 @@ export class WorkflowLogController extends Controller {
    * Init queue.
    */
   initQueue() {
-    this.queue = Queue({ autostart: true, concurrency: 10 });
+    this.queue = new Queue({ autostart: true, concurrency: 10 });
     this.queue.timeout = PROCESS_TIMEOUT;
-    this.queue.on('timeout', function (next, job) {
+    this.queue.addEventListener('timeout', (event) => {
+      const { job } = event.detail;
       getLog().save('reindex-workflow-processes|main-reindex-job-timeout', { job: job.toString().replace(/\n/g, '') }, 'error');
-      next();
     });
   }
 

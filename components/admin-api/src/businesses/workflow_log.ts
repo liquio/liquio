@@ -202,16 +202,15 @@ export class WorkflowLogBusiness {
     //Get logs for each workflow and save to elastic
 
     return new Promise((resolve, reject) => {
-      const queue = Queue({ concurrency: getConfig().elastic?.reindexQueueConcurrency || 10 });
+      const queue = new Queue({ concurrency: getConfig().elastic?.reindexQueueConcurrency || 10 });
 
       queue.timeout = PROCESS_TIMEOUT;
 
-      queue.on('timeout', function (next, job) {
-        getLog().save('reindex-workflow-processes|job-timeout', { job }, 'error');
+      queue.addEventListener('timeout', (event) => {
+        getLog().save('reindex-workflow-processes|job-timeout', { job: event.detail.job }, 'error');
       });
 
-      queue.on('error', reject);
-      queue.on('end', resolve);
+      queue.addEventListener('end', (event) => (event.detail.error ? reject(event.detail.error) : resolve(undefined)));
 
       for (const processIndex in processes) {
         queue.push(
