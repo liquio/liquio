@@ -61,6 +61,8 @@ const baseProps = (taskId: string, overrides: Record<string, unknown> = {}) => {
   };
 };
 
+const asProps = (props: ReturnType<typeof baseProps>) => props as unknown as React.ComponentProps<typeof SingleKeyRegister>;
+
 describe('SingleKeyRegister queue (real queue@7)', () => {
   beforeEach(() => {
     created.length = 0;
@@ -72,7 +74,7 @@ describe('SingleKeyRegister queue (real queue@7)', () => {
 
   it('runs the queued init job and fires the end handler after the queue drains', async () => {
     const props = baseProps('skr-single');
-    render(<SingleKeyRegister {...(props as never)} />);
+    render(<SingleKeyRegister {...asProps(props)} />);
 
     await waitFor(() => expect(props.registerActions.requestRegisterKeyRecords).toHaveBeenCalledWith(7, expect.anything()));
     await waitFor(() => expect(props.onImportCallback).toHaveBeenCalled());
@@ -83,8 +85,8 @@ describe('SingleKeyRegister queue (real queue@7)', () => {
   it('replaces the end handler when another control on the same task is created', async () => {
     const first = baseProps('skr-shared');
     const second = baseProps('skr-shared');
-    render(<SingleKeyRegister {...(first as never)} />);
-    render(<SingleKeyRegister {...(second as never)} />);
+    render(<SingleKeyRegister {...asProps(first)} />);
+    render(<SingleKeyRegister {...asProps(second)} />);
 
     await waitFor(() => expect(second.onImportCallback).toHaveBeenCalled());
     await new Promise((resolve) => setTimeout(resolve, 30));
@@ -94,7 +96,7 @@ describe('SingleKeyRegister queue (real queue@7)', () => {
 
   it('removes its end handler on unmount', async () => {
     const props = baseProps('skr-unmount');
-    const { unmount } = render(<SingleKeyRegister {...(props as never)} />);
+    const { unmount } = render(<SingleKeyRegister {...asProps(props)} />);
     unmount();
 
     await new Promise((resolve) => setTimeout(resolve, 60));

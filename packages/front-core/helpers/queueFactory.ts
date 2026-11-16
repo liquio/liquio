@@ -30,10 +30,11 @@ export const createQueue = (options?: Options): Queue => {
 export const addQueueListener = <N extends QueueEventName>(queue: Queue, name: N, listener: QueueListener<N>): void => {
   const listeners = registry.get(queue) ?? new Map<QueueEventName, Set<AnyListener>>();
   const set = listeners.get(name) ?? new Set<AnyListener>();
-  set.add(listener as AnyListener);
+  const anyListener: AnyListener = listener;
+  set.add(anyListener);
   listeners.set(name, set);
   registry.set(queue, listeners);
-  queue.addEventListener(name, listener as Parameters<Queue['addEventListener']>[1]);
+  queue.addEventListener(name, anyListener as Parameters<Queue['addEventListener']>[1]);
 };
 
 export const removeQueueListeners = (queue: Queue, name: QueueEventName): void => {
