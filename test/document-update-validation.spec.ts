@@ -19,6 +19,8 @@ import type { CabinetApi, CabinetApiResponse } from './helpers';
  *   - object keys with template or markup metacharacters and prototype names are rejected,
  *   - prototype path segments are rejected,
  *   - paths and keys the template schema does not declare are rejected,
+ *   - attachment uploads reject prototype segments in `document_path` (raw, percent-encoded and dotted
+ *     forms) and leave the task service healthy,
  *   - a valid draft still produces a PDF, and pdf-generator never requests a URL that only
  *     appeared in rejected data.
  */
@@ -151,6 +153,89 @@ test.describe('Document update validation', () => {
   test('pdf-generator never requests a URL from rejected document data', async () => {
     const logs = getDockerComposeLogs('pdf-generator', since);
     expect(logs).not.toMatch(/request-blocked[^\n]*register:8080/);
+  });
+});
+
+test.describe('Attachment document path validation', () => {
+  const PATH_MESSAGE = 'Invalid document path';
+  const BODY = Buffer.from('probe');
+  const RAW_PATHS = ['[__proto__][isCreateByOtherSystem]', '[constructor][prototype][isCreateByOtherSystem]', '[prototype][isCreateByOtherSystem]'];
+  const ENCODED_PATHS = RAW_PATHS.map((path) => path.replace(/\[/g, '%5B').replace(/\]/g, '%5D'));
+  const DOTTED_PATHS = ['__proto__.isCreateByOtherSystem', 'constructor.prototype.isCreateByOtherSystem', 'prototype.isCreateByOtherSystem'];
+
+  let context: BrowserContext;
+  let page: Page;
+  let api: CabinetApi;
+  let since: Date;
+
+  const startTask = async () => {
+    const { status, body } = await api.createTask(WORKFLOW_TEMPLATE_ID, TASK_TEMPLATE_ID);
+    expect(status, 'create task').toBe(200);
+    return body.data;
+  };
+
+  const expectRejected = (response: CabinetApiResponse, message: string) => {
+    expect(response.status, JSON.stringify(response.body)).toBe(400);
+    expect(response.body.error.message).toContain(message);
+  };
+
+  const expectPathsRejected = async (paths: string[]) => {
+    const { documentId } = await startTask();
+    for (const path of paths) {
+      expectRejected(await api.uploadAttachment(documentId, `document_path=${path}&file_name=probe.pdf`, BODY), PATH_MESSAGE);
+    }
+  };
+
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(240000);
+
+    log('Logging in to cabinet as demo user');
+    context = await browser.newContext();
+    page = await context.newPage();
+    await setupLogging(page);
+    page.setDefaultTimeout(15000);
+    await page.goto(`${CABINET_URL}/`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => globalThis.location.port === '8080' || !!localStorage.getItem('token'), null, { timeout: 30000 });
+    if (page.url().includes('localhost:8080')) {
+      await ensureAtLoginPage(page);
+      await loginWithPersonalKey(page, '../config/demo.p12', 'demo');
+    }
+    await expect(page).toHaveURL(/^http:\/\/localhost:8081/);
+    api = await createCabinetApi(page);
+    since = new Date();
+    log('✓ Cabinet ready');
+  });
+
+  test.afterAll(async () => {
+    await context?.close();
+  });
+
+  test('rejects prototype paths in raw bracket form', async () => {
+    await expectPathsRejected(RAW_PATHS);
+  });
+
+  test('rejects prototype paths in percent-encoded form', async () => {
+    await expectPathsRejected(ENCODED_PATHS);
+  });
+
+  test('rejects prototype paths in dotted form', async () => {
+    await expectPathsRejected(DOTTED_PATHS);
+  });
+
+  test('the task service stays healthy after rejected uploads', async () => {
+    const { documentId } = await startTask();
+    for (const path of [...RAW_PATHS, ...ENCODED_PATHS, ...DOTTED_PATHS]) {
+      expectRejected(await api.uploadAttachment(documentId, `document_path=${path}&file_name=probe.pdf`, BODY), PATH_MESSAGE);
+    }
+
+    const read = await api.getDocument(documentId);
+    expect(read.status, JSON.stringify(read.body)).toBe(200);
+
+    const upload = await api.uploadAttachment(documentId, 'file_name=probe.pdf', BODY);
+    expect(upload.status, JSON.stringify(upload.body)).toBe(200);
+
+    expect(getDockerComposeLogs('task', since)).not.toContain('unhandled-rejection');
   });
 });
 
