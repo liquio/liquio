@@ -58,8 +58,10 @@ export default [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'import-x/order': importOrderRule,
       'no-restricted-syntax': ['error', ...noConfigInLogs],
+      'no-restricted-imports': ['error', { paths: [{ name: 'prop-by-path', message: 'Use src/lib/prop_by_path (refuses prototype path segments).' }] }],
     },
   },
+  { files: ['src/lib/prop_by_path.ts'], rules: { 'no-restricted-imports': 'off' } },
   {
     files: ['tests/**/*.ts', '**/*.spec.ts', '**/*.e2e-spec.ts'],
     languageOptions: {

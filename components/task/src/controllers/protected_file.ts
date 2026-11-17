@@ -1,7 +1,7 @@
 import axios from 'axios';
-import PropByPath from 'prop-by-path';
 import { matchedData } from 'express-validator';
 
+import PropByPath from '../lib/prop_by_path';
 import { Controller } from './controller';
 import { RegisterBusiness } from '../businesses/register';
 import { DocumentAttachmentModel } from '../models/document_attachment';

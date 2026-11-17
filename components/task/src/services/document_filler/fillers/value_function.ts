@@ -1,8 +1,8 @@
-import PropByPath from 'prop-by-path';
 import moment from 'moment';
 import jcopy from 'jcopy';
 import cyrillicToTranslit from 'cyrillic-to-translit-js';
 
+import PropByPath from '../../../lib/prop_by_path';
 import { Filler } from './filler';
 import { getLog } from '../../../lib/context';
 

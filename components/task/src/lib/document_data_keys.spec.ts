@@ -117,3 +117,14 @@ describe('document_data_keys', () => {
     });
   });
 });
+
+describe('isUnsafeDataKey path segments', () => {
+  it('flags prototype segments inside keys', () => {
+    expect(isUnsafeDataKey('a.__proto__')).toBe(true);
+    expect(isUnsafeDataKey('[constructor]')).toBe(true);
+    expect(isUnsafeDataKey('x[prototype]')).toBe(true);
+    expect(isUnsafeDataKey('a.b')).toBe(false);
+    expect(isUnsafeDataKey('files[0]')).toBe(false);
+    expect(findUnsafeDataKeys({ 'a.__proto__': 1 }, 'p')).toEqual(['p.a.__proto__']);
+  });
+});

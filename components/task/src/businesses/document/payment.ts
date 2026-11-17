@@ -1,8 +1,7 @@
 import https from 'node:https';
 import { Readable } from 'node:stream';
 
-import PropByPath from 'prop-by-path';
-
+import PropByPath from '../../lib/prop_by_path';
 import { ErrorMessage } from '../../constants/error';
 import { DocumentEntity } from '../../entities/document';
 import { ForbiddenError, InvalidConfigError, InvalidSchemaError, NotFoundError } from '../../lib/errors';

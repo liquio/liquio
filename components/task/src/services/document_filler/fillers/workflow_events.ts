@@ -1,5 +1,4 @@
-import PropByPath from 'prop-by-path';
-
+import PropByPath from '../../../lib/prop_by_path';
 import { Filler } from './filler';
 import { EventModel } from '../../../models/event';
 import { getLog } from '../../../lib/context';

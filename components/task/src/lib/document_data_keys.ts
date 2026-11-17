@@ -24,7 +24,10 @@ export const getPathSegments = (path: string): string[] =>
 export const hasUnsafePathSegment = (path: string): boolean => getPathSegments(path).some(isUnsafePathSegment);
 
 export const isUnsafeDataKey = (key: string): boolean =>
-  UNSAFE_KEY_NAMES.includes(key) || key.length > MAX_DATA_KEY_LENGTH || FORBIDDEN_KEY_CHARS.test(key);
+  UNSAFE_KEY_NAMES.includes(key) ||
+  getPathSegments(key).some(isUnsafePathSegment) ||
+  key.length > MAX_DATA_KEY_LENGTH ||
+  FORBIDDEN_KEY_CHARS.test(key);
 
 const truncateKey = (key: string): string => (key.length > MAX_REPORTED_KEY_LENGTH ? `${key.slice(0, MAX_REPORTED_KEY_LENGTH)}…` : key);
 

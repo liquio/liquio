@@ -3,9 +3,9 @@ import get from 'lodash/get';
 import set from 'lodash/set';
 import moment from 'moment-business-days';
 import validator from 'validator';
-import PropByPath from 'prop-by-path';
 import { getIdApiClient, IdApiClient, IdApiUserInfo, Sandbox } from '@liquio/back-core';
 
+import PropByPath from '../lib/prop_by_path';
 import { SignatureInfoEntity } from '../entities/signature_info';
 import { SystemNotifier } from '../lib/system_notifier';
 import { Business } from './business';
