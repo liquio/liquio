@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { WorkflowErrorEntity } from '../entities/workflow_error';
+import { getLog } from '../lib/context';
 
 // Constants.
 const SUPPRESSED_ERRORS = ['NotFoundError: Task not found.'];
@@ -68,13 +69,17 @@ export class WorkflowErrorModel extends Model {
       return;
     }
 
-    // Save to DB.
-    await this.model.create({
-      workflow_id: workflowId,
-      service_name: 'task',
-      data,
-      type,
-    });
+    // Save to DB. Recording is best-effort and must never reject.
+    try {
+      await this.model.create({
+        workflow_id: workflowId,
+        service_name: 'task',
+        data,
+        type,
+      });
+    } catch (error) {
+      getLog().save('workflow-error-save-failed', { workflowId, type, message: error?.message }, 'error');
+    }
   }
 
   /**

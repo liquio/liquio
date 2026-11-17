@@ -1,6 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
-import { getBusinesses, getConfig, getModels } from '../src/lib/context';
+import { getBusinesses, getConfig, getLog, getModels } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 const IPN = '1234567890';
@@ -279,6 +279,18 @@ describe('Task business methods', () => {
       const bad = await draft({ onCommit: { notifyNewPerformers: '() => ({ userIds: ["u"] })' } });
       await expect(biz().handleActivityTypeEvents(await models().task.findById(bad.id), 'TASK_COMMITTED')).rejects.toThrow();
       expect(await app.model('workflowError').count()).toBeGreaterThan(0);
+    });
+  });
+
+  describe('workflow errors', () => {
+    it('never rejects when the insert fails and logs without data', async () => {
+      const task = await draft();
+      const workflowId = (await models().task.findById(task.id)).workflowId;
+      jest.spyOn(models().workflowError.model, 'create').mockRejectedValueOnce(new Error('db down'));
+      const save = jest.spyOn(getLog(), 'save');
+      await expect(models().workflowError.create({ error: 'x', traceMeta: { workflowId } })).resolves.toBeUndefined();
+      expect(save).toHaveBeenCalledWith('workflow-error-save-failed', expect.not.objectContaining({ data: expect.anything() }), 'error');
+      expect(save).toHaveBeenCalledWith('workflow-error-save-failed', expect.objectContaining({ workflowId, message: 'db down' }), 'error');
     });
   });
 
