@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { DocumentAttachmentEntity, DocumentAttachmentEntityOptions } from '../entities/document_attachment';
+import { ownFlag } from '../lib/own_flag';
 
 /** Raw shape of a `document_attachments` row as Sequelize hands it back. */
 export interface DocumentAttachmentRow {
@@ -152,17 +153,10 @@ export class DocumentAttachmentModel extends Model {
   /**
    * Create attachment.
    */
-  async create({
-    documentId,
-    link,
-    name,
-    type,
-    size = 0,
-    labels = [],
-    isGenerated = false,
-    isSystem = false,
-    meta = {},
-  }: CreateDocumentAttachmentParams): Promise<DocumentAttachmentEntity> {
+  async create(params: CreateDocumentAttachmentParams): Promise<DocumentAttachmentEntity> {
+    const { documentId, link, name, type, size = 0, labels = [], meta = {} } = params;
+    const isGenerated = ownFlag(params, 'isGenerated');
+    const isSystem = ownFlag(params, 'isSystem');
     const attachment = this.prepareForModel({ documentId, link, name, type, size, labels, isGenerated, isSystem, meta });
     const rawDbResponse = await this.model.create(attachment);
 

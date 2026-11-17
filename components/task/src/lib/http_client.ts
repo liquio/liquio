@@ -3,6 +3,7 @@ import { getTraceId } from '@liquio/back-core';
 
 import { HTTPRequestError, HTTPResponseError } from './errors';
 import { getLog } from './context';
+import { ownFlag } from './own_flag';
 
 // Fix import node-fetch for CommonJS modules. https://github.com/node-fetch/node-fetch/blob/HEAD/docs/v3-UPGRADE-GUIDE.md
 const nodeFetch = (...args: any[]) => import('node-fetch').then(({ default: fetch }) => (fetch as any)(...args));
@@ -25,22 +26,24 @@ export class HttpClient {
    * @param {import('node-fetch').RequestInit|{ timeout: number }} [init]
    * @param {string} [meta]
    * @param {Object} [options]
-   * @param {boolean} [options.isDoNotCheckHTTPErrorCode = false] Is do not throw error when HTTP code != 200
-   * @param {boolean} [options.isNonSensitiveDataRegime = false] Is throw errors with sensitive data (full URL, responseBody, etc.)
+   * @param {boolean} [isDoNotCheckHTTPErrorCode = false] Is do not throw error when HTTP code != 200
+   * @param {boolean} [isNonSensitiveDataRegime = false] Is throw errors with sensitive data (full URL, responseBody, etc.)
    * @return {Promise<import('node-fetch').Response>}
    */
   async request(url, init: any = {}, meta, options: any = {}) {
+    const isNonSensitiveDataRegime = ownFlag(options, 'isNonSensitiveDataRegime');
+    const isDoNotCheckHTTPErrorCode = ownFlag(options, 'isDoNotCheckHTTPErrorCode');
     getLog().save('http-client-request-options', { meta, url, init: { ...init, /*replace for log*/ agent: undefined } });
 
     let urlWithoutQueryParameters;
     try {
       const { protocol, host } = new URL(url);
-      urlWithoutQueryParameters = options.isNonSensitiveDataRegime ? url : `${protocol}//${host}`;
+      urlWithoutQueryParameters = isNonSensitiveDataRegime ? url : `${protocol}//${host}`;
     } catch {
       throw new HTTPRequestError('Server is trying to sent an HTTP request with invalid URL.', {
         cause: {
           meta: meta,
-          url: options.isNonSensitiveDataRegime ? url : undefined,
+          url: isNonSensitiveDataRegime ? url : undefined,
         },
       });
     }
@@ -83,7 +86,7 @@ export class HttpClient {
       throw new HTTPRequestError('Server sent an HTTP request and got an network error.', {
         cause: {
           meta: meta,
-          request: `${init.method} ${options.isNonSensitiveDataRegime ? url : urlWithoutQueryParameters}`,
+          request: `${init.method} ${isNonSensitiveDataRegime ? url : urlWithoutQueryParameters}`,
           errorCode: error.code,
         },
       });
@@ -91,7 +94,7 @@ export class HttpClient {
       clearTimeout(timeout);
     }
 
-    if (!response.ok && !options.isDoNotCheckHTTPErrorCode) {
+    if (!response.ok && !isDoNotCheckHTTPErrorCode) {
       const responseBody = await response.text();
       getLog().save('http-client-response-error', {
         meta,
@@ -103,9 +106,9 @@ export class HttpClient {
       throw new HTTPResponseError('Server sent an HTTP request and got an error in response.', {
         cause: {
           meta: meta,
-          request: `${init.method} ${options.isNonSensitiveDataRegime ? url : urlWithoutQueryParameters}`,
+          request: `${init.method} ${isNonSensitiveDataRegime ? url : urlWithoutQueryParameters}`,
           response: `${response.status} ${response.statusText}`,
-          responseBody: options.isNonSensitiveDataRegime ? responseBody : undefined,
+          responseBody: isNonSensitiveDataRegime ? responseBody : undefined,
         },
       });
     }

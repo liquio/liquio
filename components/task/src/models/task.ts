@@ -8,6 +8,7 @@ import { TaskEntity } from '../entities/task';
 import { RedisClient } from '../lib/redis_client';
 import { SequelizeDbError } from '../lib/errors';
 import { getConfig, getModels } from '../lib/context';
+import { ownFlag } from '../lib/own_flag';
 
 // Constants.
 const GET_ALL_BY_USER_ID_CACHE_TTL = 600; // 10 minutes.
@@ -631,31 +632,30 @@ export class TaskModel extends Model {
    * @param {string} data.version Version.
    * @returns {Promise<TaskEntity>} Created task entity promise.
    */
-  async create({
-    taskTemplateId,
-    workflowId,
-    documentId,
-    userId,
-    performerUnits = [],
-    requiredPerformerUnits = [],
-    performerUsers = [],
-    performerUsersIpn = [],
-    performerUsersEmail = [],
-    performerUserNames = [],
-    signerUsers = [],
-    onlyForHeads = false,
-    dueDate,
-    isEntry,
-    copyFrom,
-    name,
-    _createdByUnitHeads = [],
-    _createdByUnits = [],
-    observerUnits,
-    isSystem = false,
-    labels = [],
-    meta = {},
-    version,
-  }) {
+  async create(params) {
+    const {
+      taskTemplateId,
+      workflowId,
+      documentId,
+      userId,
+      performerUnits = [],
+      requiredPerformerUnits = [],
+      performerUsers = [],
+      performerUsersIpn = [],
+      performerUsersEmail = [],
+      performerUserNames = [],
+      signerUsers = [],
+      onlyForHeads = false,
+      dueDate,
+      isEntry,
+      copyFrom,
+      name,
+      observerUnits,
+      labels = [],
+      meta = {},
+      version,
+    } = params;
+    const isSystem = ownFlag(params, 'isSystem');
     // Prepare task record.
     const task = this.prepareForModel({
       taskTemplateId,

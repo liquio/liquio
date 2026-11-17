@@ -37,6 +37,7 @@ import { DocumentSigningBusiness } from './signing';
 import { DocumentPaymentBusiness } from './payment';
 import type { UserUnitIds } from './types';
 import { getLog, getModels, getBusinesses, getConfig, getMessageQueue } from '../../lib/context';
+import { ownFlag, ownValue } from '../../lib/own_flag';
 
 // Constants.
 const EMPTY_DOCUMENT_DATA = '{}';
@@ -220,16 +221,15 @@ export class DocumentBusiness extends Business {
     userId: string,
     userUnitIds: UserUnitIds,
     userInfo: any = undefined,
-    {
-      isFromSystemTask = false,
-      isKeepDocumentFile = false,
-      triggerPath = [],
-      checkSchemaAllowList = false,
-    }: { isFromSystemTask?: boolean; isKeepDocumentFile?: boolean; triggerPath?: string[]; checkSchemaAllowList?: boolean } = {},
+    options: { isFromSystemTask?: boolean; isKeepDocumentFile?: boolean; triggerPath?: string[]; checkSchemaAllowList?: boolean } = {},
   ): Promise<DocumentEntity> {
     if (!Array.isArray(properties)) {
       throw new InvalidParamsError('Invalid property path.');
     }
+    const isFromSystemTask = ownFlag(options, 'isFromSystemTask');
+    const isKeepDocumentFile = ownFlag(options, 'isKeepDocumentFile');
+    const checkSchemaAllowList = ownFlag(options, 'checkSchemaAllowList');
+    const triggerPath = ownValue<string[]>(options, 'triggerPath', []);
     const invalidPaths = properties.filter((p) => typeof p?.path !== 'string' || p.path === '' || hasUnsafePathSegment(p.path));
     if (invalidPaths.length > 0) {
       throw new InvalidParamsError('Invalid property path.', {

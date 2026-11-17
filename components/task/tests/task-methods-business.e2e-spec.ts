@@ -330,6 +330,22 @@ describe('Task business methods', () => {
       delete config.system_task;
     });
 
+    it('drops RMQ messages claiming other-system creation for templates outside the allow-list', async () => {
+      const config = getConfig();
+      const createSpy = jest.spyOn(biz(), 'create').mockResolvedValue({ id: 't1' } as any);
+      try {
+        config.system_task = { isAllowedCreateByOtherSystems: true, tasksTemplateIds: [5] };
+        await biz().createFromMessage({ isCreateByOtherSystem: true, taskTemplateId: 6, workflowId: 'w1', userId: 'u1' });
+        expect(createSpy).not.toHaveBeenCalled();
+
+        await biz().createFromMessage({ isCreateByOtherSystem: true, taskTemplateId: 5, workflowId: 'w1', userId: 'u1' });
+        expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ isCreateByOtherSystem: true, isCreateFromRmqMessage: true }));
+      } finally {
+        delete config.system_task;
+        createSpy.mockRestore();
+      }
+    });
+
     it('runs extended access checks', async () => {
       const document = { id: 'd1', data: { amount: 5 } };
       await expect(biz().extendedAccessCheck({}, document, USER)).rejects.toThrow('Invalid extendedAccessCheck');
