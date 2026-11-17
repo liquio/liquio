@@ -23,6 +23,7 @@ describe('Group C - liquio registers provider', () => {
     await TestApp.afterAll(app);
   });
   afterEach(async () => {
+    delete (Object.prototype as any).polluted;
     provider.sandbox = undefined;
     jest.restoreAllMocks();
     nock.cleanAll();
@@ -300,6 +301,29 @@ describe('Group C - liquio registers provider', () => {
       const result = await provider.updateRecord('r1', { data: { new: 'v' } }, ctx());
       expect(result).toEqual({ data: { ok: true } });
       expect(scope.isDone()).toBe(true);
+    });
+
+    it('updateRecord skips keys with prototype segments', async () => {
+      nock(REG)
+        .get('/records/r1')
+        .reply(200, { data: { data: { keep: 1 } } });
+      const scope = nock(REG)
+        .put('/records/r1', (body) => {
+          expect(body.data).toEqual({ keep: 1, ok: 'v' });
+          return true;
+        })
+        .reply(200, { data: { ok: true } });
+      const data = Object.assign(
+        { ok: 'v', '__proto__.polluted': 1, '[constructor][prototype][polluted]': 1, 'a.prototype.polluted': 1 },
+        JSON.parse('{"__proto__": {"polluted": 1}}'),
+      );
+      Object.defineProperty(data, '__proto__', { value: { polluted: 1 }, enumerable: true });
+      await provider.updateRecord('r1', { data }, ctx());
+      expect(scope.isDone()).toBe(true);
+      expect(({} as any).polluted).toBeUndefined();
+      const entry: any = app.log.logs.find((l) => l.type === 'update-record|unsafe-key-skipped');
+      expect(entry.data.count).toBe(4);
+      expect(JSON.stringify(entry.data)).not.toContain('"v"');
     });
 
     it('updateRecord fails when the record has no data', async () => {

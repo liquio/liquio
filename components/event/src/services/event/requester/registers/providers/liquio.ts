@@ -7,6 +7,15 @@ const { prepareAxiosErrorToLog } = Helpers;
 import { FILE_DOCUMENT_TEMPLATE_ID } from '../../../../../constants/common';
 import { getLog } from '../../../../../lib/context';
 
+const UNSAFE_PATH_SEGMENTS = ['__proto__', 'constructor', 'prototype'];
+// Same normalisation as prop-by-path: "a[b]c" -> "a.b.c".
+const hasUnsafePathSegment = (path: string): boolean =>
+  path
+    .replace(/\[/g, '.')
+    .replace(/]/g, '.')
+    .split('.')
+    .some((segment) => UNSAFE_PATH_SEGMENTS.includes(segment));
+
 /**
  * Liquio provider.
  * @extends Provider
@@ -531,9 +540,17 @@ export class LiquioProvider extends Provider {
       throw error;
     }
     const newRecordData: any = { ...existingRecordData };
+    const skippedKeys: string[] = [];
     for (const recordDataKey in record.data) {
-      const recordDataValue = record.data[recordDataKey];
-      PropByPath.set(newRecordData, recordDataKey, recordDataValue);
+      if (!Object.prototype.hasOwnProperty.call(record.data, recordDataKey)) continue;
+      if (hasUnsafePathSegment(recordDataKey)) {
+        skippedKeys.push(recordDataKey.slice(0, 64));
+        continue;
+      }
+      PropByPath.set(newRecordData, recordDataKey, record.data[recordDataKey]);
+    }
+    if (skippedKeys.length > 0) {
+      getLog().save('update-record|unsafe-key-skipped', { id, count: skippedKeys.length, keys: skippedKeys.slice(0, 10) }, 'warn');
     }
     record.data = newRecordData;
 
