@@ -7,7 +7,7 @@ import jcopy from 'jcopy';
 import { Sandbox } from '@liquio/back-core';
 
 import { JSONPath } from '../lib/jsonpath';
-import { isUnsafePathSegment, findUnsafeDataKeys } from '../lib/document_data_keys';
+import { isValidDocumentPath, findUnsafeDataKeys } from '../lib/document_data_keys';
 import { Controller } from './controller';
 import { getBusinesses, getConfig, getLog, getMessageQueue, getModels, getRedisClient } from '../lib/context';
 import { DocumentAttachmentEntity } from '../entities/document_attachment';
@@ -305,11 +305,9 @@ export class DocumentController extends Controller {
       }
 
       // Check property path.
-      const invalidPathPart = (pathPart) => pathPart === '' || !pathPart.match(/^[a-zA-Zа-яА-ЯіІїЇ0-9_]+$/) || isUnsafePathSegment(pathPart);
-      const invalidPath = (path) => typeof path !== 'string' || path.split('.').some(invalidPathPart);
-      if (properties.some((v) => invalidPath(v.path))) {
+      if (properties.some((v) => !isValidDocumentPath(v.path))) {
         const invalidPaths = properties
-          .filter((v) => invalidPath(v.path))
+          .filter((v) => !isValidDocumentPath(v.path))
           .map((v) => (typeof v.path === 'string' ? v.path.slice(0, 64) : typeof v.path));
         throw new InvalidParamsError('Invalid property path.', { cause: invalidPaths });
       }
@@ -321,7 +319,7 @@ export class DocumentController extends Controller {
       }
 
       // Check trigger path.
-      if (!Array.isArray(triggerPath) || triggerPath.some(invalidPath)) {
+      if (!Array.isArray(triggerPath) || triggerPath.some((p) => !isValidDocumentPath(p))) {
         throw new InvalidParamsError('Invalid trigger path.', { cause: triggerPath });
       }
 
@@ -659,13 +657,17 @@ export class DocumentController extends Controller {
     const documentId = req.params.id;
     const originalFileName = normalizeFileName(req.query.file_name);
     const labels = (Array.isArray(req.query.labels) ? req.query.labels : [req.query.labels || '']).filter((v) => !!v);
-    const metaString = req.query.meta ? decodeURIComponent(req.query.meta) : '{}';
-    const meta = JSON.parse(metaString);
     const documentPath = req.query.document_path;
     const contentType = req.query.content_type || req.headers['content-type'];
     const contentLength = req.query.content_length || req.headers['content-length'];
     const userId = this.getRequestUserId(req);
     const userUnitIds = this.getRequestUserUnitIds(req);
+
+    // Check document path.
+    if (typeof documentPath !== 'undefined' && documentPath !== '' && !isValidDocumentPath(documentPath)) {
+      const cause = [typeof documentPath === 'string' ? documentPath.slice(0, 64) : typeof documentPath];
+      return this.responseError(res, new InvalidParamsError('Invalid document path.', { cause }));
+    }
 
     // Check file extensions.
     if (
@@ -675,7 +677,13 @@ export class DocumentController extends Controller {
     }
 
     // Check meta.
-    if (typeof meta !== 'object') {
+    let meta;
+    try {
+      meta = JSON.parse(req.query.meta ? decodeURIComponent(req.query.meta) : '{}');
+    } catch {
+      return this.responseError(res, 'Invalid file meta', 400);
+    }
+    if (meta === null || typeof meta !== 'object' || findUnsafeDataKeys(meta, 'meta').length > 0) {
       return this.responseError(res, 'Invalid file meta', 400);
     }
 

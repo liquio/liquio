@@ -1,6 +1,43 @@
-import { isUnsafeDataKey, isUnsafePathSegment, findUnsafeDataKeys } from './document_data_keys';
+import {
+  isUnsafeDataKey,
+  isUnsafePathSegment,
+  findUnsafeDataKeys,
+  isValidDocumentPath,
+  getPathSegments,
+  hasUnsafePathSegment,
+} from './document_data_keys';
 
 describe('document_data_keys', () => {
+  describe('isValidDocumentPath', () => {
+    it.each(['files.0', 'step.Поле_1.2', 'initData.attachmentsSignatures.3'])('accepts %s', (path) => {
+      expect(isValidDocumentPath(path)).toBe(true);
+    });
+
+    it.each(['', 'a..b', '[__proto__][x]', '__proto__.x', 'a.constructor.prototype.x', 'a.prototype', 'a-b', 'a[0]', 123, ['a'], {}, undefined])(
+      'rejects %p',
+      (path) => {
+        expect(isValidDocumentPath(path)).toBe(false);
+      },
+    );
+  });
+
+  describe('getPathSegments', () => {
+    it('normalises brackets and drops empty segments', () => {
+      expect(getPathSegments('a[b]c')).toEqual(['a', 'b', 'c']);
+      expect(getPathSegments('[__proto__][x]')).toEqual(['__proto__', 'x']);
+      expect(getPathSegments('a..b')).toEqual(['a', 'b']);
+    });
+  });
+
+  describe('hasUnsafePathSegment', () => {
+    it('detects raw-bracket, dotted and mixed forms', () => {
+      expect(hasUnsafePathSegment('[__proto__][x]')).toBe(true);
+      expect(hasUnsafePathSegment('a.constructor.prototype.x')).toBe(true);
+      expect(hasUnsafePathSegment('a[constructor].prototype')).toBe(true);
+      expect(hasUnsafePathSegment('files.0')).toBe(false);
+    });
+  });
+
   describe('isUnsafePathSegment', () => {
     it('detects prototype names only', () => {
       expect(isUnsafePathSegment('__proto__')).toBe(true);
