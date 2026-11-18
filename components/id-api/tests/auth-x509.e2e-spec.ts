@@ -2,6 +2,7 @@ import nock from 'nock';
 import jwt from 'jsonwebtoken';
 
 import { TestApp, config } from './test_app';
+import { SIGN_CHALLENGE_TYPE } from '../src/services/eds.service';
 
 describe('AuthController - x509', () => {
   let app: TestApp;
@@ -14,7 +15,7 @@ describe('AuthController - x509', () => {
     content: Buffer.from(content).toString('base64'),
     pem: '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----',
   });
-  const issueToken = () => jwt.sign({ random: Math.random().toString() }, config.jwt!.secret as string, { expiresIn: 60 });
+  const issueToken = () => jwt.sign({ typ: SIGN_CHALLENGE_TYPE, random: Math.random().toString() }, config.jwt!.secret as string, { expiresIn: 60 });
 
   beforeAll(async () => {
     await TestApp.beforeAll();
@@ -223,6 +224,15 @@ describe('AuthController - x509', () => {
       await app.request().post('/authorise/x509').send({ pkcs7: 'tampered', token }).expect(401);
 
       expect(await app.model('user').count()).toBe(before);
+    });
+
+    it('rejects a same-secret JWT that is not a sign challenge', async () => {
+      nock.cleanAll();
+      const token = jwt.sign({ userId: 'u1' }, config.jwt!.secret as string, { expiresIn: 60 });
+      nock('http://sign-tool').post('/x509/signature-info').once().reply(200, signToolReply(token));
+      await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+      expect(nock.isDone()).toBe(false);
+      nock.cleanAll();
     });
 
     it('rejects a token that was not issued by the server', async () => {

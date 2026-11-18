@@ -6,7 +6,7 @@ import nock from 'nock';
 
 import { TestApp, config } from './test_app';
 import { Services } from '../src/services';
-import { EdsService } from '../src/services/eds.service';
+import { EdsService, SIGN_CHALLENGE_TYPE } from '../src/services/eds.service';
 import { PingRequestService } from '../src/services/ping_request.service';
 import { X509Service } from '../src/services/x509.service';
 import { Errors } from '../src/lib/errors';
@@ -558,6 +558,7 @@ describe('Lib and services coverage (group C)', () => {
     it('getRandomContentToSign issues a verifiable JWT', async () => {
       const token = await make().getRandomContentToSign();
       const payload = jwt.verify(token, config.jwt!.secret!) as any;
+      expect(payload.typ).toBe(SIGN_CHALLENGE_TYPE);
       expect(payload.random).toMatch(/^[0-9a-f]{128}$/);
       expect(payload.exp - payload.iat).toBe(config.jwt!.expiresIn);
       const defaultTtl = jwt.decode(await make({ jwt: { secret: 's' } }).getRandomContentToSign()) as any;
@@ -575,7 +576,7 @@ describe('Lib and services coverage (group C)', () => {
       await expect(svc.checkRandomContentSign('not-a-jwt', 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
       const token = await svc.getRandomContentToSign();
       await expect(make({ jwt: {}, encryption: undefined }).checkRandomContentSign(token, 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
-      const expired = jwt.sign({ a: 1 }, config.jwt!.secret!, { expiresIn: -10 });
+      const expired = jwt.sign({ typ: SIGN_CHALLENGE_TYPE, a: 1 }, config.jwt!.secret!, { expiresIn: -10 });
       await expect(svc.checkRandomContentSign(expired, 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
     });
 

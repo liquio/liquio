@@ -16,7 +16,7 @@ jest.mock('./base_service', () => ({
 
 import jwt from 'jsonwebtoken';
 
-import { EdsService } from './eds.service';
+import { EdsService, SIGN_CHALLENGE_TYPE } from './eds.service';
 
 const SECRET = 'test-secret';
 
@@ -66,7 +66,7 @@ describe('EdsService.checkRandomContentSign', () => {
   });
 
   it('rejects an expired token', async () => {
-    const expired = jwt.sign({ random: 'x' }, SECRET, { expiresIn: -10 });
+    const expired = jwt.sign({ typ: SIGN_CHALLENGE_TYPE, random: 'x' }, SECRET, { expiresIn: -10 });
     x509.getSignatureInfo.mockResolvedValue(signInfo(expired));
     await expect(service.checkRandomContentSign(expired, 'sig')).rejects.toThrow();
     expect(x509.getSignatureInfo).not.toHaveBeenCalled();
@@ -102,6 +102,23 @@ describe('EdsService.checkRandomContentSign', () => {
     const token = await issue();
     x509.getSignatureInfo.mockResolvedValue(signInfo(token));
     await service.checkRandomContentSign(token, 'sig');
+    expect(JSON.stringify(mockLog.save.mock.calls)).not.toContain(token);
+  });
+
+  it('issues a token carrying the sign-challenge type', async () => {
+    const token = await issue();
+    expect((jwt.decode(token) as jwt.JwtPayload).typ).toBe(SIGN_CHALLENGE_TYPE);
+  });
+
+  it.each([
+    ['a user JWT', { userId: 'u1', authTokens: { accessToken: 'a' } }],
+    ['a JWT with another typ', { typ: 'other', random: 'x' }],
+  ])('rejects %s signed with the same secret', async (_name, body) => {
+    const token = jwt.sign(body, SECRET, { expiresIn: 60 });
+    x509.getSignatureInfo.mockResolvedValue(signInfo(token));
+    await expect(service.checkRandomContentSign(token, 'sig')).rejects.toThrow('Invalid or expired token.');
+    expect(x509.getSignatureInfo).not.toHaveBeenCalled();
+    expect(mockLog.save).toHaveBeenCalledWith('check-sign-token-wrong-type', {}, 'error');
     expect(JSON.stringify(mockLog.save.mock.calls)).not.toContain(token);
   });
 });

@@ -17,6 +17,9 @@ const ID_CARD_TYPE = 'idCard';
 
 const USED_TOKEN_LOCK_PREFIX = 'eds-used-token';
 
+/** Value of the `typ` claim that marks a JWT as a sign challenge issued by `getRandomContentToSign`. */
+export const SIGN_CHALLENGE_TYPE = 'sign-challenge';
+
 export interface IpnObject {
   DRFO?: string;
   EDRPOU?: string;
@@ -43,6 +46,7 @@ export class EdsService extends BaseService {
   async getRandomContentToSign() {
     // Prepare payload for JWT.
     const payload = {
+      typ: SIGN_CHALLENGE_TYPE,
       timestamp: Date.now(),
       random: crypto.randomBytes(RANDOM_BYTES_LENGTH).toString(RANDOM_BYTES_STRING_ENCODING),
     };
@@ -105,13 +109,17 @@ export class EdsService extends BaseService {
       throw new Error(Errors.List.INVALID_TOKEN.message);
     }
 
-    let expiresAtSeconds: number;
+    let payload: jwt.JwtPayload;
     try {
-      const payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
-      expiresAtSeconds = payload.exp ?? Math.floor(Date.now() / 1000) + JWT_DEFAULT_EXPIRES_IN;
+      payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
     } catch {
       throw new Error(Errors.List.INVALID_TOKEN.message);
     }
+    if (typeof payload !== 'object' || payload?.typ !== SIGN_CHALLENGE_TYPE) {
+      this.log.save('check-sign-token-wrong-type', {}, 'error');
+      throw new Error(Errors.List.INVALID_TOKEN.message);
+    }
+    const expiresAtSeconds = payload.exp ?? Math.floor(Date.now() / 1000) + JWT_DEFAULT_EXPIRES_IN;
 
     const result = await this.processSignatureInfo(signature, token);
 
