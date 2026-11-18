@@ -45,3 +45,15 @@ describe('BpmnTaskCore.stop redis cleanup', () => {
     await expect(new BpmnTaskCore().stop()).resolves.toBeUndefined();
   });
 });
+
+describe('BpmnTaskCore.init order', () => {
+  it('freezes Object.prototype after setup and before queue consumption and the daemon start', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const source: string = require('fs').readFileSync(require('path').join(__dirname, 'bootstrap.ts'), 'utf8');
+    const at = (needle: string) => source.indexOf(needle);
+    expect(at('this.routerService.init(')).toBeGreaterThan(-1);
+    expect(at('freezeObjectPrototype();')).toBeGreaterThan(at('this.routerService.init('));
+    expect(at('await messageQueue.init();')).toBeGreaterThan(at('freezeObjectPrototype();'));
+    expect(at('externalServicesStatusesDaemon.start()')).toBeGreaterThan(at('await messageQueue.init();'));
+  });
+});

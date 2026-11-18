@@ -127,6 +127,88 @@ describe('Document controller flows', () => {
     });
   });
 
+  describe('POST /documents/:id/attachments path and meta validation', () => {
+    const attack = 'isCreateByOtherSystem';
+    const cases: [string, string][] = [];
+    for (const name of ['__proto__', 'constructor', 'prototype']) {
+      const chain = name === 'constructor' ? ['constructor', 'prototype'] : [name];
+      cases.push([`raw ${name}`, `file_name=a.txt&document_path=${chain.map((k) => `[${k}]`).join('')}[${attack}]`]);
+      cases.push([`encoded ${name}`, `file_name=a.txt&document_path=${chain.map((k) => `%5B${k}%5D`).join('')}%5B${attack}%5D`]);
+      cases.push([`dotted ${name}`, `file_name=a.txt&document_path=${[...chain, attack].join('.')}`]);
+    }
+
+    const post = (task: any, query: any) =>
+      as()('post', `/documents/${task.documentId}/attachments`).query(query).set('Content-Type', 'text/plain').send('hello');
+
+    const setup = async () => {
+      const config = getConfig();
+      config.documents = { ...config.documents, allowedFileExtensions: ['.TXT'] };
+      const task = await draft({ properties: { name: { type: 'string' }, files: { type: 'array', items: { type: 'object' } } } });
+      const send = jest
+        .spyOn(document().files.host.storageService.provider, 'uploadFileFromStream')
+        .mockResolvedValue({ id: 'uploaded-file' } as any);
+      return { task, send };
+    };
+
+    const expectNoSideEffects = async (task: any, send: jest.SpyInstance) => {
+      expect(send).not.toHaveBeenCalled();
+      expect(await app.model('documentAttachment').count({ where: { document_id: task.documentId } })).toBe(0);
+      expect(({} as any)[attack]).toBeUndefined();
+      expect(Object.prototype.hasOwnProperty.call(Object.prototype, attack)).toBe(false);
+    };
+
+    afterEach(() => {
+      delete (Object.prototype as any)[attack];
+    });
+
+    it('rejects unsafe document_path in raw, encoded and dotted forms', async () => {
+      const { task, send } = await setup();
+      for (const [name, query] of cases) {
+        const response = await post(task, query);
+        expect([name, response.status]).toEqual([name, 400]);
+        expect(JSON.stringify(response.body)).toContain('Invalid document path');
+        await expectNoSideEffects(task, send);
+      }
+    });
+
+    it('rejects repeated and object document_path', async () => {
+      const { task, send } = await setup();
+      expect((await post(task, 'file_name=a.txt&document_path=a&document_path=b')).status).toBe(400);
+      expect((await post(task, 'file_name=a.txt&document_path[x]=y')).status).toBe(400);
+      await expectNoSideEffects(task, send);
+    });
+
+    it('accepts an empty document_path without writing data', async () => {
+      const { task } = await setup();
+      const response = await post(task, 'file_name=a.txt&document_path=');
+      expect(response.status).toBe(200);
+      expect((await stored(task)).files).toBeUndefined();
+    });
+
+    it('accepts a dotted document_path', async () => {
+      const { task } = await setup();
+      expect((await post(task, { file_name: 'a.txt', document_path: 'files.0' })).status).toBe(200);
+      expect((await stored(task)).files[0].link).toBe('uploaded-file');
+    });
+
+    it('rejects invalid meta', async () => {
+      const { task, send } = await setup();
+      const metas = [
+        '%7Bbad',
+        'null',
+        encodeURIComponent('{"__proto__":{"x":1}}'),
+        encodeURIComponent('{"constructor":1}'),
+        encodeURIComponent('{"a}b":1}'),
+        '%E0%A4%A',
+      ];
+      for (const meta of metas) {
+        const response = await post(task, `file_name=a.txt&meta=${meta}`);
+        expect([meta, response.status]).toEqual([meta, 400]);
+      }
+      await expectNoSideEffects(task, send);
+    });
+  });
+
   describe('POST /documents/:id/calc', () => {
     const schema = {
       properties: {

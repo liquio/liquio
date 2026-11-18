@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import Ajv from 'ajv';
-import PropByPath from 'prop-by-path';
 import { Sandbox } from '@liquio/back-core';
 
+import PropByPath from '../../lib/prop_by_path';
 import { JSONPath } from '../../lib/jsonpath';
 import { DocumentHandler } from '../../lib/document_handler';
 import { Keywords } from './keywords';

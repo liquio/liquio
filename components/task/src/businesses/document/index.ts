@@ -1,9 +1,9 @@
 import flattening from 'flattening';
 import _ from 'lodash';
-import PropByPath from 'prop-by-path';
 import { getIdApiClient, IdApiClient, Sandbox } from '@liquio/back-core';
 import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
 
+import PropByPath from '../../lib/prop_by_path';
 import { ErrorMessage } from '../../constants/error';
 import { DocumentEntity } from '../../entities/document';
 import {
@@ -14,6 +14,7 @@ import {
   InvalidSchemaError,
   NotFoundError,
 } from '../../lib/errors';
+import { hasUnsafePathSegment, isUnsafePathSegment } from '../../lib/document_data_keys';
 import { DownloadToken } from '../../lib/download_token';
 import { Eds } from '../../lib/eds';
 import { ExternalReader } from '../../lib/external_reader';
@@ -36,6 +37,7 @@ import { DocumentSigningBusiness } from './signing';
 import { DocumentPaymentBusiness } from './payment';
 import type { UserUnitIds } from './types';
 import { getLog, getModels, getBusinesses, getConfig, getMessageQueue } from '../../lib/context';
+import { ownFlag, ownValue } from '../../lib/own_flag';
 
 // Constants.
 const EMPTY_DOCUMENT_DATA = '{}';
@@ -219,13 +221,22 @@ export class DocumentBusiness extends Business {
     userId: string,
     userUnitIds: UserUnitIds,
     userInfo: any = undefined,
-    {
-      isFromSystemTask = false,
-      isKeepDocumentFile = false,
-      triggerPath = [],
-      checkSchemaAllowList = false,
-    }: { isFromSystemTask?: boolean; isKeepDocumentFile?: boolean; triggerPath?: string[]; checkSchemaAllowList?: boolean } = {},
+    options: { isFromSystemTask?: boolean; isKeepDocumentFile?: boolean; triggerPath?: string[]; checkSchemaAllowList?: boolean } = {},
   ): Promise<DocumentEntity> {
+    if (!Array.isArray(properties)) {
+      throw new InvalidParamsError('Invalid property path.');
+    }
+    const isFromSystemTask = ownFlag(options, 'isFromSystemTask');
+    const isKeepDocumentFile = ownFlag(options, 'isKeepDocumentFile');
+    const checkSchemaAllowList = ownFlag(options, 'checkSchemaAllowList');
+    const triggerPath = ownValue<string[]>(options, 'triggerPath', []);
+    const invalidPaths = properties.filter((p) => typeof p?.path !== 'string' || p.path === '' || hasUnsafePathSegment(p.path));
+    if (invalidPaths.length > 0) {
+      throw new InvalidParamsError('Invalid property path.', {
+        cause: invalidPaths.map((p) => (typeof p?.path === 'string' ? p.path.slice(0, 64) : typeof p?.path)),
+      });
+    }
+
     // Get document.
     const document: any = await this.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     if (!document) {
@@ -424,6 +435,9 @@ export class DocumentBusiness extends Business {
    * @param path Path.
    */
   ensureArraysInPath(object: Record<string, any>, path: string): void {
+    if (path.split('.').some(isUnsafePathSegment)) {
+      throw new InvalidParamsError('Invalid property path.');
+    }
     const pathArray = path.split('.');
     let currentPosition = object;
 

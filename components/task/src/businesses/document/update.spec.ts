@@ -148,6 +148,21 @@ describe('DocumentBusiness.update', () => {
     await documentBusiness.update('document-id', [{ path: 'step1.fieldA', value: 'A' }], 'user-id', { all: [], head: [], member: [] } as any);
     expect(updateData).toHaveBeenCalledWith('document-id', 'user-id', expect.any(Object), true, false);
   });
+
+  it('ignores flags and triggerPath inherited by the options object', async () => {
+    const options = Object.create({ isFromSystemTask: true, isKeepDocumentFile: true, triggerPath: 'not-an-array' });
+    await documentBusiness.update(
+      'document-id',
+      [{ path: 'step1.initData', value: 'I' }],
+      'user-id',
+      { all: [], head: [], member: [] } as any,
+      undefined,
+      options,
+    );
+    expect(updateData).toHaveBeenCalledWith('document-id', 'user-id', expect.any(Object), true, false);
+    const [, , writtenData] = updateData.mock.calls[0];
+    expect(writtenData.step1.initData).toBeUndefined();
+  });
 });
 
 describe('DocumentBusiness.update with calcTriggers and triggerPath', () => {

@@ -1,6 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
-import { getBusinesses, getConfig, getModels } from '../src/lib/context';
+import { getBusinesses, getConfig, getLog, getModels } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 const IPN = '1234567890';
@@ -282,6 +282,18 @@ describe('Task business methods', () => {
     });
   });
 
+  describe('workflow errors', () => {
+    it('never rejects when the insert fails and logs without data', async () => {
+      const task = await draft();
+      const workflowId = (await models().task.findById(task.id)).workflowId;
+      jest.spyOn(models().workflowError.model, 'create').mockRejectedValueOnce(new Error('db down'));
+      const save = jest.spyOn(getLog(), 'save');
+      await expect(models().workflowError.create({ error: 'x', traceMeta: { workflowId } })).resolves.toBeUndefined();
+      expect(save).toHaveBeenCalledWith('workflow-error-save-failed', expect.not.objectContaining({ data: expect.anything() }), 'error');
+      expect(save).toHaveBeenCalledWith('workflow-error-save-failed', expect.objectContaining({ workflowId, message: 'db down' }), 'error');
+    });
+  });
+
   describe('helpers', () => {
     it('reads signature info and keeps errors per signature', async () => {
       jest
@@ -316,6 +328,22 @@ describe('Task business methods', () => {
       config.system_task = { isAllowedCreateByOtherSystems: false };
       expect(await biz().checkCreateByOtherSystemFromMessage({ taskTemplateId: 5 })).toBe(false);
       delete config.system_task;
+    });
+
+    it('drops RMQ messages claiming other-system creation for templates outside the allow-list', async () => {
+      const config = getConfig();
+      const createSpy = jest.spyOn(biz(), 'create').mockResolvedValue({ id: 't1' } as any);
+      try {
+        config.system_task = { isAllowedCreateByOtherSystems: true, tasksTemplateIds: [5] };
+        await biz().createFromMessage({ isCreateByOtherSystem: true, taskTemplateId: 6, workflowId: 'w1', userId: 'u1' });
+        expect(createSpy).not.toHaveBeenCalled();
+
+        await biz().createFromMessage({ isCreateByOtherSystem: true, taskTemplateId: 5, workflowId: 'w1', userId: 'u1' });
+        expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ isCreateByOtherSystem: true, isCreateFromRmqMessage: true }));
+      } finally {
+        delete config.system_task;
+        createSpy.mockRestore();
+      }
     });
 
     it('runs extended access checks', async () => {

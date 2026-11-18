@@ -22,11 +22,11 @@ async function createCabinetApi(page: Page) {
   const token = await page.evaluate(() => localStorage.getItem('token'));
   debug('createCabinetApi: Token found');
 
-  const request = async (method: string, path: string, data?: unknown): Promise<CabinetApiResponse> => {
-    debug(`createCabinetApi: ${method} ${path} ${data ? JSON.stringify(data) : ''}`);
+  const send = async (method: string, path: string, data: unknown, contentType?: string): Promise<CabinetApiResponse> => {
+    debug(`createCabinetApi: ${method} ${path} ${data && !Buffer.isBuffer(data) ? JSON.stringify(data) : ''}`);
     const response = await page.request.fetch(`${CABINET_API_URL}/${path}`, {
       method,
-      headers: { token },
+      headers: contentType ? { token, 'content-type': contentType } : { token },
       data,
       failOnStatusCode: false,
     });
@@ -44,6 +44,9 @@ async function createCabinetApi(page: Page) {
     return { status: response.status(), body, buffer };
   };
 
+  const request = (method: string, path: string, data?: unknown) => send(method, path, data);
+  const requestRaw = (method: string, path: string, data: Buffer, contentType = 'application/pdf') => send(method, path, data, contentType);
+
   return {
     createTask: (workflowTemplateId: number, taskTemplateId: number) => request('POST', 'tasks', { workflowTemplateId, taskTemplateId }),
     getTask: (taskId: string) => request('GET', `tasks/${taskId}`),
@@ -53,6 +56,8 @@ async function createCabinetApi(page: Page) {
     validateDocument: (documentId: string, { commit = false }: { commit?: boolean } = {}) =>
       request('POST', `documents/${documentId}/validate?commit=${commit}`, {}),
     createPdf: (documentId: string) => request('POST', `documents/${documentId}/pdf`, {}),
+    uploadAttachment: (documentId: string, rawQuery: string, body: Buffer, contentType = 'application/pdf') =>
+      requestRaw('POST', `documents/${documentId}/attachments?${rawQuery}`, body, contentType),
     commitTask: (taskId: string) => request('POST', `tasks/${taskId}/commit`, {}),
   };
 }

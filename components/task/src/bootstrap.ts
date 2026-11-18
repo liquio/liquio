@@ -5,6 +5,7 @@ import { Log, ConsoleLogProvider, Sandbox, getRegisterApiClient } from '@liquio/
 import { Db } from './lib/db';
 import { PgPubSub } from './lib/pgpubsub';
 import { PaymentService } from './services/payment';
+import { freezeObjectPrototype } from './lib/freeze_object_prototype';
 import { MessageQueue } from './lib/message_queue';
 import { RedisClient } from './lib/redis_client';
 import { Models } from './models';
@@ -242,7 +243,6 @@ export class BpmnTaskCore {
       },
     });
 
-    await messageQueue.init();
     setAppContext({ messageQueue });
 
     // Init file generator.
@@ -251,19 +251,23 @@ export class BpmnTaskCore {
     // Init storage service.
     new StorageService(customStorageProvider);
 
+    // Init router.
+    if (!disableRouter) {
+      this.routerService = new RouterService(config);
+      await this.routerService.init({ customValidators, customRoutes });
+    }
+
+    // Setup is complete: freeze Object.prototype before any input (queue messages, HTTP requests) is processed.
+    freezeObjectPrototype();
+
+    // Start consuming the message queue.
+    await messageQueue.init();
+
     // Start external service statuses daemon.
     if (getConfig().external_services?.daemon?.isEnbaled) {
       const externalServicesStatusesDaemon = new ExternalServicesStatusesDaemon(getConfig().external_services.daemon);
       externalServicesStatusesDaemon.start();
     }
-
-    if (disableRouter) {
-      return;
-    }
-
-    // Init router.
-    this.routerService = new RouterService(config);
-    await this.routerService.init({ customValidators, customRoutes });
   }
 
   async listen() {

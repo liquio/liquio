@@ -1,6 +1,6 @@
-import PropByPath from 'prop-by-path';
 import { Sandbox } from '@liquio/back-core';
 
+import PropByPath from '../../../lib/prop_by_path';
 import { DocumentHandler } from '../../../lib/document_handler';
 import { getLog } from '../../../lib/context';
 

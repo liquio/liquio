@@ -6,8 +6,28 @@ const FORBIDDEN_KEY_CHARS = /[{}<>"'`$^|\\\u0000-\u001f\u007f]/;
 
 export const isUnsafePathSegment = (segment: string): boolean => UNSAFE_KEY_NAMES.includes(segment);
 
+const DOCUMENT_PATH_SEGMENT = /^[a-zA-Zа-яА-ЯіІїЇ0-9_]+$/;
+
+export const isValidDocumentPathSegment = (segment: string): boolean =>
+  segment !== '' && DOCUMENT_PATH_SEGMENT.test(segment) && !isUnsafePathSegment(segment);
+
+export const isValidDocumentPath = (path: unknown): path is string => typeof path === 'string' && path.split('.').every(isValidDocumentPathSegment);
+
+// Same normalisation as prop-by-path: "a[b]c" -> ["a", "b", "c"], empty segments dropped.
+export const getPathSegments = (path: string): string[] =>
+  path
+    .replace(/\[/g, '.')
+    .replace(/]/g, '.')
+    .split('.')
+    .filter((segment) => segment.length > 0);
+
+export const hasUnsafePathSegment = (path: string): boolean => getPathSegments(path).some(isUnsafePathSegment);
+
 export const isUnsafeDataKey = (key: string): boolean =>
-  UNSAFE_KEY_NAMES.includes(key) || key.length > MAX_DATA_KEY_LENGTH || FORBIDDEN_KEY_CHARS.test(key);
+  UNSAFE_KEY_NAMES.includes(key) ||
+  getPathSegments(key).some(isUnsafePathSegment) ||
+  key.length > MAX_DATA_KEY_LENGTH ||
+  FORBIDDEN_KEY_CHARS.test(key);
 
 const truncateKey = (key: string): string => (key.length > MAX_REPORTED_KEY_LENGTH ? `${key.slice(0, MAX_REPORTED_KEY_LENGTH)}…` : key);
 

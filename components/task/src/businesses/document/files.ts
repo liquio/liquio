@@ -5,7 +5,8 @@ import nodeHtmlParser from 'node-html-parser';
 
 import { ErrorMessage } from '../../constants/error';
 import { DocumentAttachmentEntity } from '../../entities/document_attachment';
-import { BadRequestError, ForbiddenError, NotFoundError } from '../../lib/errors';
+import { isValidDocumentPath } from '../../lib/document_data_keys';
+import { BadRequestError, ForbiddenError, InvalidParamsError, NotFoundError } from '../../lib/errors';
 import { Business } from '../business';
 import type { DocumentBusiness } from './index';
 import type { UserUnitIds } from './types';
@@ -500,6 +501,9 @@ export class DocumentFileBusiness extends Business {
     // Check if no needs to save.
     if (!documentPath) {
       return;
+    }
+    if (!isValidDocumentPath(documentPath)) {
+      throw new InvalidParamsError('Invalid document path.');
     }
 
     // Define params.

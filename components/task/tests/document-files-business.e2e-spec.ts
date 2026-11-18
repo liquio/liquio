@@ -216,6 +216,22 @@ describe('Document files business', () => {
       expect(files().isDocumentPathToArray(5 as any)).toBeUndefined();
     });
 
+    it('refuses prototype paths and keeps data untouched', async () => {
+      const task = await draft();
+      const document = await getModels().document.findById(task.documentId);
+      const before = JSON.stringify((await app.model('document').findByPk(task.documentId)).data);
+      await expect(files().saveAttachmentToDocumentData({ id: 'a1' }, '[__proto__][isCreateByOtherSystem]', document, USER, units)).rejects.toThrow(
+        'Invalid document path',
+      );
+      for (const path of ['__proto__.isCreateByOtherSystem', '[constructor][prototype][isCreateByOtherSystem]', 'a.__proto__.x.0']) {
+        await expect((getBusinesses() as any).document.update(task.documentId, [{ path, value: { x: 1 } }], USER, units)).rejects.toThrow(
+          'Invalid property path',
+        );
+      }
+      expect(({} as any).isCreateByOtherSystem).toBeUndefined();
+      expect(JSON.stringify((await app.model('document').findByPk(task.documentId)).data)).toBe(before);
+    });
+
     it('queues pdf generation once and stores an external pdf', async () => {
       const task = await draft();
       const document = await getModels().document.findById(task.documentId);

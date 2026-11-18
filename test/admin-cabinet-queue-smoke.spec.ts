@@ -8,6 +8,8 @@ const CABINET_URL = 'http://localhost:8081';
 const ADMIN_API_URL = 'http://localhost:8102';
 
 const NOISE = /fonts\.googleapis|Failed to load resource|\[fetch-error\] \S+\/tasks\/\d+ 404/;
+// The editor sends DELETE /tasks/<bpmn element id> for elements that were never saved (non-numeric id) and admin-api answers 422; harmless
+const UNSAVED_ELEMENT_DELETE = /\[fetch-error\] http:\/\/localhost:8102\/tasks\/(?!\d+(?:\D|$))[^\s/?]+ 422/;
 const SPINNER = '.MuiCircularProgress-root,.MuiLinearProgress-root,[role=progressbar]';
 
 // Collects console and page errors (and non-GET admin-api calls) of a step
@@ -28,7 +30,7 @@ function watch(page: Page) {
   page.on('response', onResponse);
   return {
     writes,
-    relevant: () => errors.filter((e) => !NOISE.test(e)),
+    relevant: () => errors.filter((e) => !NOISE.test(e) && !UNSAVED_ELEMENT_DELETE.test(e)),
     stop: () => {
       page.off('console', onConsole);
       page.off('pageerror', onPageError);
@@ -157,7 +159,10 @@ test.describe.serial('Admin and cabinet smoke after the queue library upgrade', 
       await input.click();
       await input.pressSequentially('Liquio', { delay: 50 });
       await dlg.getByText('Liquio Admin (').click();
-      await dlg.getByRole('button', { name: /^add$/i }).click();
+      await dlg
+        .getByRole('row', { name: /Liquio Admin \(/ })
+        .getByRole('button', { name: /^add$/i })
+        .click();
       await expect.poll(() => w.writes.filter((x) => /^(POST|PUT) 2\d\d /.test(x)).length, { timeout: 15000 }).toBeGreaterThan(0);
       await dlg.getByRole('button', { name: /^close$/i }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 10000 });

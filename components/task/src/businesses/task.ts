@@ -3,9 +3,9 @@ import get from 'lodash/get';
 import set from 'lodash/set';
 import moment from 'moment-business-days';
 import validator from 'validator';
-import PropByPath from 'prop-by-path';
 import { getIdApiClient, IdApiClient, IdApiUserInfo, Sandbox } from '@liquio/back-core';
 
+import PropByPath from '../lib/prop_by_path';
 import { SignatureInfoEntity } from '../entities/signature_info';
 import { SystemNotifier } from '../lib/system_notifier';
 import { Business } from './business';
@@ -39,6 +39,7 @@ import {
 } from '../lib/errors';
 import { ErrorMessage } from '../constants/error';
 import { getBusinesses, getConfig, getLog, getMessageQueue, getModels } from '../lib/context';
+import { ownFlag } from '../lib/own_flag';
 
 // Constants.
 const ONCE_DEFINED_META_FIELDS = ['commitRequestMeta'];
@@ -822,12 +823,12 @@ export class TaskBusiness extends Business {
       performerUsers: performerUsersFromSystemTask = [],
       performerUsersIpn: performerUsersIpnFromSystemTask = [],
       performerUsersEmail: performerUsersEmailFromSystemTask = [],
-      isCreateByOtherSystem = false,
-      isCreateFromRmqMessage = false,
       enabledMocksHeader,
       isForwardedFromRegularUser,
       appendMeta,
     } = options;
+    const isCreateByOtherSystem = ownFlag(options, 'isCreateByOtherSystem');
+    const isCreateFromRmqMessage = ownFlag(options, 'isCreateFromRmqMessage');
     let { copyFrom, originalDocument, initData } = options;
     let isEntry = false;
     let copyPdfByDocumentId;
@@ -1967,7 +1968,8 @@ export class TaskBusiness extends Business {
    * @param {object} messageObject AMQP message object.
    */
   async createFromMessage(messageObject) {
-    if (messageObject.isCreateByOtherSystem && !this.checkCreateByOtherSystemFromMessage(messageObject)) return;
+    const isCreateByOtherSystem = ownFlag(messageObject, 'isCreateByOtherSystem');
+    if (isCreateByOtherSystem && !(await this.checkCreateByOtherSystemFromMessage(messageObject))) return;
     // Create.
     try {
       const createdTask = await this.create({
@@ -1985,7 +1987,7 @@ export class TaskBusiness extends Business {
         performerUsersIpn: messageObject.performerUsersIpn || [],
         performerUsersEmail: messageObject.performerUsersEmail || [],
         isCreateFromRmqMessage: true,
-        isCreateByOtherSystem: messageObject.isCreateByOtherSystem || false,
+        isCreateByOtherSystem,
       });
       if (!createdTask) {
         throw new Error("Task wasn't created.");
@@ -2109,7 +2111,8 @@ export class TaskBusiness extends Business {
    * @return {Promise<TaskEntity>}
    */
   async setStatusFinished(id, userId, userUnitIds, doNotCheckAccess = false, { user, units }: any = {}, requestMeta: any = {}, options: any = {}) {
-    const { isCreateByOtherSystem = false, isCreateFromRmqMessage = false } = options;
+    const isCreateByOtherSystem = ownFlag(options, 'isCreateByOtherSystem');
+    const isCreateFromRmqMessage = ownFlag(options, 'isCreateFromRmqMessage');
     // Get task.
     const task: any = await getModels().task.findById(id);
     if (!task || task.finished === true) {

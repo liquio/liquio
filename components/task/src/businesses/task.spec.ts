@@ -247,6 +247,14 @@ describe('TaskBusiness.create in an existing workflow', () => {
     await expect(taskBusiness.create({ ...baseOptions, [flag]: true })).rejects.toThrow('past access checks');
     expect(workflow.hasAccess).not.toHaveBeenCalled();
   });
+
+  it.each([['isCreateByOtherSystem'], ['isCreateFromRmqMessage']])('does not skip the access check for an inherited %s', async (flag) => {
+    workflow.hasAccess.mockReturnValue(false);
+    const options = Object.assign(Object.create({ [flag]: true }), { ...baseOptions });
+
+    await expect(taskBusiness.create(options)).rejects.toMatchObject({ httpStatusCode: 403 });
+    expect(workflow.hasAccess).toHaveBeenCalled();
+  });
 });
 
 describe('TaskBusiness.create performer resolution by email', () => {

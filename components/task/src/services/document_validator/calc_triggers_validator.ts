@@ -1,9 +1,9 @@
 import * as crypto from 'node:crypto';
 
 import _ from 'lodash';
-import PropByPath from 'prop-by-path';
 import { Sandbox } from '@liquio/back-core';
 
+import PropByPath from '../../lib/prop_by_path';
 import { JSONPath } from '../../lib/jsonpath';
 import { Paths } from './paths';
 import { getLog } from '../../lib/context';

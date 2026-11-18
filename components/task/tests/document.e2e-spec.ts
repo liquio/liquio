@@ -331,6 +331,12 @@ describe('Document', () => {
       expect(({} as any).polluted).toBeUndefined();
     });
 
+    it('rejects prototype segments in dotted value keys', async () => {
+      const res = await putDocument({ path: 'unknownStep', value: { 'a.__proto__': 1 } });
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body)).toContain('Invalid property key');
+    });
+
     it('rejects prototype names in nested value keys', async () => {
       const res = await putDocument({ properties: [{ path: 'step', value: { constructor: { prototype: { x: 1 } } } }] });
       expect(res.status).toBe(400);
