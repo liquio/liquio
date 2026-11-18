@@ -119,23 +119,6 @@
       "totp": {
         "requireUserToken": true
       },
-      "eds": {
-        "isEnabled": false,
-        "authorizationURL": "https://auth.js.sign.eu.iit.com.ua/",
-        "blacklistAcsk": [
-          "test.gov.ua",
-          "test.gov.ua",
-          "test.com.ua"
-        ],
-        "caServerList": "https://iit.com.ua/download/productfiles/CAs.json",
-        "callbackURL": "http://localhost:8080/authorise/eds/callback",
-        "clientID": "<REDACTED>",
-        "clientSecret": "<REDACTED>",
-        "customerURL": "https://auth.js.sign.eu.iit.com.ua/get-user-info",
-        "passReqToCallback": "true",
-        "showServerList": true,
-        "tokenURL": "https://auth.js.sign.eu.iit.com.ua/get-access-token"
-      },
       "local": {
         "isEnabled": true
       },

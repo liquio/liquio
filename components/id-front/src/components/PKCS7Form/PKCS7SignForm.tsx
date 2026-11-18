@@ -26,11 +26,6 @@ export interface PKCS7SignFormProps {
   t: Translate;
   setId: (elementName: string) => string;
   classes?: Record<string, string | undefined>;
-  // `OwnKeyLogin` passes these through `PKCS7Form`; the form never reads any of them (the callback is
-  // never called, signing goes straight to `handlePKCS7Auth`).
-  onSelectKey?: unknown;
-  onSignHash?: unknown;
-  getDataToSign?: unknown;
   auth?: unknown;
 }
 

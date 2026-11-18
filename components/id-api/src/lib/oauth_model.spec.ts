@@ -69,7 +69,7 @@ describe('OAuthModel.getClient', () => {
   });
 
   it('compares the secret in constant time', async () => {
-    const spy = jest.spyOn(require('crypto'), 'timingSafeEqual');
+    const spy = jest.spyOn(require('node:crypto'), 'timingSafeEqual');
 
     await model.getClient('client', 'topsecret');
     await expect(model.getClient('client', 'topsecreT')).rejects.toThrow();

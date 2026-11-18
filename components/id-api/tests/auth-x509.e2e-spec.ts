@@ -1,7 +1,9 @@
 import nock from 'nock';
+import supertest from 'supertest';
 import jwt from 'jsonwebtoken';
 
 import { TestApp, config } from './test_app';
+import { SIGN_CHALLENGE_TYPE } from '../src/services/eds.service';
 
 describe('AuthController - x509', () => {
   let app: TestApp;
@@ -14,7 +16,10 @@ describe('AuthController - x509', () => {
     content: Buffer.from(content).toString('base64'),
     pem: '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----',
   });
-  const issueToken = () => jwt.sign({ random: Math.random().toString() }, config.jwt!.secret as string, { expiresIn: 60 });
+  const issueToken = () => jwt.sign({ typ: SIGN_CHALLENGE_TYPE, random: Math.random().toString() }, config.jwt!.secret as string, { expiresIn: 60 });
+
+  const newAgent = () => supertest.agent(`http://localhost:${config.port}`);
+  const challenge = async (agent: ReturnType<typeof newAgent>) => (await agent.get('/authorise/eds/sign').expect(200)).body.token as string;
 
   beforeAll(async () => {
     await TestApp.beforeAll();
@@ -54,7 +59,8 @@ describe('AuthController - x509', () => {
     });
 
     it('should try to login with valid credentials', async () => {
-      const token = issueToken();
+      const agent = newAgent();
+      const token = await challenge(agent);
       nock('http://sign-tool')
         .post('/x509/signature-info')
         .once()
@@ -97,8 +103,7 @@ describe('AuthController - x509', () => {
             '-----END CERTIFICATE-----',
         });
 
-      await app
-        .request()
+      await agent
         .post('/authorise/x509')
         .send({ pkcs7: 'valid', token })
         .expect(200)
@@ -109,7 +114,8 @@ describe('AuthController - x509', () => {
     });
 
     it('should reject blocked user with valid x509 certificate', async () => {
-      const token = issueToken();
+      const agent = newAgent();
+      const token = await challenge(agent);
       await app.model('user').update(
         {
           isActive: false,
@@ -159,8 +165,7 @@ describe('AuthController - x509', () => {
             '-----END CERTIFICATE-----',
         });
 
-      await app
-        .request()
+      await agent
         .post('/authorise/x509')
         .send({ pkcs7: 'valid', token })
         .expect(403)
@@ -172,62 +177,119 @@ describe('AuthController - x509', () => {
 
   describe('PKCS#7 challenge flow (x509 with server-issued token)', () => {
     it('logs in when the signature is over the issued token, and rejects a replay of it', async () => {
-      const token = issueToken();
+      const agent = newAgent();
+      const token = await challenge(agent);
       nock('http://sign-tool').post('/x509/signature-info').twice().reply(200, signToolReply(token));
 
-      await app
-        .request()
+      await agent
         .post('/authorise/x509')
         .send({ pkcs7: 'valid', token })
         .expect(200)
         .expect((res) => expect(res.body.error).toBeNull());
 
-      await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+      await agent.post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
     });
 
     it('serves the challenge on GET /authorise/eds/sign and accepts it exactly once', async () => {
-      const res = await app.request().get('/authorise/eds/sign').expect(200);
+      const agent = newAgent();
+      const res = await agent.get('/authorise/eds/sign').expect(200);
       const { token } = res.body;
       expect(typeof token).toBe('string');
       expect(() => jwt.verify(token, config.jwt!.secret as string)).not.toThrow();
 
       nock('http://sign-tool').post('/x509/signature-info').twice().reply(200, signToolReply(token));
-      await app
-        .request()
+      await agent
         .post('/authorise/x509')
         .send({ pkcs7: 'valid', token })
         .expect(200)
         .expect((r) => expect(r.body.error).toBeNull());
-      await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+      await agent.post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
     });
 
     it('rejects a signature over different content than the issued token', async () => {
-      const token = issueToken();
+      const agent = newAgent();
+      const token = await challenge(agent);
       nock('http://sign-tool').post('/x509/signature-info').once().reply(200, signToolReply(issueToken()));
-      await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+      await agent.post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
     });
 
     it('rejects a forged signature refused by sign-tool', async () => {
-      const token = issueToken();
+      const agent = newAgent();
+      const token = await challenge(agent);
       nock('http://sign-tool').post('/x509/signature-info').once().reply(400, { cause: 'Signature verification failed' });
-      await app.request().post('/authorise/x509').send({ pkcs7: 'forged', token }).expect(401);
+      await agent.post('/authorise/x509').send({ pkcs7: 'forged', token }).expect(401);
     });
 
     it('rejects a tampered signerInfo / wrong signer cert refused by sign-tool, and creates no user', async () => {
-      const token = issueToken();
+      const agent = newAgent();
+      const token = await challenge(agent);
       const before = await app.model('user').count();
       nock('http://sign-tool')
         .post('/x509/signature-info')
         .once()
         .reply(400, { message: 'Failed to parse or extract signature info: Signature verification failed' });
-      await app.request().post('/authorise/x509').send({ pkcs7: 'tampered', token }).expect(401);
+      await agent.post('/authorise/x509').send({ pkcs7: 'tampered', token }).expect(401);
 
       expect(await app.model('user').count()).toBe(before);
+    });
+
+    it('rejects a same-secret JWT that is not a sign challenge', async () => {
+      nock.cleanAll();
+      const token = jwt.sign({ userId: 'u1' }, config.jwt!.secret as string, { expiresIn: 60 });
+      nock('http://sign-tool').post('/x509/signature-info').once().reply(200, signToolReply(token));
+      await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+      expect(nock.isDone()).toBe(false);
+      nock.cleanAll();
     });
 
     it('rejects a token that was not issued by the server', async () => {
       const token = jwt.sign({ random: 'x' }, 'another-secret', { expiresIn: 60 });
       await app.request().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+    });
+
+    it('rejects a challenge redeemed from another session, and still accepts it from the owner once', async () => {
+      nock.cleanAll();
+      const owner = newAgent();
+      const token = await challenge(owner);
+      nock('http://sign-tool').post('/x509/signature-info').once().reply(200, signToolReply(token));
+
+      await newAgent().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+      expect(nock.isDone()).toBe(false);
+
+      await owner
+        .post('/authorise/x509')
+        .send({ pkcs7: 'valid', token })
+        .expect(200)
+        .expect((r) => expect(r.body.error).toBeNull());
+      await owner.post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+      nock.cleanAll();
+    });
+
+    it('rejects a correctly typed token that was never issued to any session', async () => {
+      nock.cleanAll();
+      const token = issueToken();
+      nock('http://sign-tool').post('/x509/signature-info').once().reply(200, signToolReply(token));
+      await newAgent().post('/authorise/x509').send({ pkcs7: 'valid', token }).expect(401);
+      expect(nock.isDone()).toBe(false);
+      nock.cleanAll();
+    });
+
+    it('binds POST /authorise/eds/sign to the issuing session', async () => {
+      nock.cleanAll();
+      const owner = newAgent();
+      const token = await challenge(owner);
+      nock('http://sign-tool').post('/x509/signature-info').once().reply(200, signToolReply(token));
+
+      await newAgent().post('/authorise/eds/sign').send({ token, signature: 'valid' }).expect(400);
+      expect(nock.isDone()).toBe(false);
+
+      await owner
+        .post('/authorise/eds/sign')
+        .send({ token, signature: 'valid' })
+        .expect(200)
+        .expect((r) => expect(r.body.data?.signer ?? r.body.signer).toBeDefined());
+      await owner.post('/authorise/eds/sign').send({ token, signature: 'valid' }).expect(400);
+      nock.cleanAll();
     });
   });
 });

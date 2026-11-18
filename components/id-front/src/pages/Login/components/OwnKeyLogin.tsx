@@ -40,14 +40,11 @@ interface OwnKeyLoginProps extends WithStyles<typeof styles>, LoginStepProps {
   setLoginByOwnKey?: (value: boolean) => void;
 }
 
-// `setId`, `onSelectKey` and `setLoginByOwnKey` default as the old `defaultProps` did.
+// `setId` and `setLoginByOwnKey` default as the old `defaultProps` did.
 const OwnKeyLoginLayout = ({
   t,
   classes,
   setId = () => null,
-  onSelectKey = () => null,
-  getDataToSign,
-  onSignHash,
   auth,
   setLoginByOwnKey = () => null,
 }: OwnKeyLoginProps) => (
@@ -60,9 +57,6 @@ const OwnKeyLoginLayout = ({
     </Typography>
     <PKCS7Form
       auth={auth}
-      onSelectKey={onSelectKey}
-      onSignHash={onSignHash}
-      getDataToSign={getDataToSign}
       setId={(elementName) => setId(`sign-form-pkcs7-${elementName}`) as string}
     />
   </>

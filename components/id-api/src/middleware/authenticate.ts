@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 import OAuth2Server from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';

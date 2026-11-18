@@ -1,9 +1,9 @@
-import { execSync } from 'child_process';
-import http from 'http';
-import { AddressInfo } from 'net';
-import * as fs from 'fs';
-import * as path from 'path';
-import crypto from 'crypto';
+import { execSync } from 'node:child_process';
+import http from 'node:http';
+import { AddressInfo } from 'node:net';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import crypto from 'node:crypto';
 
 import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';

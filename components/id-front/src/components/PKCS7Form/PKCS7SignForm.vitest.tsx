@@ -273,18 +273,6 @@ describe('PKCS7SignForm', () => {
       });
       await waitFor(() => expect(locationStub.href).toBe('https://example.test/next'));
     });
-
-    it('is not given a callback shape: onSelectKey is accepted but never called', async () => {
-      const onSelectKey = vi.fn();
-      const { chooseFile, typePassword, signButton, p12File } = renderForm({ onSelectKey });
-      await chooseFile(p12File());
-      typePassword(PASSWORD);
-      await act(async () => {
-        fireEvent.click(signButton());
-      });
-      await waitFor(() => expect(mockedAuth).toHaveBeenCalled());
-      expect(onSelectKey).not.toHaveBeenCalled();
-    });
   });
 
   describe('error paths', () => {

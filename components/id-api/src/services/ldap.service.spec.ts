@@ -137,7 +137,7 @@ describe('LdapService', () => {
     });
 
     it('reads the CA from a file path', async () => {
-      const fs = require('fs');
+      const fs = require('node:fs');
       const spy = jest.spyOn(fs, 'readFileSync').mockReturnValue(Buffer.from('pem-from-file'));
       const service = createService({ connection: { url: 'ldaps://dc:636', tlsOptions: { ca: '/etc/ssl/ad-ca.pem' } } });
       await service.init();

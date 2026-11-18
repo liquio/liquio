@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 import { Strategy as OAuth2Strategy } from 'passport-oauth2';
 

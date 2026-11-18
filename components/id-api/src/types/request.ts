@@ -37,5 +37,7 @@ declare module 'express-session' {
     user?: any;
     forward?: string;
     flash?: Record<string, any>;
+    /** Pending sign challenges issued to this session: sha256 hex of the token and its JWT `exp` (seconds). */
+    signChallenges?: { hash: string; exp: number }[];
   }
 }

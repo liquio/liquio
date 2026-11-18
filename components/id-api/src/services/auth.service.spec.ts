@@ -25,7 +25,7 @@ jest.mock('@node-oauth/oauth2-server', () => {
   return { __esModule: true, default: MockOAuth2Server, InvalidClientError: Error, OAuthError: Error, Request: class {}, Response: class {} };
 });
 
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 
 import { Models } from '../models';
 import { AuthService, getTaskTokenCacheKey } from './auth.service';

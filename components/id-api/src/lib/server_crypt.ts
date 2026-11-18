@@ -1,5 +1,5 @@
 // Import.
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 // Constants.
 const ORIGINAL_DATA_ENCODING = 'utf8';

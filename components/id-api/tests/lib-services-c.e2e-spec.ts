@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 import { AxiosError } from 'axios';
 import jwt from 'jsonwebtoken';
@@ -6,7 +6,7 @@ import nock from 'nock';
 
 import { TestApp, config } from './test_app';
 import { Services } from '../src/services';
-import { EdsService } from '../src/services/eds.service';
+import { EdsService, SIGN_CHALLENGE_TYPE } from '../src/services/eds.service';
 import { PingRequestService } from '../src/services/ping_request.service';
 import { X509Service } from '../src/services/x509.service';
 import { Errors } from '../src/lib/errors';
@@ -272,10 +272,7 @@ describe('Lib and services coverage (group C)', () => {
       expect(loadIsolated(JSON.stringify(ok)).auth_providers?.oidc?.on?.issuer).toBe('http://iss');
     });
 
-    it('loadConfig validates EDS, LDAP and internal transport', () => {
-      expect(() => loadIsolated(JSON.stringify({ test: { auth_providers: { eds: { isEnabled: true } } } }))).toThrow(
-        /^Invalid EDS provider config: clientID is required/,
-      );
+    it('loadConfig validates LDAP and internal transport', () => {
       expect(() => loadIsolated(JSON.stringify({ test: { auth_providers: { ldap: { isEnabled: true } } } }))).toThrow(
         /^Invalid LDAP provider config: connection.url is required/,
       );
@@ -285,9 +282,9 @@ describe('Lib and services coverage (group C)', () => {
     });
 
     it('loadConfig from files rejects a config without db section', () => {
-      const fs = require('fs');
-      const os = require('os');
-      const path = require('path');
+      const fs = require('node:fs');
+      const os = require('node:os');
+      const path = require('node:path');
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'idcfg-'));
       const prev = process.env.CONFIG_PATH;
       process.env.CONFIG_PATH = dir;
@@ -304,21 +301,6 @@ describe('Lib and services coverage (group C)', () => {
         else process.env.CONFIG_PATH = prev;
         fs.rmSync(dir, { recursive: true, force: true });
       }
-    });
-
-    it('validateEdsConfig', () => {
-      expect(() => cfgModule.validateEdsConfig({} as any)).not.toThrow();
-      expect(() => cfgModule.validateEdsConfig({ auth_providers: { eds: { isEnabled: false } } } as any)).not.toThrow();
-      expect(() =>
-        cfgModule.validateEdsConfig({
-          auth_providers: { eds: { isEnabled: true, clientID: ' ', clientSecret: '<secret>', callbackURL: 'CHANGEME' } },
-        } as any),
-      ).toThrow('Invalid EDS provider config: clientID is required; clientSecret must not be a placeholder; callbackURL must not be a placeholder');
-      expect(() =>
-        cfgModule.validateEdsConfig({
-          auth_providers: { eds: { isEnabled: true, clientID: 'a', clientSecret: 'b', callbackURL: 'http://x' } },
-        } as any),
-      ).not.toThrow();
     });
 
     it('validateLdapConfig', () => {
@@ -530,6 +512,10 @@ describe('Lib and services coverage (group C)', () => {
   });
 
   describe('EdsService', () => {
+    let session: any;
+    beforeEach(() => {
+      session = {};
+    });
     const encryption = { enabled: true, algorithm: 'aes-256-cbc', securityKey: '0123456789abcdef0123456789abcdef', iv: '0123456789abcdef' };
     const make = (over: Record<string, any> = {}) => new EdsService({ ...config, ...over } as any, {} as any, {} as any);
     const info = (token: string, over: Record<string, any> = {}) => ({
@@ -556,59 +542,64 @@ describe('Lib and services coverage (group C)', () => {
     });
 
     it('getRandomContentToSign issues a verifiable JWT', async () => {
-      const token = await make().getRandomContentToSign();
+      const token = await make().getRandomContentToSign(session);
       const payload = jwt.verify(token, config.jwt!.secret!) as any;
+      expect(payload.typ).toBe(SIGN_CHALLENGE_TYPE);
       expect(payload.random).toMatch(/^[0-9a-f]{128}$/);
       expect(payload.exp - payload.iat).toBe(config.jwt!.expiresIn);
-      const defaultTtl = jwt.decode(await make({ jwt: { secret: 's' } }).getRandomContentToSign()) as any;
+      const defaultTtl = jwt.decode(await make({ jwt: { secret: 's' } }).getRandomContentToSign(session)) as any;
       expect(defaultTtl.exp - defaultTtl.iat).toBe(60);
     });
 
     it('getRandomContentToSign fails without a JWT secret', async () => {
-      await expect(make({ jwt: {} }).getRandomContentToSign()).rejects.toThrow(Errors.List.JWT_SECRET_NOT_FOUND.message);
+      await expect(make({ jwt: {} }).getRandomContentToSign(session)).rejects.toThrow(Errors.List.JWT_SECRET_NOT_FOUND.message);
     });
 
     it('checkRandomContentSign validates params and JWT', async () => {
       const svc = make({ encryption: undefined });
-      await expect(svc.checkRandomContentSign(5 as any, 'sig')).rejects.toThrow(Errors.List.TOKEN_NOT_FOUND.message);
-      await expect(svc.checkRandomContentSign('t', 5 as any)).rejects.toThrow(Errors.List.SIGNATURE_NOT_FOUND.message);
-      await expect(svc.checkRandomContentSign('not-a-jwt', 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
-      const token = await svc.getRandomContentToSign();
-      await expect(make({ jwt: {}, encryption: undefined }).checkRandomContentSign(token, 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
-      const expired = jwt.sign({ a: 1 }, config.jwt!.secret!, { expiresIn: -10 });
-      await expect(svc.checkRandomContentSign(expired, 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
+      await expect(svc.checkRandomContentSign(5 as any, 'sig', session)).rejects.toThrow(Errors.List.TOKEN_NOT_FOUND.message);
+      await expect(svc.checkRandomContentSign('t', 5 as any, session)).rejects.toThrow(Errors.List.SIGNATURE_NOT_FOUND.message);
+      await expect(svc.checkRandomContentSign('not-a-jwt', 'sig', session)).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
+      const token = await svc.getRandomContentToSign(session);
+      await expect(make({ jwt: {}, encryption: undefined }).checkRandomContentSign(token, 'sig', session)).rejects.toThrow(
+        Errors.List.INVALID_TOKEN.message,
+      );
+      const expired = jwt.sign({ typ: SIGN_CHALLENGE_TYPE, a: 1 }, config.jwt!.secret!, { expiresIn: -10 });
+      await expect(svc.checkRandomContentSign(expired, 'sig', session)).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
     });
 
     it('checkRandomContentSign returns signer info once and rejects replay (memory store)', async () => {
       const svc = make({ encryption: undefined });
-      const token = await svc.getRandomContentToSign();
+      const token = await svc.getRandomContentToSign(session);
       stubServices({ getSignatureInfo: jest.fn().mockResolvedValue(info(token)) });
-      await expect(svc.checkRandomContentSign(token, 'sig')).resolves.toEqual({
+      await expect(svc.checkRandomContentSign(token, 'sig', session)).resolves.toEqual({
         signer: { commonName: 'Test Signer' },
         issuer: { commonName: 'Test CA', organizationName: 'Org' },
         serial: 'S1',
         pem: 'PEM',
       });
-      await expect(svc.checkRandomContentSign(token, 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
+      await expect(svc.checkRandomContentSign(token, 'sig', session)).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
     });
 
     it('checkRandomContentSign drops expired entries from the memory store', async () => {
       const svc = make({ encryption: undefined });
       (svc as any).usedTokens.set('stale', Date.now() - 1000);
-      const token = await svc.getRandomContentToSign();
+      const token = await svc.getRandomContentToSign(session);
       stubServices({ getSignatureInfo: jest.fn().mockResolvedValue(info(token)) });
-      await svc.checkRandomContentSign(token, 'sig');
+      await svc.checkRandomContentSign(token, 'sig', session);
       expect((svc as any).usedTokens.has('stale')).toBe(false);
       expect((svc as any).usedTokens.size).toBe(1);
     });
 
     it('checkRandomContentSign uses redis lock when enabled', async () => {
       const svc = make({ encryption: undefined });
-      const token = await svc.getRandomContentToSign();
+      const token = await svc.getRandomContentToSign(session);
       const acquireLock = jest.fn().mockResolvedValueOnce('lock').mockResolvedValueOnce(null);
       stubServices({ getSignatureInfo: jest.fn().mockResolvedValue(info(token)) }, { isEnabled: true, acquireLock });
-      await expect(svc.checkRandomContentSign(token, 'sig')).resolves.toMatchObject({ serial: 'S1' });
-      await expect(svc.checkRandomContentSign(token, 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
+      const copy = structuredClone(session);
+      await expect(svc.checkRandomContentSign(token, 'sig', session)).resolves.toMatchObject({ serial: 'S1' });
+      await expect(svc.checkRandomContentSign(token, 'sig', copy)).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
+      expect(acquireLock).toHaveBeenCalledTimes(2);
       const key = crypto.createHash('sha256').update(token).digest('hex');
       expect(acquireLock.mock.calls[0][0]).toBe(`eds-used-token:${key}`);
       expect(acquireLock.mock.calls[0][1]).toBeGreaterThanOrEqual(1);
@@ -616,13 +607,13 @@ describe('Lib and services coverage (group C)', () => {
 
     it('checkRandomContentSign maps signature info errors', async () => {
       const svc = make({ encryption: undefined });
-      const token = await svc.getRandomContentToSign();
+      const token = await svc.getRandomContentToSign(session);
       stubServices({ getSignatureInfo: jest.fn().mockResolvedValue(info(token, { content: Buffer.from('other') })) });
-      await expect(svc.checkRandomContentSign(token, 'sig')).rejects.toThrow(Errors.List.WRONG_SIGNED_CONTENT.message);
+      await expect(svc.checkRandomContentSign(token, 'sig', session)).rejects.toThrow(Errors.List.WRONG_SIGNED_CONTENT.message);
       stubServices({ getSignatureInfo: jest.fn().mockResolvedValue(info(token, { pem: undefined })) });
-      await expect(svc.checkRandomContentSign(token, 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
+      await expect(svc.checkRandomContentSign(token, 'sig', session)).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
       stubServices({ getSignatureInfo: jest.fn().mockRejectedValue(new Error('down')) });
-      await expect(svc.checkRandomContentSign(token, 'sig')).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
+      await expect(svc.checkRandomContentSign(token, 'sig', session)).rejects.toThrow(Errors.List.INVALID_TOKEN.message);
     });
 
     it('getSignatureInfoX509 maps every failure to INCORRECT_SIGN', async () => {
@@ -642,26 +633,26 @@ describe('Lib and services coverage (group C)', () => {
 
     it('checkRandomContentSign decrypts and converts signature when encryption is enabled', async () => {
       const svc = make({ encryption });
-      const token = await svc.getRandomContentToSign();
+      const token = await svc.getRandomContentToSign(session);
       const hashToInternalSignature = jest.fn().mockResolvedValue('INTERNAL');
       const getSignatureInfo = jest.fn().mockResolvedValue(info(token));
       stubServices({ hashToInternalSignature, getSignatureInfo });
-      await expect(svc.checkRandomContentSign(token, encrypt('SIGNED'))).resolves.toMatchObject({ serial: 'S1' });
+      await expect(svc.checkRandomContentSign(token, encrypt('SIGNED'), session)).resolves.toMatchObject({ serial: 'S1' });
       expect(hashToInternalSignature).toHaveBeenCalledWith('SIGNED', token);
       expect(getSignatureInfo).toHaveBeenCalledWith('INTERNAL');
     });
 
     it('checkRandomContentSign keeps the raw signature when decryption fails, rejects non-string conversion', async () => {
       const svc = make({ encryption });
-      const token = await svc.getRandomContentToSign();
+      const token = await svc.getRandomContentToSign(session);
       const getSignatureInfo = jest.fn().mockResolvedValue(info(token));
       stubServices({ getSignatureInfo });
-      await expect(svc.checkRandomContentSign(token, 'garbage')).resolves.toMatchObject({ serial: 'S1' });
+      await expect(svc.checkRandomContentSign(token, 'garbage', session)).resolves.toMatchObject({ serial: 'S1' });
       expect(getSignatureInfo).toHaveBeenCalledWith('garbage');
 
-      const token2 = await svc.getRandomContentToSign();
+      const token2 = await svc.getRandomContentToSign(session);
       stubServices({ hashToInternalSignature: jest.fn().mockResolvedValue(undefined), getSignatureInfo });
-      await expect(svc.checkRandomContentSign(token2, encrypt('SIGNED'))).rejects.toThrow(Errors.List.SIGNATURE_NOT_FOUND.message);
+      await expect(svc.checkRandomContentSign(token2, encrypt('SIGNED'), session)).rejects.toThrow(Errors.List.SIGNATURE_NOT_FOUND.message);
     });
 
     it('identification helpers', () => {
