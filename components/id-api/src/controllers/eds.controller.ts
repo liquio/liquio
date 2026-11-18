@@ -30,7 +30,7 @@ export class EdsController extends BaseController {
    */
   async getToken(req: Request, res: Response): Promise<void> {
     try {
-      const token = await this.service('eds').getRandomContentToSign();
+      const token = await this.service('eds').getRandomContentToSign(req.session);
       res.send({ token });
     } catch (error: any) {
       this.log.save('get-token-error', { error: error?.message, stack: error?.stack }, 'error');
@@ -63,7 +63,7 @@ export class EdsController extends BaseController {
     // Check random content sign.
     let signer, issuer, serial, pem;
     try {
-      const signatureInfo = await this.service('eds').checkRandomContentSign(token, signature);
+      const signatureInfo = await this.service('eds').checkRandomContentSign(token, signature, req.session);
       signer = signatureInfo.signer;
       issuer = signatureInfo.issuer;
       serial = signatureInfo.serial;

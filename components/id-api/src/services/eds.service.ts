@@ -16,9 +16,15 @@ const PASSPORT_TYPE = 'passport';
 const ID_CARD_TYPE = 'idCard';
 
 const USED_TOKEN_LOCK_PREFIX = 'eds-used-token';
+const MAX_SESSION_CHALLENGES = 5;
 
 /** Value of the `typ` claim that marks a JWT as a sign challenge issued by `getRandomContentToSign`. */
 export const SIGN_CHALLENGE_TYPE = 'sign-challenge';
+
+/** Session slice holding the sign challenges issued to it. */
+export interface SignChallengeSession {
+  signChallenges?: { hash: string; exp: number }[];
+}
 
 export interface IpnObject {
   DRFO?: string;
@@ -43,7 +49,12 @@ export class EdsService extends BaseService {
   /**
    * Get random content to sign.
    */
-  async getRandomContentToSign() {
+  async getRandomContentToSign(session: SignChallengeSession): Promise<string> {
+    if (!session) {
+      this.log.save('get-random-content-to-sign-no-session', {}, 'error');
+      throw new Error(Errors.List.INVALID_TOKEN.message);
+    }
+
     // Prepare payload for JWT.
     const payload = {
       typ: SIGN_CHALLENGE_TYPE,
@@ -62,7 +73,15 @@ export class EdsService extends BaseService {
 
     // Create JWT.
     const token = jwt.sign(payload, jwtSecret, { expiresIn: jwtExpiresIn as number });
-    this.log.save('get-random-content-to-sign-generated', { expiresIn: jwtExpiresIn }, 'info');
+
+    // Bind the challenge to the issuing session.
+    const exp = (jwt.decode(token) as jwt.JwtPayload).exp ?? Math.floor(Date.now() / 1000) + (jwtExpiresIn as number);
+    const now = Math.floor(Date.now() / 1000);
+    const pending = (session.signChallenges ?? []).filter((c) => c.exp > now);
+    pending.push({ hash: this.hashToken(token), exp });
+    session.signChallenges = pending.slice(-MAX_SESSION_CHALLENGES);
+
+    this.log.save('get-random-content-to-sign-generated', { expiresIn: jwtExpiresIn, pending: session.signChallenges.length }, 'info');
 
     // Response token.
     return token;
@@ -71,7 +90,11 @@ export class EdsService extends BaseService {
   /**
    * Check random content sign.
    */
-  async checkRandomContentSign(token: string, signature: string): Promise<{ signer: any; issuer: any; serial: any; pem: any }> {
+  async checkRandomContentSign(
+    token: string,
+    signature: string,
+    session: SignChallengeSession,
+  ): Promise<{ signer: any; issuer: any; serial: any; pem: any }> {
     // Log signature checking.
     this.log.save('check-sign-started', { tokenLength: token?.length, signatureLength: signature?.length }, 'info');
 
@@ -121,7 +144,23 @@ export class EdsService extends BaseService {
     }
     const expiresAtSeconds = payload.exp ?? Math.floor(Date.now() / 1000) + JWT_DEFAULT_EXPIRES_IN;
 
+    // The challenge must have been issued to this very session.
+    const hash = this.hashToken(token);
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (!session?.signChallenges?.some((c) => c.hash === hash && c.exp > nowSeconds)) {
+      this.log.save('check-sign-token-session-mismatch', { hasSession: !!session }, 'error');
+      throw new Error(Errors.List.INVALID_TOKEN.message);
+    }
+
     const result = await this.processSignatureInfo(signature, token);
+
+    // Remove the challenge from the session once the signature over it is verified.
+    const remaining = session.signChallenges.filter((c) => c.hash !== hash && c.exp > nowSeconds);
+    if (remaining.length) {
+      session.signChallenges = remaining;
+    } else {
+      delete session.signChallenges;
+    }
 
     // The challenge is single-use: consume it only after the signature has been verified over it.
     if (!(await this.consumeToken(token, expiresAtSeconds))) {
@@ -132,12 +171,16 @@ export class EdsService extends BaseService {
     return result;
   }
 
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
   /**
    * Atomically mark the challenge token as used until it expires.
    * @returns false if the token has been used already.
    */
   private async consumeToken(token: string, expiresAtSeconds: number): Promise<boolean> {
-    const key = crypto.createHash('sha256').update(token).digest('hex');
+    const key = this.hashToken(token);
     const ttl = Math.max(1, expiresAtSeconds - Math.floor(Date.now() / 1000));
 
     const redis = this.service('redis');

@@ -38,7 +38,7 @@ export class EDSStrategy extends Strategy {
     let signatureInfo;
 
     try {
-      signatureInfo = await Services.service('eds').checkRandomContentSign(token, signature);
+      signatureInfo = await Services.service('eds').checkRandomContentSign(token, signature, req.session);
     } catch (error: any) {
       this.log.save('authenticate-eds|checkRandomContentSign-error', { error: error.message, stack: error.stack }, 'error');
       req.res!.status(500).send({

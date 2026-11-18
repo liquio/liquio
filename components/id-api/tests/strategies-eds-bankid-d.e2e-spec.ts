@@ -261,7 +261,7 @@ describe('EDS and BankID strategies (group D)', () => {
       });
 
       it('verifies the signer and calls success', async () => {
-        jest.spyOn(Services.service('eds'), 'checkRandomContentSign').mockResolvedValue({
+        const check = jest.spyOn(Services.service('eds'), 'checkRandomContentSign').mockResolvedValue({
           signer: { ipn: { DRFO: '2000000099' }, surname: 'Sig' },
           issuer: { cn: 'ca' },
           pem: 'pem',
@@ -269,6 +269,7 @@ describe('EDS and BankID strategies (group D)', () => {
         const { s, r } = mk({ signature: 's', token: 't', encodeCertSerial: 'sn', encodeCert: 'c' });
         await s.authenticateAsync(r, {});
         await flush();
+        expect(check).toHaveBeenCalledWith('t', 's', r.session);
         expect(s.success).toHaveBeenCalledWith(expect.objectContaining({ user_id: '2000000099' }), null);
       });
 

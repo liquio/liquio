@@ -102,7 +102,7 @@
           "Auth"
         ],
         "summary": "Get data to sign",
-        "description": "Returns data to sign.",
+        "description": "Returns a single-use challenge to sign. The challenge is bound to the caller's session cookie and must be redeemed from the same session within its lifetime.",
         "produces": [
           "application/json"
         ],
@@ -130,7 +130,7 @@
           "Auth"
         ],
         "summary": "Check signed data.",
-        "description": "Returns sign info."
+        "description": "Checks a signature over a challenge issued to the same session and returns signer info. The challenge is consumed on success."
       }
     },
     "/authorise/eds": {

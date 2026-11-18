@@ -124,8 +124,9 @@ describe('X509Strategy challenge enforcement', () => {
     const signer = { serialNumber: '0000000001', commonName: 'Test Person' };
     eds.checkRandomContentSign.mockResolvedValue({ signer });
     const s = build({ requireChallenge: true });
-    const req = { body: { pkcs7: 'x', token: 't' } };
+    const req = { body: { pkcs7: 'x', token: 't' }, session: {} };
     await s.authenticate(req);
+    expect(eds.checkRandomContentSign).toHaveBeenCalledWith('t', 'x', req.session);
     expect(verifyMock).toHaveBeenCalledWith(req, signer, expect.any(Function));
   });
 

@@ -27,7 +27,8 @@ export type X509VerifyFunction = (req: Request, userInfo: SignatureInfoSigner, d
 /**
  * X509Strategy for Passport that authenticates users based on PKCS#7 (CMS) certificate data.
  * Expects a base64-encoded PKCS#7 in req.body.pkcs7 and, by default, req.body.token (a server-issued, single-use
- * challenge from GET /authorise/eds/sign): the PKCS#7 must be a signature over exactly that token.
+ * challenge from GET /authorise/eds/sign): the PKCS#7 must be a signature over exactly that token, and the token
+ * must come from the same session that requested it.
  * Default requireChallenge is true; set false to accept the legacy `{pkcs7}` payload (replayable, not recommended).
  * Extracts eIDAS fields from the certificate subject.
  */
@@ -57,7 +58,7 @@ export class X509Strategy extends PassportStrategy {
       if (req.body.token !== undefined || this.requireChallenge) {
         // Challenge flow: signature must be over the server-issued token, which is single-use.
         try {
-          userInfo = (await Services.service('eds').checkRandomContentSign(req.body.token, req.body.pkcs7)).signer;
+          userInfo = (await Services.service('eds').checkRandomContentSign(req.body.token, req.body.pkcs7, req.session)).signer;
         } catch (error: any) {
           this.log.save('x509-strategy|authenticate|challenge-error', { error: error?.message }, 'error');
           return this.fail({ message: 'Invalid signature or challenge' }, 401);
