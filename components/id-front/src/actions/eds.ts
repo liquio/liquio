@@ -7,12 +7,7 @@ type Dispatch = AppDispatch;
 const dispatch: Dispatch = store.dispatch;
 
 const REQUEST_SIGN_DATA = 'REQUEST_SIGN_DATA';
-const CHECK_SIGN_DATA = 'CHECK_SIGN_DATA';
 
 export function requestSignData() {
   return api.get('authorise/eds/sign', REQUEST_SIGN_DATA, dispatch);
-}
-
-export function checkSignData(options: unknown) {
-  return api.post('authorise/eds', options, CHECK_SIGN_DATA, dispatch);
 }

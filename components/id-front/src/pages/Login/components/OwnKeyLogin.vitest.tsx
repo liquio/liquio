@@ -33,17 +33,9 @@ describe('pages/Login/OwnKeyLogin', () => {
     expect(() => fireEvent.click(getByRole('button', { name: /Go back/ }))).not.toThrow();
   });
 
-  it('passes auth, onSelectKey, onSignHash and getDataToSign through to the form', () => {
-    const onSelectKey = vi.fn();
-    const onSignHash = vi.fn();
-    const getDataToSign = vi.fn();
-    renderWithTranslations(<OwnKeyLogin auth={true} onSelectKey={onSelectKey} onSignHash={onSignHash} getDataToSign={getDataToSign} />);
-    expect(formProps.last).toMatchObject({ auth: true, onSelectKey, onSignHash, getDataToSign });
-  });
-
-  it('defaults onSelectKey to a function returning null', () => {
-    renderWithTranslations(<OwnKeyLogin />);
-    expect((formProps.last?.onSelectKey as () => unknown)()).toBeNull();
+  it('passes auth through to the form', () => {
+    renderWithTranslations(<OwnKeyLogin auth={true} />);
+    expect(formProps.last).toMatchObject({ auth: true });
   });
 
   it('prefixes the form ids and uses the given setId for the title', () => {

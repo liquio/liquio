@@ -14,7 +14,7 @@ vi.mock('helpers/authProvidersLoader', () => ({
 }));
 vi.mock('actions/auth', () => ({ handleLoginByPassword: vi.fn(), handleLoginByLdap: vi.fn(), handleChangePassword: vi.fn() }));
 vi.mock('components/PKCS7Form', () => ({
-  default: ({ onSelectKey }: { onSelectKey: unknown }) => <p>pkcs7 form {String(typeof onSelectKey)}</p>,
+  default: ({ auth }: { auth?: boolean }) => <p>pkcs7 form {String(auth)}</p>,
 }));
 
 const renderLayout = (props: Record<string, unknown> = {}) =>
@@ -56,9 +56,9 @@ describe('pages/Login/DefaultLoginLayout', () => {
   });
 
   it('passes its props down to the steps', () => {
-    const { getByRole, getByText } = renderLayout({ onSelectKey: () => null });
+    const { getByRole, getByText } = renderLayout({ auth: true });
     fireEvent.click(getByRole('button', { name: /Personal key/ }));
-    expect(getByText('pkcs7 form function')).toBeInTheDocument();
+    expect(getByText('pkcs7 form true')).toBeInTheDocument();
   });
 
   it('uses the given setId for the layout ids', () => {

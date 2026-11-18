@@ -20,13 +20,6 @@ export interface Wso2Config {
   [key: string]: unknown;
 }
 
-/** Certificate options read by the Login page. */
-export interface EdsConfig {
-  useEncodeCert?: unknown;
-  allowLoginWithoutEncodeCert?: unknown;
-  [key: string]: unknown;
-}
-
 export interface ConfigDefaults {
   APP_NAME?: string;
   APP_TITLE?: string;
@@ -41,7 +34,6 @@ export interface ConfigDefaults {
   application?: ApplicationConfig;
   variables?: VariablesConfig;
   WSO2?: Wso2Config;
-  eds?: EdsConfig;
   [key: string]: unknown;
 }
 

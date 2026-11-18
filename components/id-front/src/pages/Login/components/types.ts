@@ -21,7 +21,4 @@ export type CredentialMethodState = boolean | CredentialAdditionalProps | undefi
 export interface LoginStepProps {
   setId?: LoginSetId;
   auth?: boolean;
-  onSignHash?: unknown;
-  getDataToSign?: unknown;
-  onSelectKey?: unknown;
 }
