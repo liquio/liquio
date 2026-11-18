@@ -36,17 +36,6 @@ metadata:
   )
 -}}
 {{ $authProvidersBase := dict
-  "eds" (dict
-    "isEnabled" false
-    "authorizationURL" "https://auth.js.sign.eu.iit.com.ua/"
-    "blacklistAcsk" (list "test.gov.ua" "test.gov.ua" "test.com.ua")
-    "caServerList" "https://iit.com.ua/download/productfiles/CAs.json"
-    "callbackURL" (printf "%s://%s/authorise/eds/callback" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "id")))
-    "customerURL" "https://auth.js.sign.eu.iit.com.ua/get-user-info"
-    "passReqToCallback" "true"
-    "showServerList" true
-    "tokenURL" "https://auth.js.sign.eu.iit.com.ua/get-access-token"
-  )
   "ldap" (dict "isEnabled" false)
   "local" (dict "isEnabled" true)
   "oidc" (dict)
