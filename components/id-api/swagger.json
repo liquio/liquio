@@ -133,15 +133,6 @@
         "description": "Checks a signature over a challenge issued to the same session and returns signer info. The challenge is consumed on success."
       }
     },
-    "/authorise/eds": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Auth user with EDS strategy.",
-        "description": "Auth user or redirect to registration."
-      }
-    },
     "/authorise/eds/serverList": {
       "get": {
         "tags": [

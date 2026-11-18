@@ -100,10 +100,6 @@
       "privateKey": "cert/bankid.pem",
       "passReqToCallback": "true"
     },
-    "eds": {
-      "clientID": "<removed>",
-      "clientSecret": "<removed>"
-    },
     "local": {
       "isEnabled": false,
       "isForgotPasswordEnabled": false

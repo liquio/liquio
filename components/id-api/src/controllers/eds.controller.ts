@@ -13,8 +13,8 @@ export class EdsController extends BaseController {
   }
 
   protected registerRoutes() {
-    // Challenge token for EDS (Signer widget) and x509 key-file login; not tied to the `eds` strategy being enabled.
-    if (this.config.auth_providers?.x509?.isEnabled || this.config.auth_providers?.eds?.isEnabled) {
+    // Challenge token for the x509 key-file login (`POST /authorise/x509`).
+    if (this.config.auth_providers?.x509?.isEnabled) {
       this.router.get('/authorise/eds/sign', this.getToken.bind(this));
     }
     this.router.post(

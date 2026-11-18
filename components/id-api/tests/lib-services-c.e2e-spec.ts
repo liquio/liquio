@@ -272,10 +272,7 @@ describe('Lib and services coverage (group C)', () => {
       expect(loadIsolated(JSON.stringify(ok)).auth_providers?.oidc?.on?.issuer).toBe('http://iss');
     });
 
-    it('loadConfig validates EDS, LDAP and internal transport', () => {
-      expect(() => loadIsolated(JSON.stringify({ test: { auth_providers: { eds: { isEnabled: true } } } }))).toThrow(
-        /^Invalid EDS provider config: clientID is required/,
-      );
+    it('loadConfig validates LDAP and internal transport', () => {
       expect(() => loadIsolated(JSON.stringify({ test: { auth_providers: { ldap: { isEnabled: true } } } }))).toThrow(
         /^Invalid LDAP provider config: connection.url is required/,
       );
@@ -304,21 +301,6 @@ describe('Lib and services coverage (group C)', () => {
         else process.env.CONFIG_PATH = prev;
         fs.rmSync(dir, { recursive: true, force: true });
       }
-    });
-
-    it('validateEdsConfig', () => {
-      expect(() => cfgModule.validateEdsConfig({} as any)).not.toThrow();
-      expect(() => cfgModule.validateEdsConfig({ auth_providers: { eds: { isEnabled: false } } } as any)).not.toThrow();
-      expect(() =>
-        cfgModule.validateEdsConfig({
-          auth_providers: { eds: { isEnabled: true, clientID: ' ', clientSecret: '<secret>', callbackURL: 'CHANGEME' } },
-        } as any),
-      ).toThrow('Invalid EDS provider config: clientID is required; clientSecret must not be a placeholder; callbackURL must not be a placeholder');
-      expect(() =>
-        cfgModule.validateEdsConfig({
-          auth_providers: { eds: { isEnabled: true, clientID: 'a', clientSecret: 'b', callbackURL: 'http://x' } },
-        } as any),
-      ).not.toThrow();
     });
 
     it('validateLdapConfig', () => {
