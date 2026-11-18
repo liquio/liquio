@@ -1,8 +1,8 @@
 const mockLogSave = jest.fn();
 jest.mock('@liquio/back-core', () => ({ Log: { getInstance: () => ({ save: mockLogSave }) } }));
 
-import http from 'http';
-import { AddressInfo } from 'net';
+import http from 'node:http';
+import { AddressInfo } from 'node:net';
 
 import express from 'express';
 import request from 'supertest';

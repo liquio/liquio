@@ -1,4 +1,4 @@
-import { STATUS_CODES } from 'http';
+import { STATUS_CODES } from 'node:http';
 
 import { Express, NextFunction } from 'express';
 import { Log, getTraceId } from '@liquio/back-core';

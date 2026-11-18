@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 import { fromBER, Sequence } from 'asn1js';
 import axios from 'axios';

@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 import { AxiosError } from 'axios';
 import jwt from 'jsonwebtoken';
@@ -282,9 +282,9 @@ describe('Lib and services coverage (group C)', () => {
     });
 
     it('loadConfig from files rejects a config without db section', () => {
-      const fs = require('fs');
-      const os = require('os');
-      const path = require('path');
+      const fs = require('node:fs');
+      const os = require('node:os');
+      const path = require('node:path');
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'idcfg-'));
       const prev = process.env.CONFIG_PATH;
       process.env.CONFIG_PATH = dir;

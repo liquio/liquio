@@ -14,8 +14,8 @@ import { BankIDStrategy } from './passport_libs/passport-bankid/strategy';
 export async function bankid(app: Express) {
   const log = Log.getInstance();
   let passport = app.passport;
-  let fs = require('fs');
-  let path = require('path');
+  let fs = require('node:fs');
+  let path = require('node:path');
   const config = app.config.auth_providers?.bankid;
   if (!config) {
     throw new Error("'bankid' provider is not configured");

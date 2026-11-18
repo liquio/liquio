@@ -45,7 +45,7 @@ describe('Named service clients on basic() routes (KS-24)', () => {
         { name: 'writer', secret: 'writer-s3cret', scopes: ['user:read', 'user:write'] },
         {
           name: 'admin-service',
-          secret_hash: require('crypto').createHash('sha256').update('admin-s3cret').digest('hex'),
+          secret_hash: require('node:crypto').createHash('sha256').update('admin-s3cret').digest('hex'),
           scopes: ['user:read', 'user:write', 'user:admin'],
         },
         { name: 'reader', secret: 'reader-s3cret', scopes: ['totp'] },

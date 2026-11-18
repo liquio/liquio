@@ -1,5 +1,5 @@
-import querystring from 'querystring';
-import crypto from 'crypto';
+import querystring from 'node:querystring';
+import crypto from 'node:crypto';
 
 import passport from 'passport';
 import axios from 'axios';

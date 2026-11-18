@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 /**
  * Scopes a `basic()` route can require. The legacy shared secret holds all of them.

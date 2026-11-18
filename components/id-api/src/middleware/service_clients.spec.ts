@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 import { LEGACY_CLIENT_NAME, SERVICE_SCOPES, ServiceClientRegistry } from './service_clients';
 

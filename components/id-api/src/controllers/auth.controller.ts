@@ -1,6 +1,6 @@
-import crypto from 'crypto';
-import { URL } from 'url';
-import { promisify } from 'util';
+import crypto from 'node:crypto';
+import { URL } from 'node:url';
+import { promisify } from 'node:util';
 
 import { Request as OAuthRequest, Response as OAuthResponse } from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
