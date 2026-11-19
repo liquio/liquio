@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { PluginsConfig } from '@liquio/plugin-sdk';
 import { z } from 'zod';
 
-import { Configuration } from '@components/configuration/configuration.types';
+import { ExternalReaderConfig } from '@components/configuration/configuration.types';
 
 /** Minimum length of the password part of a `user:password` token. */
 export const MIN_TOKEN_PASSWORD_LENGTH = 8;
@@ -24,7 +24,7 @@ const portSchema = z.union([z.number(), z.string()]);
  * elsewhere they just match nothing. Messages never contain token values.
  * @param env Environment name, `production` and `prod` enable the strict token rules.
  */
-export function buildConfigurationSchema(env: string | undefined = process.env.NODE_ENV): z.ZodType<Configuration> {
+export function buildConfigurationSchema(env: string | undefined = process.env.NODE_ENV): z.ZodType<ExternalReaderConfig> {
   const production = isProduction(env);
 
   return z

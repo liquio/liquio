@@ -1,6 +1,6 @@
 import { PluginsConfig } from '@liquio/plugin-sdk';
 
-export interface Configuration {
+export interface ExternalReaderConfig {
   auth?: {
     basicAuthTokens?: string[];
   };

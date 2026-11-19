@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { Config, ConfigValidationError } from '@liquio/back-core';
 
 import { buildConfigurationSchema } from './configuration.schema';
-import { Configuration } from './configuration.types';
+import { ExternalReaderConfig } from './configuration.types';
 
 const LEGACY_DEFAULT = ['user', 'name:pass', 'word'].join('');
 const VALID_TOKEN = 'external-reader:Xk29sLq8Zr41Vb7n';
@@ -11,7 +11,7 @@ const SENTINEL = 'Basic c2VudGluZWw6c2VudGluZWwtc2VjcmV0';
 const TEMPLATE_DIR = join(__dirname, '../../../../../config-templates/external-reader');
 
 const validate = (raw: unknown, env: string | undefined = 'test') =>
-  Config.fromObject<Configuration>(raw as Record<string, unknown>, { schema: buildConfigurationSchema(env) });
+  Config.fromObject<ExternalReaderConfig>(raw as Record<string, unknown>, { schema: buildConfigurationSchema(env) });
 
 const issuesOf = (raw: unknown, env?: string) => {
   try {
