@@ -65,7 +65,7 @@ export interface OIDCProviderConfig {
   display?: AuthProviderDisplay;
 }
 
-export interface Config {
+export interface IdApiConfig {
   allowIdentificationTypes?: string[];
   allowEdrpou?: string[];
   allowRnokpp?: string[];
@@ -349,8 +349,8 @@ export interface Config {
 const CONFIG_PATH = process.env.CONFIG_PATH || process.cwd() + '/config';
 const SECRET_PATH = process.env.SECRET_PATH;
 
-let config: Config;
-export function loadConfig(): Config {
+let config: IdApiConfig;
+export function loadConfig(): IdApiConfig {
   if (config) {
     return config;
   }
@@ -368,7 +368,7 @@ export function loadConfig(): Config {
     if (typeof parsedEnvConfig[env] === 'undefined') {
       throw new Error(`LIQUIO_ID_CONFIG [${env}] is not defined object config.`);
     }
-    config = ConfigLoader.fromObject<Config>(parsedEnvConfig[env], { schema: buildIdApiConfigSchema(env) }).toObject();
+    config = ConfigLoader.fromObject<IdApiConfig>(parsedEnvConfig[env], { schema: buildIdApiConfigSchema(env) }).toObject();
     return config;
   }
 
@@ -390,7 +390,7 @@ export function loadConfig(): Config {
     ...envConf,
     ...(raw.versions?.versions !== undefined ? { versions: raw.versions.versions } : {}),
   };
-  config = ConfigLoader.fromObject<Config>(merged, { schema: buildIdApiConfigSchema(resolvedEnv) }).toObject();
+  config = ConfigLoader.fromObject<IdApiConfig>(merged, { schema: buildIdApiConfigSchema(resolvedEnv) }).toObject();
 
   return config;
 }

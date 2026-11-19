@@ -2,7 +2,7 @@ import { StrategyOptions } from 'passport-oauth2';
 import { Dialect } from 'sequelize';
 import { z } from 'zod';
 
-import { AuthProviderDisplay, Config, LdapProviderConfig, OIDCProviderConfig } from './index';
+import { AuthProviderDisplay, IdApiConfig, LdapProviderConfig, OIDCProviderConfig } from './index';
 
 const str = z.string().optional();
 const bool = z.boolean().optional();
@@ -57,7 +57,7 @@ const oidcProviderSchema: z.ZodType<OIDCProviderConfig> = z.looseObject({
   display: displaySchema.optional(),
 });
 
-type OAuth2Config = NonNullable<Config['auth_providers']['oauth2']>;
+type OAuth2Config = NonNullable<IdApiConfig['auth_providers']['oauth2']>;
 
 const scopes = z.enum(['user:read', 'user:write', 'user:admin', 'password:set', 'totp', 'login_history', 'login_history:all', 'login_history:pii']);
 
@@ -68,7 +68,7 @@ const isPlainHttp = (value: unknown): boolean => typeof value === 'string' && va
  * It validates only: the merged object is returned unchanged by the loader.
  * @param env Runtime environment, internal transport rules apply in `production` and `prod`.
  */
-export function buildIdApiConfigSchema(env: string): z.ZodType<Config> {
+export function buildIdApiConfigSchema(env: string): z.ZodType<IdApiConfig> {
   return z
     .looseObject({
       allowIdentificationTypes: strArr,

@@ -2,7 +2,7 @@ import { Express } from 'express';
 import cors from 'cors';
 import { Log } from '@liquio/back-core';
 
-import { Config } from '../config';
+import { IdApiConfig } from '../config';
 
 /**
  * Resolve the CORS allowlist. Fails closed: no config means no cross-origin access,
@@ -25,7 +25,7 @@ export function resolveAllowedOrigins(configured?: string[]): string[] {
   return origins.filter((origin) => origin !== '*');
 }
 
-export function useCors(express: Express & { config: Config }) {
+export function useCors(express: Express & { config: IdApiConfig }) {
   const config = express.config;
 
   const allowedOrigins = resolveAllowedOrigins(config.cors?.allowedOrigins);

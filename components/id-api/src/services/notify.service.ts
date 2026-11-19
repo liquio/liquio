@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-import { Config } from '../config';
+import { IdApiConfig } from '../config';
 import { internalRequestOptions } from '../lib/internal_transport';
 import { BaseService } from './base_service';
 
 export class NotifyService extends BaseService {
-  private readonly cfg: Config['notify'];
+  private readonly cfg: IdApiConfig['notify'];
 
   constructor(...args: ConstructorParameters<typeof BaseService>) {
     super(...args);

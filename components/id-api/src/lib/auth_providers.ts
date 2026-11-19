@@ -1,4 +1,4 @@
-import { AuthProviderDisplay, Config } from '../config';
+import { AuthProviderDisplay, IdApiConfig } from '../config';
 
 export interface AuthProviderOption {
   type: 'local' | 'ldap' | 'x509' | 'wso2' | 'oidc';
@@ -25,7 +25,7 @@ function toOption(type: AuthProviderOption['type'], id: string, url: string | nu
  * enable checks in middleware/authenticate.ts so this list never drifts from
  * which strategies are actually registered.
  */
-export function getEnabledAuthProviders(config: Config): AuthProviderOption[] {
+export function getEnabledAuthProviders(config: IdApiConfig): AuthProviderOption[] {
   const authProviders = config.auth_providers ?? {};
   const options: AuthProviderOption[] = [];
 
