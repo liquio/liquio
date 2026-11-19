@@ -1,5 +1,6 @@
 import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
+import { adminApiConfigSchema } from './config.schema';
 import { AdminApiConfig } from './config.types';
 
 /**
@@ -10,5 +11,6 @@ export function loadAdminApiConfig(): AdminApiConfig {
   return Config.load<AdminApiConfig>({
     defaultConfigPath: '../config/admin-api',
     envPrefix: resolveEnvPrefix('LIQUIO_CFG_ADMIN_API', 'HANDLER_'),
+    schema: adminApiConfigSchema,
   }).toObject();
 }

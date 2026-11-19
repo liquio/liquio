@@ -24,7 +24,11 @@ describe('loadAdminApiConfig', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-api-config-'));
     configDir = path.join(tmp, 'config');
     fs.mkdirSync(configDir);
-    fs.writeFileSync(path.join(configDir, 'server.json'), JSON.stringify({ token: 'from-file', port: 1 }));
+    fs.writeFileSync(path.join(configDir, 'server.json'), JSON.stringify({ token: 'from-file', port: 1, environment: 'dev' }));
+    fs.writeFileSync(path.join(configDir, 'db.json'), '{}');
+    fs.writeFileSync(path.join(configDir, 'log.json'), JSON.stringify({ console: {} }));
+    fs.writeFileSync(path.join(configDir, 'message_queue.json'), '{}');
+    fs.writeFileSync(path.join(configDir, 'auth.json'), '{}');
     process.env.CONFIG_PATH = configDir;
   });
 
@@ -37,7 +41,7 @@ describe('loadAdminApiConfig', () => {
   });
 
   it('applies the default prefix with the _HANDLER_ suffix', () => {
-    process.env.LIQUIO_CFG_ADMIN_API_HANDLER_server = '{"token":"t"}';
+    process.env.LIQUIO_CFG_ADMIN_API_HANDLER_server = '{"token":"t","environment":"dev"}';
     expect(loadAdminApiConfig().server.token).toBe('t');
   });
 
@@ -48,12 +52,12 @@ describe('loadAdminApiConfig', () => {
 
   it('uses LIQUIO_CONFIG_PREFIX with the _HANDLER_ suffix', () => {
     process.env.LIQUIO_CONFIG_PREFIX = 'FOO';
-    process.env.FOO_HANDLER_server = '{"token":"foo"}';
+    process.env.FOO_HANDLER_server = '{"token":"foo","environment":"dev"}';
     expect(loadAdminApiConfig().server.token).toBe('foo');
   });
 
   it('reads files from CONFIG_PATH', () => {
-    expect(loadAdminApiConfig().server).toEqual({ token: 'from-file', port: 1 });
+    expect(loadAdminApiConfig().server).toEqual({ token: 'from-file', port: 1, environment: 'dev' });
   });
 
   it('merges SECRET_PATH over CONFIG_PATH', () => {
@@ -61,6 +65,6 @@ describe('loadAdminApiConfig', () => {
     fs.mkdirSync(secretDir);
     fs.writeFileSync(path.join(secretDir, 'server.json'), JSON.stringify({ token: 'secret-token' }));
     process.env.SECRET_PATH = secretDir;
-    expect(loadAdminApiConfig().server).toEqual({ token: 'secret-token', port: 1 });
+    expect(loadAdminApiConfig().server).toEqual({ token: 'secret-token', port: 1, environment: 'dev' });
   });
 });
