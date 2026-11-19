@@ -1,5 +1,6 @@
 import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
+import { eventConfigSchema } from './config.schema';
 import type { EventConfig } from './config.types';
 
 let config: EventConfig | undefined;
@@ -25,6 +26,7 @@ export function loadConfig(configPath?: string): EventConfig {
     configPath,
     defaultConfigPath: '../config/event',
     envPrefix: resolveEnvPrefix('LIQUIO_CFG_EVENT'),
+    schema: eventConfigSchema,
   }).toObject();
   return config;
 }

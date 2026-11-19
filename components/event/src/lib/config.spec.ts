@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import { ConfigValidationError } from '@liquio/back-core';
+
 import { getConfig, loadConfig } from './config';
 
 const legacyPrefix = ['KITSOFT', 'BPMN', 'EVENT', ''].join('_');
@@ -11,7 +13,10 @@ describe('event config loader', () => {
   const saved: Record<string, string | undefined> = {};
   const dirs: string[] = [];
 
+  const REQUIRED = { app: {}, db: {}, log: {}, message_queue: {} };
+
   const makeDir = (files: Record<string, unknown>): string => {
+    files = { ...REQUIRED, ...files };
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'event-config-'));
     dirs.push(dir);
     for (const [name, value] of Object.entries(files)) {
@@ -76,6 +81,13 @@ describe('event config loader', () => {
     const dir = makeDir({ app: { x: 1 } });
     const loaded = loadConfig(dir);
     expect(getConfig()).toBe(loaded);
+  });
+
+  it('rejects a config dir without required sections with ConfigValidationError', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'event-config-'));
+    dirs.push(dir);
+    fs.writeFileSync(path.join(dir, 'app.json'), '{}');
+    expect(() => loadConfig(dir)).toThrow(ConfigValidationError);
   });
 
   it('getConfig throws before load', () => {

@@ -2,8 +2,8 @@ type ConfigSection = Record<string, any>;
 
 /** Event config: `app` section (run modes). */
 export interface EventAppConfig extends ConfigSection {
-  enabledReadMessageQueueMode?: boolean;
-  enabledRunDaemonMode?: boolean;
+  enabledReadMessageQueueMode?: boolean | string;
+  enabledRunDaemonMode?: boolean | string;
 }
 
 /** Event config: `log` section. */
@@ -11,26 +11,26 @@ export interface EventLogConfig extends ConfigSection {
   console?: any;
   file?: string[];
   excludeParams?: string[];
-  disableDefaultRedaction?: boolean;
+  disableDefaultRedaction?: boolean | string;
 }
 
 /** Event config: `redis` section. */
 export interface EventRedisConfig extends ConfigSection {
-  enabled?: boolean;
+  enabled?: boolean | string;
 }
 
 /** Event config: `message_queue` section. */
 export interface EventMessageQueueConfig extends ConfigSection {
   maxHandlingMessages?: any;
-  shutdownDrainTimeoutMs?: number;
+  shutdownDrainTimeoutMs?: number | string;
 }
 
 /** Event config: `requester` section. */
 export interface EventRequesterConfig extends ConfigSection {
   externalService?: ConfigSection;
   registers?: {
-    keysAllowedToDeleteMoreThan100Records?: number[];
-    deleteRecordsQueue?: { concurrent?: number; interval?: number; [key: string]: any };
+    keysAllowedToDeleteMoreThan100Records?: (number | string)[];
+    deleteRecordsQueue?: { concurrent?: number | string; interval?: number | string; [key: string]: any };
     [key: string]: any;
   };
 }
@@ -43,7 +43,7 @@ export interface EventNotifierConfig extends ConfigSection {
 /** Event config: `filestorage` section. */
 export interface EventFilestorageConfig extends ConfigSection {
   apiHost?: string;
-  allowInsecureTls?: boolean;
+  allowInsecureTls?: boolean | string;
   ca?: any;
 }
 
