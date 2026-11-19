@@ -49,7 +49,6 @@ describe('BpmnTaskCore.stop redis cleanup', () => {
 
 describe('BpmnTaskCore.init order', () => {
   it('freezes Object.prototype after setup and before queue consumption and the daemon start', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const source: string = require('fs').readFileSync(require('path').join(__dirname, 'bootstrap.ts'), 'utf8');
     const at = (needle: string) => source.indexOf(needle);
     expect(at('this.routerService.init(')).toBeGreaterThan(-1);

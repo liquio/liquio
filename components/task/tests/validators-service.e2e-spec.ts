@@ -2,13 +2,12 @@ import express from 'express';
 import supertest from 'supertest';
 
 import { Validators } from '../src/validators';
-import { getConfig } from '../src/lib/config';
 
 // Every validator schema of the service mounted on a small Express app (the router does not route all of them).
 // Each one is called with an empty request and with a request full of values of the wrong type, to run the
 // real express-validator chains and the custom checks.
 describe('Validators service', () => {
-  const validators: any = new Validators(getConfig());
+  const validators: any = new Validators({});
   const wrong = {
     id: 'x',
     ids: ['x'],
