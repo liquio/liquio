@@ -1,13 +1,12 @@
-import { exec } from 'child_process';
-import { Server } from 'http';
+import { exec } from 'node:child_process';
+import { Server } from 'node:http';
 
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import debug from 'debug';
-import Multiconf from 'multiconf';
 import { Sequelize } from 'sequelize';
 import supertest from 'supertest';
-import { Log, ConsoleLogProvider, LogProvider } from '@liquio/back-core';
+import { Config as ConfigLoader, Log, ConsoleLogProvider, LogProvider } from '@liquio/back-core';
 
 import { insertData } from './fixtures';
 import ExportBusiness from '../src/businesses/export';
@@ -37,7 +36,11 @@ export class TestHarness {
   private uniqueDbName?: string;
 
   constructor() {
-    this.config = Multiconf.get(process.env.CONFIG_PATH || '../../config-templates/register', 'KITSOFT_REGISTER_') as unknown as Config;
+    this.config = ConfigLoader.load<Config>({
+      configPath: process.env.CONFIG_PATH || '../../config-templates/register',
+      secretPath: null,
+      envPrefix: 'KITSOFT_REGISTER_',
+    }).toObject();
   }
 
   getConfig(): Config {
