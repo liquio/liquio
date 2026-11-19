@@ -8,14 +8,14 @@ export const SECRET_PATH = process.env.SECRET_PATH;
 export const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_SIGN_TOOL';
 
 export interface Configuration {
-  x509: {
-    caCerts: string[];
+  x509?: {
+    caCerts?: string[];
   };
   server: {
-    host: string;
-    port: number;
-    isSwaggerEnabled: boolean;
-    acceptedBodySize: string;
+    host?: string;
+    port?: number | string;
+    isSwaggerEnabled?: boolean;
+    acceptedBodySize?: string;
     tls?: {
       enabled?: boolean;
       certPath?: string;
