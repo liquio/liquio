@@ -10,7 +10,6 @@ describe('config', () => {
   const loadConfig = () => {
     let mod: typeof import('./config');
     jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       mod = require('./config');
     });
     return mod!;
@@ -66,7 +65,6 @@ describe('config', () => {
     process.env.LIQUIO_CFG_REGISTER_db = '{"host":"envhost"}';
     let db: { host: string };
     jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       db = require('../../migrations-config.js');
     });
     expect(db!.host).toBe('envhost');
