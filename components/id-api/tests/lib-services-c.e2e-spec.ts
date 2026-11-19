@@ -22,7 +22,6 @@ import {
 import * as sc from '../src/lib/string_converter';
 import type * as CfgModule from '../src/config';
 
-const cfgModule: typeof CfgModule = jest.requireActual('../src/config');
 const SIGN_TOOL = 'http://sign-tool';
 const EMOJI = String.fromCodePoint(0x1f600);
 
@@ -240,44 +239,36 @@ describe('Lib and services coverage (group C)', () => {
       expect(() => loadIsolated('{"other":{}}')).toThrow('LIQUIO_ID_CONFIG [test] is not defined object config.');
     });
 
+    const DB = { host: 'h', port: 5432, database: 'd', username: 'u', password: 'p' };
+    const section = (extra: Record<string, any> = {}) => ({ db: DB, auth_providers: {}, redis: {}, ...extra });
+
     it('loadConfig returns the env section and caches it', () => {
-      const cfg = loadIsolated(JSON.stringify({ test: { port: 1234 } }));
-      expect(cfg).toEqual({ port: 1234 });
+      const cfg = loadIsolated(JSON.stringify({ test: section({ port: 1234 }) }));
+      expect(cfg.port).toBe(1234);
     });
 
     it('loadConfig validates OIDC providers', () => {
-      const bad = { test: { auth_providers: { oidc: { p1: { isEnabled: true } } } } };
-      expect(() => loadIsolated(JSON.stringify(bad))).toThrow(
-        'Invalid OIDC provider config [p1]: clientID is required; clientSecret is required; callbackURL is required; ' +
-          'must have either "issuer" or all of "authorizationURL", "tokenURL", "userInfoURL"',
-      );
+      const bad = { test: section({ auth_providers: { oidc: { p1: { isEnabled: true } } } }) };
+      expect(() => loadIsolated(JSON.stringify(bad))).toThrow(/^Invalid config: .*auth_providers\.oidc\.p1\.clientID: is required/);
       const ok = {
-        test: {
+        test: section({
           auth_providers: {
             oidc: {
               off: { isEnabled: false },
               on: { clientID: 'a', clientSecret: 'b', callbackURL: 'http://cb', issuer: 'http://iss' },
-              ep: {
-                clientID: 'a',
-                clientSecret: 'b',
-                callbackURL: 'http://cb',
-                authorizationURL: 'http://a',
-                tokenURL: 'http://t',
-                userInfoURL: 'http://u',
-              },
             },
           },
-        },
+        }),
       };
       expect(loadIsolated(JSON.stringify(ok)).auth_providers?.oidc?.on?.issuer).toBe('http://iss');
     });
 
     it('loadConfig validates LDAP and internal transport', () => {
-      expect(() => loadIsolated(JSON.stringify({ test: { auth_providers: { ldap: { isEnabled: true } } } }))).toThrow(
-        /^Invalid LDAP provider config: connection.url is required/,
+      expect(() => loadIsolated(JSON.stringify({ test: section({ auth_providers: { ldap: { isEnabled: true } } }) }))).toThrow(
+        /^Invalid config: .*auth_providers\.ldap\.connection\.url: is required/,
       );
-      expect(() => loadIsolated(JSON.stringify({ production: { x509: { externalUrl: 'http://sign-tool' } } }), 'production')).toThrow(
-        /^Insecure internal service URLs in production: x509.externalUrl=http:\/\/sign-tool\. /,
+      expect(() => loadIsolated(JSON.stringify({ production: section({ x509: { externalUrl: 'http://sign-tool' } }) }), 'production')).toThrow(
+        /^Invalid config: x509\.externalUrl: uses plain http:\/\/ in production/,
       );
     });
 
@@ -289,9 +280,11 @@ describe('Lib and services coverage (group C)', () => {
       const prev = process.env.CONFIG_PATH;
       process.env.CONFIG_PATH = dir;
       try {
-        fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ default_env: 'dev', dev: { port: 1 } }));
+        fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ default_env: 'dev', other: {} }));
         expect(() => loadIsolated(undefined, 'localhost')).toThrow("Config for env [dev] is not defined or missing 'db' section.");
-        fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ default_env: 'dev', dev: { db: { host: 'h' }, port: 2 } }));
+        fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ default_env: 'dev', dev: { port: 1 } }));
+        expect(() => loadIsolated(undefined, 'localhost')).toThrow(/^Invalid config: db: /);
+        fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ default_env: 'dev', dev: { ...section({ port: 2 }) } }));
         fs.writeFileSync(path.join(dir, 'versions.json'), JSON.stringify({ versions: { services: [{ name: 'eds', minVersion: '1.0.0' }] } }));
         const cfg = loadIsolated(undefined, 'localhost');
         expect(cfg.port).toBe(2);
@@ -301,45 +294,6 @@ describe('Lib and services coverage (group C)', () => {
         else process.env.CONFIG_PATH = prev;
         fs.rmSync(dir, { recursive: true, force: true });
       }
-    });
-
-    it('validateLdapConfig', () => {
-      expect(() => cfgModule.validateLdapConfig({} as any)).not.toThrow();
-      expect(() =>
-        cfgModule.validateLdapConfig({
-          auth_providers: { ldap: { isEnabled: true, connection: { url: 'http://x' }, accessGroups: [' ', 5], sync: { intervalMinutes: 0 } } },
-        } as any),
-      ).toThrow(
-        'Invalid LDAP provider config: connection.url must use the ldap:// or ldaps:// scheme; connection.bindDN is required; ' +
-          'connection.bindPassword is required; baseDN is required; accessGroups must contain at least one group; sync.intervalMinutes must be a number greater than 0',
-      );
-      expect(() =>
-        cfgModule.validateLdapConfig({
-          auth_providers: {
-            ldap: {
-              isEnabled: true,
-              connection: { url: 'ldaps://x', bindDN: 'cn=a', bindPassword: 'p' },
-              baseDN: 'dc=x',
-              accessGroups: ['g'],
-              sync: { intervalMinutes: 5 },
-            },
-          },
-        } as any),
-      ).not.toThrow();
-    });
-
-    it('getInternalServiceUrls and validateInternalTransportConfig', () => {
-      const cfg: any = { notify: { url: 'http://n' }, pingRoutes: { notify: ' ' }, x509: { externalUrl: 'https://x' } };
-      expect(cfgModule.getInternalServiceUrls(cfg)).toEqual([
-        { path: 'notify.url', url: 'http://n' },
-        { path: 'x509.externalUrl', url: 'https://x' },
-      ]);
-      expect(() => cfgModule.validateInternalTransportConfig(cfg, 'localhost')).not.toThrow();
-      expect(() => cfgModule.validateInternalTransportConfig({ ...cfg, internalTransport: { allowPlainHttp: true } }, 'production')).not.toThrow();
-      expect(() => cfgModule.validateInternalTransportConfig({ x509: { externalUrl: 'https://x' } } as any, 'prod')).not.toThrow();
-      expect(() => cfgModule.validateInternalTransportConfig(cfg, 'prod')).toThrow(
-        /Insecure internal service URLs in production: notify.url=http:\/\/n\. /,
-      );
     });
   });
 

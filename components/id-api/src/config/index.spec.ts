@@ -4,6 +4,8 @@ import path from 'node:path';
 
 const ENV_KEYS = ['CONFIG_PATH', 'SECRET_PATH', 'NODE_ENV', 'LIQUIO_ID_CONFIG', 'LIQUIO_CONFIG_PREFIX', 'LIQUIO_CFG_ID_config', 'FOO_config'];
 
+const SEC = { db: { host: 'h', port: 5432, database: 'd', username: 'u', password: 'p' }, auth_providers: {}, redis: {} };
+
 describe('config loading', () => {
   let tmp: string;
   let saved: Record<string, string | undefined>;
@@ -24,7 +26,7 @@ describe('config loading', () => {
     saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
     ENV_KEYS.forEach((k) => delete process.env[k]);
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'id-cfg-'));
-    write(path.join(tmp, 'cfg'), 'config.json', { default_env: 'localhost', localhost: { db: {}, port: 1 } });
+    write(path.join(tmp, 'cfg'), 'config.json', { default_env: 'localhost', localhost: { ...SEC, port: 1 } });
     process.env.CONFIG_PATH = path.join(tmp, 'cfg');
   });
 
@@ -41,13 +43,15 @@ describe('config loading', () => {
   });
 
   it('env var overrides config.json', () => {
-    process.env.LIQUIO_CFG_ID_config = '{"default_env":"localhost","localhost":{"db":{},"port":2}}';
+    process.env.LIQUIO_CFG_ID_config =
+      '{"default_env":"localhost","localhost":{"db":{"host":"h","port":1,"database":"d","username":"u","password":"p"},"auth_providers":{},"redis":{},"port":2}}';
     expect(load().loadConfig().port).toBe(2);
   });
 
   it('LIQUIO_CONFIG_PREFIX has no effect', () => {
     process.env.LIQUIO_CONFIG_PREFIX = 'FOO';
-    process.env.FOO_config = '{"default_env":"localhost","localhost":{"db":{},"port":3}}';
+    process.env.FOO_config =
+      '{"default_env":"localhost","localhost":{"db":{"host":"h","port":1,"database":"d","username":"u","password":"p"},"auth_providers":{},"redis":{},"port":3}}';
     expect(load().loadConfig().port).toBe(1);
   });
 
@@ -58,8 +62,20 @@ describe('config loading', () => {
   });
 
   it('copies versions from versions.json', () => {
-    write(path.join(tmp, 'cfg'), 'versions.json', { versions: { a: '1' } });
-    expect(load().loadConfig().versions).toEqual({ a: '1' });
+    write(path.join(tmp, 'cfg'), 'versions.json', { versions: { services: [{ name: 'a', minVersion: '1' }] } });
+    expect(load().loadConfig().versions).toEqual({ services: [{ name: 'a', minVersion: '1' }] });
+  });
+
+  it('rejects an invalid config with ConfigValidationError', () => {
+    write(path.join(tmp, 'cfg'), 'config.json', { default_env: 'localhost', localhost: { port: 1 } });
+    let error: any;
+    try {
+      load().loadConfig();
+    } catch (e) {
+      error = e;
+    }
+    expect(error?.code).toBe('CONFIG_VALIDATION');
+    expect(error.issues.map((i: { path: string }) => i.path)).toContain('db');
   });
 });
 
@@ -92,8 +108,13 @@ describe('migrations-config', () => {
     expect(req()).toEqual({ host: 'h' });
   });
 
-  it('throws when db is missing', () => {
-    fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ test: {} }));
+  it('throws when the env section is missing', () => {
+    fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ other: {} }));
     expect(() => req()).toThrow("Config for env [test] is not defined or missing 'db' section.");
+  });
+
+  it('throws ConfigValidationError when db is missing', () => {
+    fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ test: {} }));
+    expect(() => req()).toThrow(/^Invalid config: db: /);
   });
 });

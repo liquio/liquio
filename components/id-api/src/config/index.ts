@@ -2,6 +2,8 @@ import { Config as ConfigLoader } from '@liquio/back-core';
 import { StrategyOptions } from 'passport-oauth2';
 import { Dialect } from 'sequelize';
 
+import { buildIdApiConfigSchema } from './schema';
+
 export const DEFAULT_COOKIE_DOMAIN = '.liquio';
 export const DEFAULT_CODE_RETRIES = 5;
 export const DEFAULT_CODE_LENGTH = 6;
@@ -347,127 +349,6 @@ export interface Config {
 const CONFIG_PATH = process.env.CONFIG_PATH || process.cwd() + '/config';
 const SECRET_PATH = process.env.SECRET_PATH;
 
-/**
- * Validates OIDC provider configuration
- * Throws an error if required fields are missing or invalid
- */
-function validateOIDCConfig(config: Config): void {
-  if (!config.auth_providers?.oidc) {
-    return; // No OIDC providers configured
-  }
-
-  const providersMap = config.auth_providers.oidc;
-  const providers = Object.entries(providersMap);
-
-  for (const [providerId, provider] of providers) {
-    // Skip validation if provider is explicitly disabled
-    if (provider.isEnabled === false) {
-      continue;
-    }
-
-    // Validate required fields for enabled providers
-    const errors: string[] = [];
-
-    if (!providerId) {
-      errors.push('providerId (key) is required');
-    }
-    if (!provider.clientID) {
-      errors.push('clientID is required');
-    }
-    if (!provider.clientSecret) {
-      errors.push('clientSecret is required');
-    }
-    if (!provider.callbackURL) {
-      errors.push('callbackURL is required');
-    }
-
-    // Validate issuer or endpoint overrides
-    const hasIssuer = !!provider.issuer;
-    const hasAllEndpoints = !!provider.authorizationURL && !!provider.tokenURL && !!provider.userInfoURL;
-
-    if (!hasIssuer && !hasAllEndpoints) {
-      errors.push('must have either "issuer" or all of "authorizationURL", "tokenURL", "userInfoURL"');
-    }
-
-    if (errors.length > 0) {
-      throw new Error(`Invalid OIDC provider config [${providerId}]: ${errors.join('; ')}`);
-    }
-  }
-}
-
-/**
- * Validates LDAP provider configuration
- * Throws an error if the provider is enabled and required fields are missing or invalid
- */
-export function validateLdapConfig(config: Config): void {
-  const provider = config.auth_providers?.ldap;
-  if (!provider?.isEnabled) {
-    return;
-  }
-
-  const errors: string[] = [];
-
-  const url = provider.connection?.url;
-  if (!url) {
-    errors.push('connection.url is required');
-  } else if (!/^ldaps?:\/\//i.test(url)) {
-    errors.push('connection.url must use the ldap:// or ldaps:// scheme');
-  }
-  // Without the service account the search would run as an anonymous bind.
-  if (!provider.connection?.bindDN) {
-    errors.push('connection.bindDN is required');
-  }
-  if (!provider.connection?.bindPassword) {
-    errors.push('connection.bindPassword is required');
-  }
-  if (!provider.baseDN) {
-    errors.push('baseDN is required');
-  }
-  if (!Array.isArray(provider.accessGroups) || provider.accessGroups.filter((group) => typeof group === 'string' && group.trim()).length === 0) {
-    errors.push('accessGroups must contain at least one group');
-  }
-  const intervalMinutes = provider.sync?.intervalMinutes;
-  if (intervalMinutes !== undefined && (typeof intervalMinutes !== 'number' || !Number.isFinite(intervalMinutes) || intervalMinutes <= 0)) {
-    errors.push('sync.intervalMinutes must be a number greater than 0');
-  }
-
-  if (errors.length > 0) {
-    throw new Error(`Invalid LDAP provider config: ${errors.join('; ')}`);
-  }
-}
-
-/** Internal service URLs covered by `internalTransport.allowPlainHttp`. */
-export function getInternalServiceUrls(config: Config): { path: string; url: string }[] {
-  const urls = [
-    { path: 'notify.url', url: config.notify?.url },
-    { path: 'pingRoutes.notify', url: config.pingRoutes?.notify },
-    { path: 'x509.externalUrl', url: config.x509?.externalUrl },
-  ];
-  return urls.filter((item): item is { path: string; url: string } => typeof item.url === 'string' && item.url.trim() !== '');
-}
-
-/**
- * Validates transport security of internal service URLs.
- * In production a plain http:// URL is refused unless `internalTransport.allowPlainHttp` is true.
- */
-export function validateInternalTransportConfig(config: Config, env: string = process.env.NODE_ENV ?? 'localhost'): void {
-  if (env !== 'production' && env !== 'prod') {
-    return;
-  }
-  if (config.internalTransport?.allowPlainHttp === true) {
-    return;
-  }
-
-  const insecure = getInternalServiceUrls(config).filter(({ url }) => /^http:\/\//i.test(url.trim()));
-  if (insecure.length > 0) {
-    throw new Error(
-      `Insecure internal service URLs in production: ${insecure.map(({ path, url }) => `${path}=${url}`).join(', ')}. ` +
-        'Use https:// (and `internalTransport.ca` for a private CA), or set `internalTransport.allowPlainHttp` to true ' +
-        'to accept plain http:// when NetworkPolicies/service mesh protect the traffic.',
-    );
-  }
-}
-
 let config: Config;
 export function loadConfig(): Config {
   if (config) {
@@ -487,10 +368,7 @@ export function loadConfig(): Config {
     if (typeof parsedEnvConfig[env] === 'undefined') {
       throw new Error(`LIQUIO_ID_CONFIG [${env}] is not defined object config.`);
     }
-    config = ConfigLoader.fromObject<Config>(parsedEnvConfig[env]).toObject();
-    validateOIDCConfig(config);
-    validateLdapConfig(config);
-    validateInternalTransportConfig(config, env);
+    config = ConfigLoader.fromObject<Config>(parsedEnvConfig[env], { schema: buildIdApiConfigSchema(env) }).toObject();
     return config;
   }
 
@@ -504,18 +382,15 @@ export function loadConfig(): Config {
   const resolvedEnv = env !== 'localhost' ? env : (configData?.default_env ?? 'localhost');
   const envConf = configData?.[resolvedEnv];
 
-  if (!envConf || !envConf.db) {
+  if (!envConf) {
     throw new Error(`Config for env [${resolvedEnv}] is not defined or missing 'db' section.`);
   }
 
-  config = {
+  const merged = {
     ...envConf,
     ...(raw.versions?.versions !== undefined ? { versions: raw.versions.versions } : {}),
-  } as Config;
-
-  validateOIDCConfig(config);
-  validateLdapConfig(config);
-  validateInternalTransportConfig(config, resolvedEnv);
+  };
+  config = ConfigLoader.fromObject<Config>(merged, { schema: buildIdApiConfigSchema(resolvedEnv) }).toObject();
 
   return config;
 }
