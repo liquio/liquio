@@ -13,7 +13,7 @@
     "@mui/icons-material": "^5.16.7",
     "@mui/material": "^5.16.7",
     "@mui/styles": "^5.16.7",
-    "@mui/x-date-pickers": "^5.0.20",
+    "@mui/x-date-pickers": "^9.18.0",
     "ajv": "^6.12.6",
     "classnames": "^2.5.1",
     "dayjs": "^1.11.13",
