@@ -109,7 +109,7 @@
     "mime-types": "^2.1.35",
     "mobile-detect": "1.4.4",
     "moment": "2.29.4",
-    "moment-timezone": "0.5.45",
+    "moment-timezone": "0.6.6",
     "node-forge": "1.4.0",
     "object-path": "0.11.8",
     "password-generator": "2.3.2",
