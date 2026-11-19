@@ -1,6 +1,7 @@
 // Import.
 import { Sandbox } from '@liquio/back-core';
 
+import type { PersistLinkConfig } from './lib/config.types';
 import { getLog, setAppContext } from './lib/context';
 import Db from './lib/db';
 import Models from './models';
@@ -16,7 +17,7 @@ export interface BootstrapOverrides {
  * @param overrides Test-only overrides.
  * @returns Started router.
  */
-export async function bootstrap(config: any, overrides: BootstrapOverrides = {}): Promise<Router> {
+export async function bootstrap(config: PersistLinkConfig, overrides: BootstrapOverrides = {}): Promise<Router> {
   // Init sandbox (shared by the whole process, see `Sandbox.getInstance()`).
   // Template jsonMap code must never run outside isolated-vm, so production always uses isolated-vm.
   new Sandbox({ ...config.sandbox, isolationLevel: (overrides.sandboxIsolationLevel || 'isolated-vm') as any, getLog });
