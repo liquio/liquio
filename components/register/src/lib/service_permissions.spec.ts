@@ -1,4 +1,4 @@
-import { authorizeRequest, checkServicePermissionsConfig, listUnrestrictedUsers } from './service_permissions';
+import { authorizeRequest, listUnrestrictedUsers } from './service_permissions';
 
 const req = (method: string, path: string, extra: any = {}) => ({ method, url: path, route: { path }, query: {}, body: {}, params: {}, ...extra });
 const auth = (extra: any = {}): any => ({ tokens: [], ...extra });
@@ -67,20 +67,6 @@ describe('service_permissions', () => {
         const a = auth({ strict: true, trustedCallers: ['admin'], servicePermissions: { admin: { routes: ['GET /records'] } } });
         expect(authorizeRequest(a, 'admin', req('DELETE', '/keys/:id')).reason).toBe('route-not-allowed');
       });
-    });
-  });
-
-  describe('checkServicePermissionsConfig', () => {
-    it('accepts missing and valid config', () => {
-      expect(checkServicePermissionsConfig(auth())).toEqual([]);
-      expect(checkServicePermissionsConfig(auth({ strict: false, servicePermissions: { a: { routes: ['GET /records'], keys: [1] } } }))).toEqual([]);
-    });
-
-    it('reports malformed config', () => {
-      expect(checkServicePermissionsConfig(auth({ servicePermissions: [] }))).toHaveLength(1);
-      expect(checkServicePermissionsConfig(auth({ servicePermissions: { a: 'x' } }))).toHaveLength(1);
-      expect(checkServicePermissionsConfig(auth({ servicePermissions: { a: { routes: 'GET /records', keys: [{}] } } }))).toHaveLength(2);
-      expect(checkServicePermissionsConfig(auth({ strict: 'yes' }))).toHaveLength(1);
     });
   });
 

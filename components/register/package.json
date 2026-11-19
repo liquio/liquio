@@ -39,7 +39,8 @@
     "pg": "^8.23.1",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8",
-    "sequelize-cli": "^6.6.2"
+    "sequelize-cli": "^6.6.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^12.2.1",

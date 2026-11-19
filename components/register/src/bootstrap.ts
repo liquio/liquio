@@ -7,7 +7,7 @@ import Models from './models';
 import Router from './router';
 import Encryption from './lib/encryption';
 import { listUnrestrictedUsers } from './lib/service_permissions';
-import { assertSafeConfig, assertEncryptionConfig, warnPlainHttpSign, warnEmptySignToken } from './lib/config_guard';
+import { assertEncryptionConfig, warnPlainHttpSign, warnEmptySignToken } from './lib/config_guard';
 import { RedisClient } from './lib/redis_client';
 import { PgPubSub } from './lib/pgpubsub';
 import { buildSandboxConfig } from './lib/sandbox_config';
@@ -24,14 +24,6 @@ export async function bootstrap(config: any, overrides: { log?: Log } = {}) {
   }
 
   setAppContext({ config, log, typeOf });
-
-  // Refuse to start with placeholder/empty credentials (messages name settings only, never values).
-  try {
-    assertSafeConfig(config);
-  } catch (error) {
-    log.save('config-guard-error', { error: error?.message }, 'error');
-    throw error;
-  }
 
   warnPlainHttpSign(config);
   warnEmptySignToken(config);

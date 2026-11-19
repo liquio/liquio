@@ -1,73 +1,12 @@
-import {
-  assertEncryptionConfig,
-  assertSafeConfig,
-  checkAuthConfig,
-  checkEncryptionConfig,
-  warnPlainHttpSign,
-  warnEmptySignToken,
-} from './config_guard';
+import { assertEncryptionConfig, checkEncryptionConfig, warnPlainHttpSign, warnEmptySignToken } from './config_guard';
 import { Config } from './config';
 import { setAppContext } from './context';
 
-const basic = (pair: string) => `Basic ${Buffer.from(pair).toString('base64')}`;
 const GOOD_KEY = '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
-const GOOD_TOKEN = basic('register:s3cr3t-long-password');
 
 const cfg = (auth: any, encryption: any): Config => ({ auth, encryption }) as unknown as Config;
 
 describe('config_guard', () => {
-  describe('auth', () => {
-    it('rejects empty tokens', () => {
-      expect(checkAuthConfig({ auth: { tokens: [] } } as any)).toHaveLength(1);
-      expect(checkAuthConfig({ auth: {} } as any)).toHaveLength(1);
-    });
-
-    it('rejects placeholder tokens, raw and decoded', () => {
-      expect(checkAuthConfig({ auth: { tokens: ['Basic <REDACTED>'] } } as any)).toHaveLength(1);
-      expect(checkAuthConfig({ auth: { tokens: [basic('user:<REDACTED>')] } } as any)).toHaveLength(1);
-    });
-
-    it('rejects short passwords and missing separator', () => {
-      expect(checkAuthConfig({ auth: { tokens: [basic('test:test')] } } as any)).toHaveLength(1);
-      expect(checkAuthConfig({ auth: { tokens: [basic('nopassword')] } } as any)).toHaveLength(1);
-    });
-
-    describe('known default token (KS-09c)', () => {
-      const DEFAULT = basic(['register', 'OaUiZ70kuHLj'].join(':'));
-
-      it('refuses it in production, raw or without the Basic prefix, without printing it', () => {
-        const problems = checkAuthConfig({ auth: { tokens: [DEFAULT] } } as any, 'production');
-        expect(problems).toHaveLength(1);
-        expect(problems[0]).toContain('publicly known');
-        expect(problems.join(' ')).not.toContain(DEFAULT.slice(6));
-        expect(checkAuthConfig({ auth: { tokens: [GOOD_TOKEN, DEFAULT] } } as any, 'prod')).toHaveLength(1);
-      });
-
-      it('allows it outside production', () => {
-        expect(checkAuthConfig({ auth: { tokens: [DEFAULT] } } as any, 'development')).toEqual([]);
-        expect(checkAuthConfig({ auth: { tokens: [DEFAULT] } } as any, undefined)).toEqual([]);
-      });
-
-      it('allows it in production with auth.allowKnownDefaultToken', () => {
-        expect(checkAuthConfig({ auth: { tokens: [DEFAULT], allowKnownDefaultToken: true } } as any, 'production')).toEqual([]);
-      });
-
-      it('assertSafeConfig refuses it in production', () => {
-        expect(() => assertSafeConfig(cfg({ tokens: [DEFAULT] }, { key: GOOD_KEY }), 'production')).toThrow(/publicly known/);
-      });
-    });
-
-    it('accepts a strong token', () => {
-      expect(checkAuthConfig({ auth: { tokens: [GOOD_TOKEN] } } as any)).toEqual([]);
-    });
-
-    it('never prints secret values', () => {
-      const problems = checkAuthConfig({ auth: { tokens: [basic('user:abc'), 'Basic <REDACTED>'] } } as any).join(' ');
-      expect(problems).not.toContain(Buffer.from('user:abc').toString('base64'));
-      expect(problems).not.toContain('REDACTED');
-    });
-  });
-
   describe('encryption', () => {
     it('always rejects a placeholder key', () => {
       expect(checkEncryptionConfig({ encryption: { key: '<REDACTED>' } } as any, false)).toHaveLength(1);
@@ -102,22 +41,6 @@ describe('config_guard', () => {
       expect(checkEncryptionConfig({ encryption: { key: GOOD_KEY } } as any, true)).toEqual([]);
       expect(() => assertEncryptionConfig(cfg({}, { key: 'abcd' }), true)).toThrow(/encryption\.key/);
       expect(() => assertEncryptionConfig(cfg({}, { key: 'abcd' }), true)).not.toThrow(/abcd/);
-    });
-  });
-
-  describe('assertSafeConfig', () => {
-    it('throws for the unmodified placeholder templates', () => {
-      expect(() => assertSafeConfig(cfg({ tokens: ['Basic <REDACTED>'] }, { key: '<REDACTED>' }))).toThrow(/auth\.tokens\[0\].*encryption\.key/);
-    });
-
-    it('rejects a malformed servicePermissions config', () => {
-      expect(() => assertSafeConfig(cfg({ tokens: [GOOD_TOKEN], servicePermissions: { a: { routes: 'x' } } }, { key: GOOD_KEY }))).toThrow(
-        /auth\.servicePermissions\.a\.routes/,
-      );
-    });
-
-    it('passes for valid config', () => {
-      expect(() => assertSafeConfig(cfg({ tokens: [GOOD_TOKEN] }, { key: GOOD_KEY }))).not.toThrow();
     });
   });
 });
@@ -171,6 +94,5 @@ describe('warnEmptySignToken', () => {
 
   it('never throws, so the shipped template starts', () => {
     expect(() => warnEmptySignToken({} as any, 'production')).not.toThrow();
-    expect(() => assertSafeConfig(cfg({ tokens: [GOOD_TOKEN] }, { key: GOOD_KEY }))).not.toThrow();
   });
 });

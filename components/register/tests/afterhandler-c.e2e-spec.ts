@@ -8,15 +8,8 @@ import PLinkAfterhandlerWorker from '../src/lib/afterhandler/workers/plink';
 import HyperledgerFabricBlockchainProvider from '../src/lib/afterhandler/workers/blockchain/providers/hyperledger_fabric';
 import { PgPubSub } from '../src/lib/pgpubsub';
 import { setAppContext, getAfterhandler, getConfig, getDb } from '../src/lib/context';
-import {
-  assertEncryptionConfig,
-  assertSafeConfig,
-  checkAuthConfig,
-  checkEncryptionConfig,
-  warnEmptySignToken,
-  warnPlainHttpSign,
-} from '../src/lib/config_guard';
-import { authorizeRequest, checkServicePermissionsConfig, listUnrestrictedUsers } from '../src/lib/service_permissions';
+import { assertEncryptionConfig, checkEncryptionConfig, warnEmptySignToken, warnPlainHttpSign } from '../src/lib/config_guard';
+import { authorizeRequest, listUnrestrictedUsers } from '../src/lib/service_permissions';
 
 type Seen = { method: string; url: string; body: string; headers: http.IncomingHttpHeaders };
 
@@ -629,51 +622,6 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
 
   describe('config_guard', () => {
     const basic = (s: string) => `Basic ${Buffer.from(s).toString('base64')}`;
-    const knownDefault = 'Basic ' + 'cmVnaXN0ZXI6';
-
-    it('checkAuthConfig flags empty, non-string, placeholder and weak tokens', () => {
-      expect(checkAuthConfig({ auth: { tokens: [] } } as any)).toEqual(['auth.tokens is empty: at least one Basic auth token must be configured.']);
-      expect(checkAuthConfig({} as any)).toHaveLength(1);
-      const problems = checkAuthConfig(
-        {
-          auth: {
-            tokens: ['  ', 5 as any, 'changeme', basic('u:short'), basic('u:<REDACTED>'), basic('nocolon'), basic('u:long-enough-pass'), 'Bearer x'],
-          },
-        } as any,
-        'dev',
-      );
-      expect(problems).toEqual([
-        'auth.tokens[0] is empty or not a string.',
-        'auth.tokens[1] is empty or not a string.',
-        'auth.tokens[2] is a placeholder value.',
-        'auth.tokens[3] password is shorter than 8 characters.',
-        'auth.tokens[4] decodes to a placeholder value.',
-        'auth.tokens[5] password is shorter than 8 characters.',
-      ]);
-      expect(knownDefault).toBeTruthy();
-    });
-
-    it('checkAuthConfig refuses the known default token only in production', () => {
-      const tokens = ['Basic ' + 'cmVnaXN0ZXI6cGFzc3dvcmQ='];
-      const crypto = require('node:crypto');
-      const { KNOWN_DEFAULT_TOKEN_HASHES } = require('../src/lib/config_guard');
-      const hash = crypto.createHash('sha256').update(tokens[0]).digest('hex');
-      const cfg: any = { auth: { tokens } };
-      if (KNOWN_DEFAULT_TOKEN_HASHES.includes(hash)) {
-        expect(checkAuthConfig(cfg, 'production')[0]).toContain('publicly known default token');
-      }
-      KNOWN_DEFAULT_TOKEN_HASHES.push(hash);
-      try {
-        expect(checkAuthConfig(cfg, 'production')[0]).toBe(
-          'auth.tokens[0] is a publicly known default token from the repository, rotate it (or set auth.allowKnownDefaultToken=true).',
-        );
-        expect(checkAuthConfig(cfg, 'prod')).toHaveLength(1);
-        expect(checkAuthConfig(cfg, 'development')).toEqual([]);
-        expect(checkAuthConfig({ auth: { tokens, allowKnownDefaultToken: true } } as any, 'production')).toEqual([]);
-      } finally {
-        KNOWN_DEFAULT_TOKEN_HASHES.pop();
-      }
-    });
 
     it('checkEncryptionConfig validates key presence and format', () => {
       const key = '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
@@ -687,12 +635,8 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
       expect(checkEncryptionConfig(undefined as any, true)).toEqual(['encryption.key is empty but encrypted register keys exist.']);
     });
 
-    it('assertSafeConfig and assertEncryptionConfig throw one combined error', () => {
+    it('assertEncryptionConfig throws the encryption problem', () => {
       const good: any = { auth: { tokens: [basic('u:long-enough-pass')] }, encryption: { key: '' } };
-      expect(() => assertSafeConfig(good, 'dev')).not.toThrow();
-      expect(() => assertSafeConfig({ auth: { tokens: [] }, encryption: { key: 'changeme' } } as any, 'dev')).toThrow(
-        'Invalid register configuration: auth.tokens is empty: at least one Basic auth token must be configured. encryption.key is a placeholder value.',
-      );
       expect(() => assertEncryptionConfig(good, true)).toThrow(
         'Invalid register configuration: encryption.key is empty but encrypted register keys exist.',
       );
@@ -724,24 +668,6 @@ describe('Afterhandler, config guard, permissions, pgpubsub (GITHUB-887 T08 C)',
   });
 
   describe('service_permissions', () => {
-    it('checkServicePermissionsConfig validates the shape', () => {
-      expect(checkServicePermissionsConfig(undefined)).toEqual([]);
-      expect(checkServicePermissionsConfig({ strict: 'yes' } as any)).toEqual(['auth.strict must be a boolean.']);
-      expect(checkServicePermissionsConfig({ servicePermissions: 'x' } as any)).toEqual(['auth.servicePermissions must be an object.']);
-      expect(checkServicePermissionsConfig({ servicePermissions: [] } as any)).toEqual(['auth.servicePermissions must be an object.']);
-      expect(
-        checkServicePermissionsConfig({
-          servicePermissions: { a: 'x', b: { routes: 'x', keys: 'y' }, c: { routes: [1], keys: [{}] }, d: { routes: ['*'], keys: [1, 'a'] } },
-        } as any),
-      ).toEqual([
-        'auth.servicePermissions.a must be an object.',
-        'auth.servicePermissions.b.routes must be an array of strings.',
-        'auth.servicePermissions.b.keys must be an array of key ids.',
-        'auth.servicePermissions.c.routes must be an array of strings.',
-        'auth.servicePermissions.c.keys must be an array of key ids.',
-      ]);
-    });
-
     it('listUnrestrictedUsers excludes users with permissions or limited access', () => {
       const b = (s: string) => `Basic ${Buffer.from(s).toString('base64')}`;
       expect(

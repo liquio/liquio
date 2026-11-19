@@ -1,64 +1,7 @@
-import crypto from 'node:crypto';
-
 import { Config } from './config';
 import { parseEncryptionKey } from './encryption';
-import { checkServicePermissionsConfig } from './service_permissions';
+import { isPlaceholder } from './config.schema';
 import { getLog } from './context';
-
-/** Minimum length of the password part of a Basic auth token. */
-export const MIN_TOKEN_PASSWORD_LENGTH = 8;
-
-// SHA-256 of the Basic token that shipped in the repository (`register:` + a public password). It is public, so production refuses it.
-export const KNOWN_DEFAULT_TOKEN_HASHES: string[] = ['79cfad97612a45f9884d9c6e57da30ea9d0e4554e60e24fe75ef7018880bf23a'];
-
-const isProduction = (env: string | undefined): boolean => !!env && ['production', 'prod'].includes(env);
-
-const PLACEHOLDER_RE = /<?\bREDACTED\b>?|<[^>]*>|changeme|change_me|change-me/i;
-
-const isPlaceholder = (value: string): boolean => PLACEHOLDER_RE.test(value);
-
-/**
- * Validate the auth config. Returns problems (setting names only, never values).
- */
-export function checkAuthConfig(config: Pick<Config, 'auth'>, env: string | undefined = process.env.NODE_ENV): string[] {
-  const tokens = config?.auth?.tokens;
-  if (!Array.isArray(tokens) || tokens.length === 0) {
-    return ['auth.tokens is empty: at least one Basic auth token must be configured.'];
-  }
-
-  const problems: string[] = [];
-  // Production only; `auth.allowKnownDefaultToken: true` opts out.
-  const refuseKnownDefault = isProduction(env) && config.auth.allowKnownDefaultToken !== true;
-  tokens.forEach((token, index) => {
-    const name = `auth.tokens[${index}]`;
-    if (typeof token !== 'string' || token.trim() === '') {
-      problems.push(`${name} is empty or not a string.`);
-      return;
-    }
-    if (isPlaceholder(token)) {
-      problems.push(`${name} is a placeholder value.`);
-      return;
-    }
-    if (refuseKnownDefault) {
-      const normalized = /^Basic\s/i.test(token.trim()) ? `Basic ${token.trim().split(/\s+/)[1]}` : token.trim();
-      if (KNOWN_DEFAULT_TOKEN_HASHES.includes(crypto.createHash('sha256').update(normalized).digest('hex'))) {
-        problems.push(`${name} is a publicly known default token from the repository, rotate it (or set auth.allowKnownDefaultToken=true).`);
-        return;
-      }
-    }
-    const match = /^Basic\s+(\S+)$/i.exec(token.trim());
-    if (!match) return; // Non-Basic tokens are not inspected.
-    const decoded = Buffer.from(match[1], 'base64').toString('utf8');
-    const separator = decoded.indexOf(':');
-    const password = separator === -1 ? '' : decoded.slice(separator + 1);
-    if (isPlaceholder(decoded)) {
-      problems.push(`${name} decodes to a placeholder value.`);
-    } else if (password.length < MIN_TOKEN_PASSWORD_LENGTH) {
-      problems.push(`${name} password is shorter than ${MIN_TOKEN_PASSWORD_LENGTH} characters.`);
-    }
-  });
-  return problems;
-}
 
 /**
  * Validate the encryption key. A known placeholder is always a problem (nobody may run with it).
@@ -91,12 +34,6 @@ function fail(problems: string[]): void {
   if (problems.length) {
     throw new Error(`Invalid register configuration: ${problems.join(' ')}`);
   }
-}
-
-/** Startup guard for settings that do not need the DB. Throws with setting names only. */
-export function assertSafeConfig(config: Config, env: string | undefined = process.env.NODE_ENV): void {
-  const encryption = checkEncryptionConfig(config, false).filter((p) => p.includes('placeholder'));
-  fail([...checkAuthConfig(config, env), ...checkServicePermissionsConfig(config?.auth), ...encryption]);
 }
 
 /** Startup guard for the encryption key; call once the DB is reachable. */

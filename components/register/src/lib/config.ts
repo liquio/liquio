@@ -1,5 +1,6 @@
 import { Config as ConfigLoader, SandboxConfig } from '@liquio/back-core';
 
+import { buildRegisterConfigSchema } from './config.schema';
 import type { TlsConfig } from './tls';
 
 export const CONFIG_PATH = process.env.CONFIG_PATH || '../config/register';
@@ -10,6 +11,7 @@ export const config: Config = ConfigLoader.load<Config>({
   configPath: CONFIG_PATH,
   secretPath: SECRET_PATH ?? null,
   envPrefix: `${LIQUIO_CONFIG_PREFIX}_`,
+  schema: buildRegisterConfigSchema(),
 }).toObject();
 
 export interface Config {
@@ -23,12 +25,12 @@ export interface Config {
   app: { processTitle: string };
   auth: {
     tokens: string[];
-    allowRawSequelizeParamsUsers: string[];
+    allowRawSequelizeParamsUsers?: string[];
     /** Basic users allowed to send `allow_see_all_records`, `disable_fields_rules` and `allow_tokens`. Empty/missing: all ignored. */
     trustedCallers?: string[];
     /** Server-side allow tokens per verified Basic user (used for callers that are not trusted). */
     userAllowTokens?: Record<string, string[]>;
-    limitedAccess: Array<{ user: string; keys: string[] }>;
+    limitedAccess?: Array<{ user: string; keys: string[] }>;
     /** Opt-in per-user allow-list (`routes`, `keys`). Users without an entry keep full access. */
     servicePermissions?: Record<string, { routes?: string[]; keys?: Array<number | string> }>;
     /** Opt-in: destructive routes (rollback, deletes) require `trustedCallers`. Default off. */
