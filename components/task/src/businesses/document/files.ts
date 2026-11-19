@@ -2,6 +2,7 @@ import { PassThrough, Readable } from 'node:stream';
 
 import _ from 'lodash';
 import nodeHtmlParser from 'node-html-parser';
+import { bpmnMessageLogContext, errorRef } from '@liquio/back-core';
 
 import { ErrorMessage } from '../../constants/error';
 import { DocumentAttachmentEntity } from '../../entities/document_attachment';
@@ -10,7 +11,8 @@ import { BadRequestError, ForbiddenError, InvalidParamsError, NotFoundError } fr
 import { Business } from '../business';
 import type { DocumentBusiness } from './index';
 import type { UserUnitIds } from './types';
-import { getLog, getModels, getBusinesses, getConfig, getRedisClient, getMessageQueue } from '../../lib/context';
+import { getLog, getModels, getBusinesses, getConfig, getRedisClient } from '../../lib/context';
+import { publishOrLog, resolveTrustedWorkflowId, DESTINATION_TASK_PDF } from '../../lib/message_bus';
 
 // Constants.
 const DOCUMENT_PREVIEW_SCHEMA_CONTROL = 'preview.document';
@@ -542,9 +544,9 @@ export class DocumentFileBusiness extends Business {
       fileType: null,
     });
 
-    // Send message to RabbitMQ.
+    // Notify manager.
     const message = { documentId: document.id, userId: userId };
-    getMessageQueue().produce(message, 'writingPdf', 'bpmn-task-incoming-generating-pdf');
+    void publishOrLog(DESTINATION_TASK_PDF, message);
 
     if (getRedisClient()) {
       getRedisClient().set(`generating-pdf-document-${document.id}`, true, 3600);
@@ -798,7 +800,22 @@ export class DocumentFileBusiness extends Business {
         throw new Error("PDF wasn't created.");
       }
     } catch (error) {
-      getLog().save('pdf-creating-by-message-from-queue-error', { messageObject, error: (error && error.message) || error });
+      let errorId;
+      try {
+        errorId = await getModels().workflowError.create({ error: error?.message ?? String(error), queueMessage: messageObject }, 'error', {
+          workflowId: await resolveTrustedWorkflowId(DESTINATION_TASK_PDF, messageObject),
+        });
+      } catch (createError) {
+        getLog().save('pdf-creating-error-catch-creating-error', {
+          ...bpmnMessageLogContext(DESTINATION_TASK_PDF)(messageObject),
+          error: errorRef(createError),
+        });
+      }
+      getLog().save('pdf-creating-by-message-from-queue-error', {
+        ...bpmnMessageLogContext(DESTINATION_TASK_PDF)(messageObject),
+        error: errorRef(error),
+        errorId,
+      });
 
       // If it errors, will delete state generating pdf.
       await (getModels().document.addDocumentFile as any)({

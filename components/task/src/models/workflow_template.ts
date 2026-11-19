@@ -128,6 +128,16 @@ export class WorkflowTemplateModel extends Model {
     return this.prepareEntity(workflowTemplate);
   }
 
+  /**
+   * Find XML BPMN schema by ID.
+   * @param {number} id Workflow template ID.
+   * @returns {Promise<string|undefined>} XML BPMN schema.
+   */
+  async findXmlBpmnSchemaById(id) {
+    const workflowTemplate = await this.model.findByPk(id, { attributes: ['id', 'xml_bpmn_schema'] });
+    return workflowTemplate?.xml_bpmn_schema;
+  }
+
   async getLatestUpdatedAt() {
     const [row] = await this.db.query('SELECT MAX(updated_at) AS updated_at FROM workflow_templates');
     return row?.updated_at;

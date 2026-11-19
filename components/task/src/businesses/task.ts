@@ -3,7 +3,7 @@ import get from 'lodash/get';
 import set from 'lodash/set';
 import moment from 'moment-business-days';
 import validator from 'validator';
-import { getIdApiClient, IdApiClient, IdApiUserInfo, Sandbox } from '@liquio/back-core';
+import { errorRef, getIdApiClient, getRetryDelayMs, IdApiClient, IdApiUserInfo, Sandbox } from '@liquio/back-core';
 
 import PropByPath from '../lib/prop_by_path';
 import { SignatureInfoEntity } from '../entities/signature_info';
@@ -38,8 +38,9 @@ import {
   InvalidParamsError,
 } from '../lib/errors';
 import { ErrorMessage } from '../constants/error';
-import { getBusinesses, getConfig, getLog, getMessageQueue, getModels } from '../lib/context';
+import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
 import { ownFlag } from '../lib/own_flag';
+import { publishOrLog, taskMessageLogContext, DESTINATION_MANAGER, DESTINATION_TASK } from '../lib/message_bus';
 
 // Constants.
 const ONCE_DEFINED_META_FIELDS = ['commitRequestMeta'];
@@ -1492,9 +1493,9 @@ export class TaskBusiness extends Business {
 
       await getBusinesses().userInbox.sendToInboxesIfNeedIt(finishedTask);
 
-      // Send message to RabbitMQ.
+      // Notify manager.
       const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-      getMessageQueue().produce(message);
+      void publishOrLog(DESTINATION_MANAGER, message);
     }
 
     // Calculate draftExpiredAt and update task if need.
@@ -1964,6 +1965,51 @@ export class TaskBusiness extends Business {
   }
 
   /**
+   * Check that the task template is a node of the workflow's BPMN schema.
+   * @param {number} taskTemplateId Task template ID.
+   * @param {string} workflowId Workflow ID.
+   * @returns {Promise<boolean>} Check result.
+   */
+  async isTaskTemplateInWorkflow(taskTemplateId, workflowId): Promise<boolean> {
+    const workflow: any = await getModels().workflow.findById(workflowId);
+    if (!workflow) {
+      return false;
+    }
+    const xmlBpmnSchema = await getModels().workflowTemplate.findXmlBpmnSchemaById(workflow.workflowTemplateId);
+    if (!xmlBpmnSchema) {
+      return false;
+    }
+    return getBusinesses().workflow.hasTaskTemplateIdInBpmnSchema(xmlBpmnSchema, taskTemplateId);
+  }
+
+  /**
+   * Verify the workflow ID of a queue message.
+   * @param {object} messageObject Message object.
+   * @returns {Promise<string|null>} Workflow ID if it is verified, otherwise null.
+   */
+  async verifyMessageWorkflowId(messageObject): Promise<string | null> {
+    try {
+      const workflowId = messageObject?.workflowId;
+      if (!workflowId) {
+        return null;
+      }
+      const workflow: any = await getModels().workflow.findById(workflowId);
+      if (!workflow) {
+        return null;
+      }
+      if (messageObject.workflowTemplateId && Number(messageObject.workflowTemplateId) !== Number(workflow.workflowTemplateId)) {
+        return null;
+      }
+      if (!(await this.isTaskTemplateInWorkflow(messageObject.taskTemplateId, workflowId))) {
+        return null;
+      }
+      return workflowId;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Create from message.
    * @param {object} messageObject AMQP message object.
    */
@@ -1971,8 +2017,9 @@ export class TaskBusiness extends Business {
     const isCreateByOtherSystem = ownFlag(messageObject, 'isCreateByOtherSystem');
     if (isCreateByOtherSystem && !(await this.checkCreateByOtherSystemFromMessage(messageObject))) return;
     // Create.
+    let createdTask;
     try {
-      const createdTask = await this.create({
+      createdTask = await this.create({
         createWorkflowId: messageObject.createWorkflowId,
         workflowId: messageObject.workflowId,
         workflowTemplateId: messageObject.workflowTemplateId,
@@ -1993,59 +2040,57 @@ export class TaskBusiness extends Business {
         throw new Error("Task wasn't created.");
       }
     } catch (error) {
-      getLog().save('document-creating-by-message-from-queue-error', {
-        messageObject,
-        error: (error && error.message) || error,
-        details: error.details,
-      });
-
       const { jsonSchema } = await getModels().taskTemplate.findById(messageObject.taskTemplateId);
       const retryInfo = this.getRetryInfo(messageObject, jsonSchema);
       if (retryInfo) {
         const { retryMessage, postponedTime } = retryInfo;
         if (typeof messageObject.onlyExecute === 'undefined') {
-          // TODO: remove try-catch after testing.
-          try {
-            const channel = 'errors';
-            const queueNames = {
-              '10m': getMessageQueue().config.errorQueueName10M,
-              '1h': getMessageQueue().config.errorQueueName1H,
-              '2h': getMessageQueue().config.errorQueueName2H,
-              '8h': getMessageQueue().config.errorQueueName8H,
-              '1d': getMessageQueue().config.errorQueueName1D,
-            };
-            const queueName = queueNames[postponedTime] || queueNames['1d'];
-            getMessageQueue().produce(retryMessage, channel, queueName);
-
-            getLog().save('produce-retry-message-succes', { retryMessage, channel, queueName }); // TODO: remove this log after testing.
-          } catch (error) {
-            getLog().save('produce-retry-message-error', { retryMessage, error: error?.message }); // TODO: remove this log after testing.
-          }
+          void publishOrLog(DESTINATION_TASK, retryMessage, { delayMs: getRetryDelayMs(postponedTime) });
         }
       }
 
+      // Workflow ID is trusted only when verified, never taken from the message as is.
+      const trustedWorkflowId = createdTask?.workflowId ?? (await this.verifyMessageWorkflowId(messageObject));
+      const isWorkflowLinked = !!trustedWorkflowId;
+
+      let errorId;
       try {
         const type = retryInfo ? 'warning' : 'error';
-        await getModels().workflowError.create({ error: error.message, details: error.details, queueMessage: messageObject }, type);
-        await getModels().workflow.setError(messageObject.workflowId);
-      } catch (error) {
-        getLog().save('workflow-id-not-found-error', { messageObject, error: error.message });
+        errorId = await getModels().workflowError.create(
+          { error: error.message, details: error.details, queueMessage: messageObject },
+          type,
+          messageObject.workflowId || createdTask ? { workflowId: trustedWorkflowId } : {},
+        );
+        if (isWorkflowLinked) {
+          await getModels().workflow.setError(trustedWorkflowId);
+        }
+      } catch (createError) {
+        getLog().save('workflow-id-not-found-error', { ...taskMessageLogContext(messageObject), error: errorRef(createError) });
       }
 
-      try {
-        const workflowTemplate: any = await getModels().workflowTemplate.findById(messageObject.workflowTemplateId);
-        const taskTemplate = await getModels().taskTemplate.findById(messageObject.taskTemplateId);
+      getLog().save('document-creating-by-message-from-queue-error', {
+        ...taskMessageLogContext(messageObject),
+        error: errorRef(error),
+        errorId,
+        ...(isWorkflowLinked ? {} : { workflowLinked: false }),
+      });
 
-        await this.systemNotifier.sendEmails({
-          workflowId: messageObject.workflowId,
-          workflowTemplateName: workflowTemplate?.name,
-          workflowErrorsSubscribers: workflowTemplate?.errorsSubscribers,
-          taskTemplateId: taskTemplate?.id,
-          taskTemplateName: taskTemplate?.name,
-          error: error?.message,
-        });
-      } catch (error) {
-        getLog().save('system-notifier-error', error.message, 'error');
+      if (isWorkflowLinked) {
+        try {
+          const workflowTemplate: any = await getModels().workflowTemplate.findById(messageObject.workflowTemplateId);
+          const taskTemplate = await getModels().taskTemplate.findById(messageObject.taskTemplateId);
+
+          await this.systemNotifier.sendEmails({
+            workflowId: trustedWorkflowId,
+            workflowTemplateName: workflowTemplate?.name,
+            workflowErrorsSubscribers: workflowTemplate?.errorsSubscribers,
+            taskTemplateId: taskTemplate?.id,
+            taskTemplateName: taskTemplate?.name,
+            error: error?.message,
+          });
+        } catch (notifyError) {
+          getLog().save('system-notifier-error', { ...taskMessageLogContext(messageObject), error: errorRef(notifyError) }, 'error');
+        }
       }
     }
 
@@ -2524,7 +2569,7 @@ export class TaskBusiness extends Business {
 
     const task: any = await getModels().task.findById(taskId);
     if (task.finished) {
-      return true; // Tell RMQ server that we already processed that message.
+      return true; // Tell the message bus that we already processed that message.
     }
 
     // Save attribute in document data, for accessibility from schema.
@@ -2583,10 +2628,10 @@ export class TaskBusiness extends Business {
       );
     }
 
-    // Send message to RabbitMQ.
-    getMessageQueue().produce({ workflowId, taskId });
+    // Notify manager.
+    void publishOrLog(DESTINATION_MANAGER, { workflowId, taskId });
 
-    return true; // Tell RMQ server that we processed that message.
+    return true; // Tell the message bus that we processed that message.
   }
 
   /**

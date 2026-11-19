@@ -1,3 +1,5 @@
+import type { MessageBus } from '@liquio/back-core';
+
 type AppContext = {
   config?: any;
   log?: any;
@@ -7,7 +9,7 @@ type AppContext = {
   slaveModels?: any;
   businesses?: any;
   redis?: any;
-  messageQueue?: any;
+  messageBus?: MessageBus;
   httpClient?: any;
   typeOf?: any;
 };
@@ -32,7 +34,7 @@ const getModels = () => context.models;
 const getSlaveModels = () => context.slaveModels;
 const getBusinesses = () => context.businesses;
 const getRedis = () => context.redis;
-const getMessageQueue = () => context.messageQueue;
+const getMessageBus = () => context.messageBus;
 const getHttpClient = () => context.httpClient;
 const getTypeOf = () => context.typeOf;
 
@@ -47,7 +49,7 @@ export {
   getSlaveModels,
   getBusinesses,
   getRedis,
-  getMessageQueue,
+  getMessageBus,
   getHttpClient,
   getTypeOf,
 };

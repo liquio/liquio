@@ -9,7 +9,8 @@ import { Sandbox } from '@liquio/back-core';
 import { JSONPath } from '../lib/jsonpath';
 import { isValidDocumentPath, findUnsafeDataKeys } from '../lib/document_data_keys';
 import { Controller } from './controller';
-import { getBusinesses, getConfig, getLog, getMessageQueue, getModels, getRedisClient } from '../lib/context';
+import { getBusinesses, getConfig, getLog, getModels, getRedisClient } from '../lib/context';
+import { publishOrLog, DESTINATION_MANAGER } from '../lib/message_bus';
 import { DocumentAttachmentEntity } from '../entities/document_attachment';
 import { DocumentModel } from '../models/document';
 import { DocumentAttachmentModel } from '../models/document_attachment';
@@ -463,9 +464,9 @@ export class DocumentController extends Controller {
           requestMeta,
         );
 
-        // Send message to RabbitMQ.
+        // Notify manager.
         const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-        getMessageQueue().produce(message);
+        void publishOrLog(DESTINATION_MANAGER, message);
 
         getBusinesses().userInbox.sendToInboxesIfNeedIt(finishedTask);
       } catch (error) {
@@ -1059,9 +1060,9 @@ export class DocumentController extends Controller {
             requestMeta,
           );
 
-          // Send message to RabbitMQ.
+          // Notify manager.
           const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-          getMessageQueue().produce(message);
+          void publishOrLog(DESTINATION_MANAGER, message);
 
           getBusinesses().userInbox.sendToInboxesIfNeedIt(finishedTask);
         } catch (error) {

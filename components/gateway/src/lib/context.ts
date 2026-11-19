@@ -1,9 +1,11 @@
+import type { MessageBus } from '@liquio/back-core';
+
 type AppContext = {
   config?: any;
   log?: any;
   db?: any;
   redisClient?: any;
-  messageQueue?: any;
+  messageBus?: MessageBus;
 };
 
 const context: AppContext = {};
@@ -22,6 +24,6 @@ const getConfig = () => context.config;
 const getLog = () => context.log;
 const getDb = () => context.db;
 const getRedisClient = () => context.redisClient;
-const getMessageQueue = () => context.messageQueue;
+const getMessageBus = () => context.messageBus as MessageBus;
 
-export { setAppContext, resetAppContext, getConfig, getLog, getDb, getRedisClient, getMessageQueue };
+export { setAppContext, resetAppContext, getConfig, getLog, getDb, getRedisClient, getMessageBus };

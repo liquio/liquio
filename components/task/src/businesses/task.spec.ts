@@ -376,3 +376,129 @@ describe('TaskBusiness.create performer resolution by email', () => {
     expect(log.save).not.toHaveBeenCalledWith('create-task-performer-email-mismatch', expect.anything(), 'warn');
   });
 });
+
+describe('TaskBusiness trusted workflow linking for queue messages', () => {
+  let taskBusiness: any;
+  let workflowFindById: jest.Mock;
+  let findXmlBpmnSchemaById: jest.Mock;
+  let hasTaskTemplateIdInBpmnSchema: jest.Mock;
+  let workflowErrorCreate: jest.Mock;
+  let setError: jest.Mock;
+  let publish: jest.Mock;
+  let save: jest.Mock;
+
+  const workflow = { id: 'wf-1', workflowTemplateId: 5 };
+
+  beforeEach(() => {
+    taskBusiness = Object.create(TaskBusiness.prototype);
+    workflowFindById = jest.fn().mockResolvedValue(workflow);
+    findXmlBpmnSchemaById = jest.fn().mockResolvedValue('<xml/>');
+    hasTaskTemplateIdInBpmnSchema = jest.fn().mockResolvedValue(true);
+    workflowErrorCreate = jest.fn().mockResolvedValue(42);
+    setError = jest.fn().mockResolvedValue(undefined);
+    publish = jest.fn().mockResolvedValue({ messageId: 'x' });
+    save = jest.fn();
+    taskBusiness.systemNotifier = { sendEmails: jest.fn().mockResolvedValue(undefined) };
+    setAppContext({
+      log: { save } as any,
+      messageBus: { publish } as any,
+      config: {} as any,
+      businesses: { workflow: { hasTaskTemplateIdInBpmnSchema } } as any,
+      models: {
+        workflow: { findById: workflowFindById, setError },
+        workflowTemplate: { findXmlBpmnSchemaById, findById: jest.fn().mockResolvedValue({ name: 'tpl', errorsSubscribers: [] }) },
+        taskTemplate: { findById: jest.fn().mockResolvedValue({ id: 7, jsonSchema: {} }) },
+        workflowError: { create: workflowErrorCreate },
+      } as any,
+    });
+  });
+
+  describe('isTaskTemplateInWorkflow', () => {
+    it('checks the task template against the BPMN schema of the workflow template', async () => {
+      await expect(taskBusiness.isTaskTemplateInWorkflow(7, 'wf-1')).resolves.toBe(true);
+      expect(findXmlBpmnSchemaById).toHaveBeenCalledWith(5);
+      expect(hasTaskTemplateIdInBpmnSchema).toHaveBeenCalledWith('<xml/>', 7);
+    });
+
+    it('is false for an unknown workflow or a missing schema', async () => {
+      workflowFindById.mockResolvedValueOnce(undefined);
+      await expect(taskBusiness.isTaskTemplateInWorkflow(7, 'nope')).resolves.toBe(false);
+      findXmlBpmnSchemaById.mockResolvedValueOnce(undefined);
+      await expect(taskBusiness.isTaskTemplateInWorkflow(7, 'wf-1')).resolves.toBe(false);
+    });
+  });
+
+  describe('verifyMessageWorkflowId', () => {
+    it('returns the workflow id when the workflow, template and BPMN node match', async () => {
+      await expect(taskBusiness.verifyMessageWorkflowId({ workflowId: 'wf-1', workflowTemplateId: 5, taskTemplateId: 7 })).resolves.toBe('wf-1');
+    });
+
+    it.each([
+      ['no workflow id', { taskTemplateId: 7 }],
+      ['a workflow template mismatch', { workflowId: 'wf-1', workflowTemplateId: 6, taskTemplateId: 7 }],
+    ])('returns null for %s', async (_title, message) => {
+      await expect(taskBusiness.verifyMessageWorkflowId(message)).resolves.toBeNull();
+    });
+
+    it('returns null for an unknown workflow, a template outside the BPMN schema and a failing lookup', async () => {
+      workflowFindById.mockResolvedValueOnce(undefined);
+      await expect(taskBusiness.verifyMessageWorkflowId({ workflowId: 'x', taskTemplateId: 7 })).resolves.toBeNull();
+      hasTaskTemplateIdInBpmnSchema.mockResolvedValueOnce(false);
+      await expect(taskBusiness.verifyMessageWorkflowId({ workflowId: 'wf-1', taskTemplateId: 7 })).resolves.toBeNull();
+      workflowFindById.mockRejectedValueOnce(new Error('db'));
+      await expect(taskBusiness.verifyMessageWorkflowId({ workflowId: 'wf-1', taskTemplateId: 7 })).resolves.toBeNull();
+    });
+  });
+
+  describe('createFromMessage failure path', () => {
+    const message = { workflowId: 'wf-1', workflowTemplateId: 5, taskTemplateId: 7, initData: { secret: 'SENTINEL-I' } };
+
+    beforeEach(() => {
+      jest.spyOn(taskBusiness, 'create').mockRejectedValue(new Error('SENTINEL-MSG'));
+    });
+
+    it('links the row, marks the workflow and notifies for a verified workflow', async () => {
+      await expect(taskBusiness.createFromMessage(message)).resolves.toBe(true);
+      expect(workflowErrorCreate).toHaveBeenCalledWith(expect.objectContaining({ queueMessage: message }), 'error', { workflowId: 'wf-1' });
+      expect(setError).toHaveBeenCalledWith('wf-1');
+      expect(taskBusiness.systemNotifier.sendEmails).toHaveBeenCalled();
+      expect(save).toHaveBeenCalledWith(
+        'document-creating-by-message-from-queue-error',
+        expect.objectContaining({ errorId: 42, error: { name: 'Error' } }),
+      );
+    });
+
+    it('stores an unlinked row and does not mark or notify when the workflow is not verified', async () => {
+      hasTaskTemplateIdInBpmnSchema.mockResolvedValue(false);
+      await expect(taskBusiness.createFromMessage(message)).resolves.toBe(true);
+      expect(workflowErrorCreate).toHaveBeenCalledWith(expect.anything(), 'error', { workflowId: null });
+      expect(setError).not.toHaveBeenCalled();
+      expect(taskBusiness.systemNotifier.sendEmails).not.toHaveBeenCalled();
+      expect(save).toHaveBeenCalledWith('document-creating-by-message-from-queue-error', expect.objectContaining({ workflowLinked: false }));
+    });
+
+    it('keeps messages without a workflow id unlinked as before', async () => {
+      await taskBusiness.createFromMessage({ taskTemplateId: 7 });
+      expect(workflowErrorCreate).toHaveBeenCalledWith(expect.anything(), 'error', {});
+    });
+
+    it('drops a message from another system that is not allowed silently', async () => {
+      jest.spyOn(taskBusiness, 'checkCreateByOtherSystemFromMessage').mockReturnValue(false);
+      await expect(taskBusiness.createFromMessage({ ...message, isCreateByOtherSystem: true })).resolves.toBeUndefined();
+      expect(taskBusiness.create).not.toHaveBeenCalled();
+    });
+
+    it('logs no message body and no error text', async () => {
+      await taskBusiness.createFromMessage(message);
+      const logged = JSON.stringify(save.mock.calls);
+      expect(logged).not.toContain('SENTINEL');
+    });
+
+    it('publishes a postponed retry through the bus', async () => {
+      (getModels().taskTemplate.findById as jest.Mock).mockResolvedValue({ id: 7, jsonSchema: { retryIfError: ['10m'] } });
+      await taskBusiness.createFromMessage(message);
+      expect(publish).toHaveBeenCalledWith('task', expect.objectContaining({ retryIterator: 1 }), { delayMs: 10 * 60 * 1000 });
+      expect(workflowErrorCreate).toHaveBeenCalledWith(expect.anything(), 'warning', { workflowId: 'wf-1' });
+    });
+  });
+});

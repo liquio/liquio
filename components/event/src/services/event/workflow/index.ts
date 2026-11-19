@@ -9,7 +9,8 @@ import { TaskModel } from '../../../models/task';
 import { Helpers } from '../../../lib/helpers';
 import { SYSTEM_USER } from '../../../constants/common';
 import { typeOf } from '../../../lib/type_of';
-import { getConfig, getLog, getMessageQueue, getModels } from '../../../lib/context';
+import { getConfig, getLog, getMessageBus, getModels } from '../../../lib/context';
+import { DESTINATION_MANAGER } from '../../../lib/message_bus';
 
 const { prepareAxiosErrorToLog } = Helpers;
 
@@ -73,7 +74,7 @@ export class EventWorkflow {
         files.push({ ...fileInfo, meta: fileMeta });
       }
 
-      getMessageQueue().produce({
+      await getMessageBus().publish(DESTINATION_MANAGER, {
         ...createWorkflow,
         initData: {
           ...initData,
@@ -416,7 +417,7 @@ export class EventWorkflow {
           );
         }
 
-        getMessageQueue().produce({ workflowId: workflowId, taskId: task.id });
+        await getMessageBus().publish(DESTINATION_MANAGER, { workflowId: workflowId, taskId: task.id });
 
         const response = {
           ...savedTask,

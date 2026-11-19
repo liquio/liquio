@@ -5,7 +5,7 @@ type AppContext = {
   models?: any;
   moment?: any;
   typeOf?: any;
-  messageQueue?: any;
+  messageBus?: any;
   redisClient?: any;
   httpClient?: any;
 };
@@ -28,8 +28,8 @@ const getDb = () => context.db;
 const getModels = () => context.models;
 const getMoment = () => context.moment;
 const getTypeOf = () => context.typeOf;
-const getMessageQueue = () => context.messageQueue;
+const getMessageBus = () => context.messageBus;
 const getRedisClient = () => context.redisClient;
 const getHttpClient = () => context.httpClient;
 
-export { setAppContext, resetAppContext, getConfig, getLog, getDb, getModels, getMoment, getTypeOf, getMessageQueue, getRedisClient, getHttpClient };
+export { setAppContext, resetAppContext, getConfig, getLog, getDb, getModels, getMoment, getTypeOf, getMessageBus, getRedisClient, getHttpClient };

@@ -1,4 +1,5 @@
 import { matchedData } from 'express-validator';
+import { bpmnMessageLogContext, errorRef } from '@liquio/back-core';
 import axios from 'axios';
 
 import { Controller } from './controller';
@@ -8,6 +9,8 @@ import { WorkflowHandlerBusiness } from '../businesses/workflow_handler';
 import { Exceptions } from '../exceptions';
 import { WorkflowRestartEntity } from '../entities/workflow_restart';
 import { getLog, getModels } from '../lib/context';
+import { DESTINATION_BY_QUEUE_NAME } from '../lib/message_bus';
+import { InvalidParamsError } from '../lib/errors';
 
 /**
  * Workflow process controller.
@@ -202,6 +205,8 @@ export class WorkflowProcessController extends Controller {
 
     // Push message to queue.
     try {
+      await this.workflowHandlerBusiness.assertMessageBelongsToWorkflow(workflowId, message);
+
       const queueName = this.workflowHandlerBusiness.defineQueueName(message);
 
       response = await this.workflowHandlerBusiness.pushInQueue(queueName, message); // Response only when enabled debug mode.
@@ -266,10 +271,25 @@ export class WorkflowProcessController extends Controller {
           workflowId: calculatedWorkflowId,
         };
         const queueName = this.workflowHandlerBusiness.defineQueueName(normalizedMessage);
+        try {
+          await this.workflowHandlerBusiness.assertMessageReferences(calculatedWorkflowId, normalizedMessage);
+        } catch (error) {
+          if (error instanceof InvalidParamsError) {
+            getLog().save('restart-process-from-step-bulk-message-rejected', { workflowId: calculatedWorkflowId, reason: error.message });
+            continue;
+          }
+          throw error;
+        }
         await this.workflowHandlerBusiness.pushInQueue(queueName, normalizedMessage);
-        getLog().save('restart-process-from-step-bulk-message-handled', { message: normalizedMessage });
+        getLog().save(
+          'restart-process-from-step-bulk-message-handled',
+          bpmnMessageLogContext(DESTINATION_BY_QUEUE_NAME[queueName])(normalizedMessage),
+        );
       } catch (error) {
-        getLog().save('restart-process-from-step-bulk-message-error', { error: error && error.message, message });
+        getLog().save('restart-process-from-step-bulk-message-error', {
+          error: errorRef(error),
+          ...bpmnMessageLogContext('manager')(message),
+        });
       }
     }
 

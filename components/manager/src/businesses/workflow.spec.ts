@@ -1,6 +1,8 @@
+import { createMessageBus, MemoryBroker, withBpmnLogContext } from '@liquio/back-core';
+
 import { WorkflowBusiness } from './workflow';
 import { XmlJsConverter } from '../lib/xml_js_converter';
-import { resetAppContext, getLog, getMessageQueue, setAppContext } from '../lib/context';
+import { resetAppContext, getLog, getMessageBus, setAppContext } from '../lib/context';
 
 const bpmnXml = (processId: string) =>
   '<?xml version="1.0" encoding="UTF-8"?>' +
@@ -92,7 +94,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
 
   beforeEach(() => {
     setAppContext({ log: { save: jest.fn() } as any });
-    setAppContext({ messageQueue: { produce: jest.fn() } as any });
+    setAppContext({ messageBus: { publish: jest.fn().mockResolvedValue({ messageId: 'id' }) } as any });
 
     workflow = { id: 'wf', isFinal: false, data: { messages: [] } };
     task = { id: 't1', workflowId: 'wf', taskTemplateId: 1, finished: true, workflowEntity: { workflowTemplateId: 1 } };
@@ -129,8 +131,8 @@ describe('WorkflowBusiness.createFromMessage', () => {
 
     expect(await business.createFromMessage(message)).toBe(true);
 
-    expect(getMessageQueue().produce).toHaveBeenCalledTimes(1);
-    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueTask', {
+    expect(getMessageBus().publish).toHaveBeenCalledTimes(1);
+    expect(getMessageBus().publish).toHaveBeenCalledWith('task', {
       forwardToTask: true,
       taskTemplateId: 5,
       workflowTemplateId: 1,
@@ -146,34 +148,34 @@ describe('WorkflowBusiness.createFromMessage', () => {
     expect(await business.createFromMessage({ forwardToTask: true, taskTemplateId: 5, initData: 'x' })).toBe(true);
     expect(await business.createFromMessage({ forwardToTask: true, taskTemplateId: { $ne: 1 } })).toBe(true);
 
-    expect(getMessageQueue().produce).not.toHaveBeenCalled();
+    expect(getMessageBus().publish).not.toHaveBeenCalled();
     expect(getLog().save).toHaveBeenCalledWith('forward-to-task-message-rejected', expect.any(Object));
   });
 
   it('advances a finished task once and records history', async () => {
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
-    expect(getMessageQueue().produce).toHaveBeenCalledTimes(1);
-    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 2 }));
+    expect(getMessageBus().publish).toHaveBeenCalledTimes(1);
+    expect(getMessageBus().publish).toHaveBeenCalledWith('task', expect.objectContaining({ taskTemplateId: 2 }), { messageId: expect.any(String) });
     expect(workflow.data.messages.map((m) => m.type)).toEqual(['in', 'out']);
   });
 
   it('processes a re-sent message of an already finished task again (admin continue)', async () => {
     await business.createFromMessage({ workflowId: 'wf', taskId: 't1' });
-    (getMessageQueue().produce as jest.Mock).mockClear();
+    (getMessageBus().publish as jest.Mock).mockClear();
 
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
-    expect(getMessageQueue().produce).toHaveBeenCalledTimes(1);
+    expect(getMessageBus().publish).toHaveBeenCalledTimes(1);
     expect(workflow.data.messages.map((m) => m.type)).toEqual(['in', 'out', 'in', 'out']);
   });
 
-  it('acks and drops an unfinished task without history, produce or error', async () => {
+  it('acks and drops an unfinished task without history, publish or error', async () => {
     task.finished = false;
 
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
-    expect(getMessageQueue().produce).not.toHaveBeenCalled();
+    expect(getMessageBus().publish).not.toHaveBeenCalled();
     expect(business.workflowModel.appendMessage).not.toHaveBeenCalled();
     expect(business.workflowModel.setError).not.toHaveBeenCalled();
   });
@@ -190,7 +192,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
     expect(await business.createFromMessage({ gatewayId: 'g1' })).toBe(true);
 
     expect(business.workflowModel.appendMessage).not.toHaveBeenCalled();
-    expect(getMessageQueue().produce).not.toHaveBeenCalled();
+    expect(getMessageBus().publish).not.toHaveBeenCalled();
   });
 
   it('does not record history for a final workflow', async () => {
@@ -199,7 +201,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
     expect(business.workflowModel.appendMessage).not.toHaveBeenCalled();
-    expect(getMessageQueue().produce).not.toHaveBeenCalled();
+    expect(getMessageBus().publish).not.toHaveBeenCalled();
   });
 
   it('advances after an event that failed with notFailOnError (done: false, error marker in data)', async () => {
@@ -217,7 +219,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
 
     await business.createFromMessage({ eventId: 'e1' });
 
-    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 4 }));
+    expect(getMessageBus().publish).toHaveBeenCalledWith('task', expect.objectContaining({ taskTemplateId: 4 }), { messageId: expect.any(String) });
   });
 
   it('advances a finished gateway and a done event', async () => {
@@ -229,11 +231,11 @@ describe('WorkflowBusiness.createFromMessage', () => {
 
     await business.createFromMessage({ eventId: 'e1' });
 
-    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueTask', expect.objectContaining({ taskTemplateId: 3 }));
+    expect(getMessageBus().publish).toHaveBeenCalledWith('task', expect.objectContaining({ taskTemplateId: 3 }), { messageId: expect.any(String) });
   });
 
   it('marks the workflow as errored (no unhandled rejection) when publishing the next step fails', async () => {
-    (getMessageQueue().produce as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
+    (getMessageBus().publish as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
 
     expect(await business.createFromMessage({ workflowId: 'wf', taskId: 't1' })).toBe(true);
 
@@ -245,7 +247,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
     const flows = schema.schema['bpmn:sequenceFlow'];
     const original = [...flows];
     flows.splice(0, flows.length, sequenceFlow('Flow_5', 'task-1', 'gateway-7'));
-    (getMessageQueue().produce as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
+    (getMessageBus().publish as jest.Mock).mockRejectedValueOnce(new Error('Channel closed'));
 
     try {
       await business.createFromMessage({ workflowId: 'wf', taskId: 't1' });
@@ -253,7 +255,7 @@ describe('WorkflowBusiness.createFromMessage', () => {
       flows.splice(0, flows.length, ...original);
     }
 
-    expect(getMessageQueue().produce).toHaveBeenCalledWith('writingQueueGateway', expect.anything());
+    expect(getMessageBus().publish).toHaveBeenCalledWith('gateway', expect.anything(), { messageId: expect.any(String) });
     expect(business.workflowModel.setError).toHaveBeenCalledWith('wf');
   });
 
@@ -283,5 +285,90 @@ describe('WorkflowBusiness.createFromMessage', () => {
     expect(business.workflowModel.setError).toHaveBeenCalledWith('wf');
     expect(business.workflowErrorModel.create).toHaveBeenCalledWith(expect.objectContaining({ workflowId: 'wf' }));
     expect(business.systemNotifier.sendEmails).toHaveBeenCalledWith('wf', undefined, 'boom');
+  });
+
+  it('publishes with the same message id that is stored in the workflow history', async () => {
+    await business.createFromMessage({ workflowId: 'wf', taskId: 't1' });
+
+    const [, sent, options] = (getMessageBus().publish as jest.Mock).mock.calls[0];
+    expect(options.messageId).toBe(sent.amqpMessageId);
+    expect(workflow.data.messages[1].data.amqpMessageId).toBe(sent.amqpMessageId);
+  });
+
+  it('logs the failure reference with the record id and no error message or stack', async () => {
+    business.workflowModel.appendMessage = jest.fn(async () => {
+      throw new Error('secret detail');
+    });
+    business.workflowErrorModel.create = jest.fn(async () => 42);
+
+    await business.createFromMessage({ taskId: 't1', workflowId: 'wf' });
+
+    const entry = (getLog().save as jest.Mock).mock.calls.find(([name]) => name === 'workflow-processing-by-message-from-queue-error');
+    expect(entry[1].errorId).toBe(42);
+    expect(entry[1].error).toEqual({ name: 'Error' });
+    expect(JSON.stringify(getLog().save.mock.calls)).not.toContain('secret detail');
+  });
+
+  it('does not put message bodies into any log entry', async () => {
+    await business.createFromMessage({
+      forwardToTask: true,
+      taskTemplateId: 5,
+      workflowTemplateId: 1,
+      initData: { sentinel: 'SENTINEL_INIT' },
+      performerUsersIpn: 'SENTINEL_IPN',
+      performerUsersEmail: 'SENTINEL_EMAIL',
+    });
+    await business.createFromMessage({ forwardToTask: true, foo: 'bar', performerUsersIpn: 'SENTINEL_IPN' });
+
+    expect(JSON.stringify((getLog().save as jest.Mock).mock.calls)).not.toMatch(/SENTINEL/);
+  });
+});
+
+describe('createFromMessage as a message bus handler', () => {
+  afterEach(() => {
+    resetAppContext();
+  });
+
+  it('discards a message that resolves to undefined, logs it once and does not loop', async () => {
+    jest.useFakeTimers();
+    try {
+      const save = jest.fn();
+      setAppContext({ log: { save } as any });
+      const flow = { $: { id: 'Flow_1', sourceRef: 'task-1', targetRef: 'task-0' } };
+      const business: any = Object.create(WorkflowBusiness.prototype);
+      business.bpmnSchemes = [{ id: 1, schema: { 'bpmn:sequenceFlow': [flow] } }];
+      business.taskModel = {
+        findById: jest.fn(async () => ({ id: 't1', workflowId: 'wf', taskTemplateId: 1, finished: true, workflowEntity: { workflowTemplateId: 1 } })),
+      };
+      business.workflowModel = {
+        findById: jest.fn(async () => ({ id: 'wf', isFinal: false, data: { messages: [] } })),
+        appendMessage: jest.fn(async () => ({ id: 'wf', isFinal: false, data: { messages: [] } })),
+        setError: jest.fn(),
+      };
+      business.workflowErrorModel = { create: jest.fn() };
+      const handler = jest.spyOn(business, 'createFromMessage');
+
+      const broker = new MemoryBroker();
+      const bus = createMessageBus({
+        provider: 'memory',
+        providerOptions: { broker },
+        destinations: withBpmnLogContext({ manager: { address: 'in' } }),
+        getLog: () => ({ save }),
+      } as any);
+      await bus.subscribe('manager', business.createFromMessage.bind(business), { concurrency: 1 });
+      await bus.init();
+      await bus.publish('manager', { workflowId: 'wf', taskId: 't1' });
+      await jest.advanceTimersByTimeAsync(5000);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const errors = save.mock.calls.filter(([name]) => name === 'message-bus-handler-error');
+      expect(errors).toHaveLength(1);
+      expect(errors[0][1]).toEqual(expect.objectContaining({ failure: 'invalid-result' }));
+      expect(broker.discardedList('in')).toHaveLength(1);
+      expect(bus.health().counters.handlerErrors).toBe(1);
+      await bus.close();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

@@ -1,6 +1,6 @@
 import { TestApp } from './test-app';
 import { seedScenario, addTemplatePair, addUnit, userRequest, SCENARIO } from './helpers/scenario';
-import { getBusinesses, getConfig, getMessageQueue, getRedisClient, setAppContext } from '../src/lib/context';
+import { getBusinesses, getConfig, getMessageBus, getRedisClient, setAppContext } from '../src/lib/context';
 
 const USER = SCENARIO.userId;
 const BASIC_RAW = 'ZG9jczpkb2Nz'; // fake "docs:docs"
@@ -72,7 +72,7 @@ describe('Document controller flows', () => {
       await app.model('document').update({ data: { name: 'Valid' } }, { where: { id: task.documentId } });
       const valid = await as()('post', `/documents/${task.documentId}/validate`).send({});
       expect(valid.status).toBe(200);
-      jest.spyOn(getMessageQueue(), 'produce').mockResolvedValue(undefined as any);
+      jest.spyOn(getMessageBus() as any, 'publish').mockResolvedValue({ messageId: 'x' });
       const committed = await as()('post', `/documents/${task.documentId}/validate`).query({ commit: 'true' }).send({});
       expect(committed.status).toBe(200);
       expect((await app.model('task').findByPk(task.id)).finished).toBe(true);

@@ -77,6 +77,17 @@ export class WorkflowTemplateModel extends Model {
   }
 
   /**
+   * Find ID and BPMN schema by ID.
+   * @param {number} id ID.
+   * @returns {Promise<{id: number, xmlBpmnSchema: string}|undefined>} Workflow template data.
+   */
+  async findXmlBpmnSchemaById(id) {
+    const workflowTemplate = await this.model.findByPk(id, { attributes: ['id', 'xml_bpmn_schema'] });
+
+    return workflowTemplate ? this.prepareEntity(workflowTemplate) : undefined;
+  }
+
+  /**
    * Find ID and name and errors subscribers by ID.
    * @param {number} id ID.
    * @returns {Promise<{id: number, name: string, errorsSubscribers: object[]}>} Workflow template data.

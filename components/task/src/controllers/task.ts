@@ -11,7 +11,8 @@ import { TaskActivity } from '../types/task_activity';
 import { Helpers } from '../lib/helpers';
 import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
-import { getBusinesses, getConfig, getLog, getMessageQueue, getModels } from '../lib/context';
+import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
+import { publishOrLog, DESTINATION_MANAGER } from '../lib/message_bus';
 
 /** @var {TaskBusiness} getBusinesses().task */
 
@@ -320,9 +321,9 @@ export class TaskController extends Controller {
         requestMeta,
       );
 
-      // Send message to RabbitMQ.
+      // Notify manager.
       const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-      getMessageQueue().produce(message);
+      void publishOrLog(DESTINATION_MANAGER, message);
 
       // Response.
       this.responseData(res, message);

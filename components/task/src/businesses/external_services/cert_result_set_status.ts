@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 
-import { getLog, getModels, getBusinesses, getMessageQueue } from '../../lib/context';
+import { getLog, getModels, getBusinesses } from '../../lib/context';
+import { publishOrLog, DESTINATION_MANAGER } from '../../lib/message_bus';
 
 const contentType = 'application/pdf';
 
@@ -160,9 +161,9 @@ export async function certResultSetStatus(
     const finishedTask = await getBusinesses().task.setStatusFinished(taskId, externalServiceUser, undefined, true);
     await getBusinesses().userInbox.sendToInboxesIfNeedIt(finishedTask);
     await getModels().document.setStatusFinal(documentId);
-    // Send message to RabbitMQ.
+    // Notify manager.
     const message = { workflowId, taskId };
-    getMessageQueue().produce(message);
+    void publishOrLog(DESTINATION_MANAGER, message);
   } catch (error: any) {
     if (error.details) {
       error.message += ' (' + error.details.map((errorDetailed) => errorDetailed.dataPath + ' ' + errorDetailed.message).join(', ') + ')';

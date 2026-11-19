@@ -45,15 +45,23 @@ export class WorkflowErrorModel extends Model {
    * Create.
    * @param {object} data Data object.
    * @param {string} type Type.
+   * @param {object} [options] Options.
+   * @param {string|null} [options.workflowId] Workflow ID to link; when present (even null), nothing is derived from the message.
+   * @returns {Promise<number>} Created row ID.
    */
-  async create(data: any, type = 'error') {
-    const workflowId = (data.queueMessage && data.queueMessage.workflowId) || (data.traceMeta && data.traceMeta.workflowId);
+  async create(data: any, type = 'error', options: { workflowId?: string | null } = {}): Promise<number> {
+    const workflowId =
+      'workflowId' in options
+        ? options.workflowId
+        : (data.queueMessage && data.queueMessage.workflowId) || (data.traceMeta && data.traceMeta.workflowId);
 
-    await this.model.create({
-      workflow_id: workflowId,
-      service_name: 'event',
-      data,
-      type,
-    });
+    return (
+      await this.model.create({
+        workflow_id: workflowId,
+        service_name: 'event',
+        data,
+        type,
+      })
+    ).id;
   }
 }

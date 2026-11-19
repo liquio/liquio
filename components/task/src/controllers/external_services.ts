@@ -1,12 +1,12 @@
 /** @var {ExternalServicesBusiness} getBusinesses().externalServices */
 /** @var {UserInboxBusiness} getBusinesses().userInbox */
 /** @var {TaskModel} getModels().task */
-/** @var {MessageQueue} getMessageQueue() */
 
 import xml2js from 'xml2js';
 
 import { Controller } from './controller';
-import { getBusinesses, getConfig, getLog, getMessageQueue, getModels } from '../lib/context';
+import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
+import { publishOrLog, DESTINATION_MANAGER } from '../lib/message_bus';
 import { DocumentModel } from '../models/document';
 import { DocumentAttachmentModel } from '../models/document_attachment';
 import { DocumentTemplateModel } from '../models/document_template';
@@ -392,9 +392,9 @@ export class ExternalServicesController extends Controller {
     try {
       finishedTask = await (getBusinesses().task.setStatusFinished as any)(taskId, externalServiceUser);
 
-      // Send message to RabbitMQ.
+      // Notify manager.
       const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-      getMessageQueue().produce(message);
+      void publishOrLog(DESTINATION_MANAGER, message);
     } catch (error) {
       getLog().save('commit-task-error', { error: error && error.message }, 'error');
       return onError(error, error.httpStatusCode, error.details);
@@ -536,9 +536,9 @@ export class ExternalServicesController extends Controller {
     try {
       finishedTask = await (getBusinesses().task.setStatusFinished as any)(taskId, externalServiceUser);
 
-      // Send message to RabbitMQ.
+      // Notify manager.
       const message = { taskId: taskId };
-      getMessageQueue().produce(message);
+      void publishOrLog(DESTINATION_MANAGER, message);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }

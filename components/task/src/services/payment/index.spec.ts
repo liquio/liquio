@@ -24,8 +24,7 @@ describe('PaymentService', () => {
       } as any,
     });
 
-    // Reset singleton so each test starts from a clean `providers` object,
-    // mirroring the pattern used in message_queue/index.spec.ts.
+    // Reset singleton so each test starts from a clean `providers` object.
     (PaymentService as any).singleton = null;
     paymentService = new PaymentService({});
 

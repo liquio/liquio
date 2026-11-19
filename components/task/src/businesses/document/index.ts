@@ -36,8 +36,9 @@ import { DocumentFileBusiness } from './files';
 import { DocumentSigningBusiness } from './signing';
 import { DocumentPaymentBusiness } from './payment';
 import type { UserUnitIds } from './types';
-import { getLog, getModels, getBusinesses, getConfig, getMessageQueue } from '../../lib/context';
+import { getLog, getModels, getBusinesses, getConfig } from '../../lib/context';
 import { ownFlag, ownValue } from '../../lib/own_flag';
+import { publishOrLog, DESTINATION_TASK_DELAYED_AUTO_COMMIT } from '../../lib/message_bus';
 
 // Constants.
 const EMPTY_DOCUMENT_DATA = '{}';
@@ -1153,7 +1154,9 @@ export class DocumentBusiness extends Business {
           }
 
           const message = { taskId: documentToUpdate.task.id };
-          getMessageQueue().produce(message, 'delayedAutoCommit', `${getConfig().message_queue.readingQueueName}-delayed-auto-commit-${timer}`);
+          void publishOrLog(DESTINATION_TASK_DELAYED_AUTO_COMMIT, message, {
+            delayMs: Number(getConfig().message_queue.delayedAutoCommitQueues[timer]) * 1000,
+          });
         }
       }
     }

@@ -78,7 +78,7 @@ export class TestApp {
   config: any;
   log: any;
   routerService: any;
-  messageQueue: any;
+  messageBus: any;
   gatewayBusiness: any;
   testAmqpConnection: any;
   testAmqpChannel: any;
@@ -87,7 +87,7 @@ export class TestApp {
     this.config = null;
     this.log = null;
     this.routerService = null;
-    this.messageQueue = null;
+    this.messageBus = null;
     this.gatewayBusiness = null;
     this.testAmqpConnection = null;
     this.testAmqpChannel = null;
@@ -197,10 +197,10 @@ export class TestApp {
     const config = { ...defaultConfig, ...configOverride };
     this.config = config;
 
-    const { log, gatewayBusiness, messageQueue, routerService } = await bootstrap(config);
+    const { log, gatewayBusiness, messageBus, routerService } = await bootstrap(config);
     this.log = log;
     this.gatewayBusiness = gatewayBusiness;
-    this.messageQueue = messageQueue;
+    this.messageBus = messageBus;
     this.routerService = routerService;
   }
 
@@ -278,6 +278,18 @@ export class TestApp {
     });
   }
 
+  // Count the messages left on a queue (ready; unacked ones return to ready once the consumer connection is closed).
+  async countQueueMessages(queueName: string): Promise<number> {
+    const connection = await this.getTestConnection();
+    const channel = await connection.createChannel();
+    try {
+      const { messageCount } = await channel.checkQueue(queueName);
+      return messageCount;
+    } finally {
+      await channel.close().catch(() => undefined);
+    }
+  }
+
   // Destroy the application.
   async destroy() {
     if (this.testAmqpChannel) {
@@ -286,8 +298,8 @@ export class TestApp {
     if (this.testAmqpConnection) {
       await this.testAmqpConnection.close();
     }
-    if (this.messageQueue) {
-      await this.messageQueue.close();
+    if (this.messageBus) {
+      await this.messageBus.close();
     }
     if (getDb()) {
       await getDb().close();

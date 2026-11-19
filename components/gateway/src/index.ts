@@ -4,6 +4,7 @@ import Multiconf from 'multiconf';
 
 import { getLog } from './lib/context';
 import { bootstrap } from './bootstrap';
+import { registerShutdown } from './lib/shutdown';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/gateway';
@@ -24,5 +25,6 @@ module.exports = (async () => {
     process.exit(1);
   });
 
-  await bootstrap(config);
+  const { messageBus, routerService } = await bootstrap(config);
+  registerShutdown({ routerService, messageBus });
 })();

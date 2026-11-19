@@ -5,6 +5,7 @@ import Multiconf from 'multiconf';
 import { assertNoPlaceholderSecrets, assertTaskTokenIsNotDefault, findPlaceholderSecretWarnings } from './lib/config_check';
 import { bootstrap } from './bootstrap';
 import { setAppContext } from './lib/context';
+import { registerShutdown } from './lib/shutdown';
 
 // Constants.
 const CONFIG_PATH = process.env.CONFIG_PATH || '../config/admin-api';
@@ -25,7 +26,8 @@ async function main() {
   assertTaskTokenIsNotDefault(config);
   setAppContext({ config });
 
-  await bootstrap(config, { placeholderSecrets, placeholderSecretWarnings });
+  const { messageBus, routerService } = await bootstrap(config, { placeholderSecrets, placeholderSecretWarnings });
+  registerShutdown({ routerService, messageBus });
 }
 
 main().catch((err) => {

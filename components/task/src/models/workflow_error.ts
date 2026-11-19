@@ -55,11 +55,15 @@ export class WorkflowErrorModel extends Model {
    * Create.
    * @param {object} data Data object.
    * @param {string} type Type.
+   * @param {object} [options] Options. workflowId - trusted workflow ID (null stores an unlinked row).
+   * @returns {Promise<number|undefined>} Created row id, or undefined when the row is skipped.
    */
-  async create(data, type = 'error') {
+  async create(data, type = 'error', options: { workflowId?: string | null } = {}) {
+    const hasTrustedWorkflowId = typeof options?.workflowId !== 'undefined';
+
     // If workflowId is not set, then we don't save the error.
-    const workflowId = data?.queueMessage?.workflowId || data?.traceMeta?.workflowId;
-    if (!workflowId) {
+    const workflowId = hasTrustedWorkflowId ? options.workflowId : data?.queueMessage?.workflowId || data?.traceMeta?.workflowId;
+    if (!hasTrustedWorkflowId && !workflowId) {
       return;
     }
 
@@ -71,12 +75,14 @@ export class WorkflowErrorModel extends Model {
 
     // Save to DB. Recording is best-effort and must never reject.
     try {
-      await this.model.create({
-        workflow_id: workflowId,
+      const row = await this.model.create({
+        workflow_id: workflowId ?? null,
         service_name: 'task',
         data,
         type,
       });
+
+      return row.id;
     } catch (error) {
       getLog().save('workflow-error-save-failed', { workflowId, type, message: error?.message }, 'error');
     }

@@ -43,8 +43,12 @@ export class WorkflowErrorModel extends Model {
   /**
    * Create.
    * @param {object} data Data object.
+   * @param {object} [options] Options.
+   * @param {string|null} [options.workflowId] Workflow ID to link; when present (even null), nothing is derived from the message.
+   * @returns {Promise<number>} Created row ID.
    */
-  async create(data: any): Promise<void> {
-    await this.model.create({ workflow_id: data.queueMessage && data.queueMessage.workflowId, service_name: 'gateway', data });
+  async create(data: any, options: { workflowId?: string | null } = {}): Promise<number> {
+    const workflowId = 'workflowId' in options ? options.workflowId : data.queueMessage && data.queueMessage.workflowId;
+    return (await this.model.create({ workflow_id: workflowId, service_name: 'gateway', data })).id;
   }
 }

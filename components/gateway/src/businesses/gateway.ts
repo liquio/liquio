@@ -1,8 +1,8 @@
 import { parse as parseJsonc } from 'jsonc-parser';
-import { Sandbox } from '@liquio/back-core';
+import { Sandbox, errorRef } from '@liquio/back-core';
 
-import { getLog, getMessageQueue } from '../lib/context';
-import { pickMessageMeta } from '../lib/message_queue';
+import { getLog, getMessageBus } from '../lib/context';
+import { DESTINATION_MANAGER, gatewayMessageLogContext } from '../lib/message_bus';
 import { SystemNotifier } from '../lib/system_notifier';
 import { GatewayTypeEntity } from '../entities/gateway_type';
 import { WorkflowErrorModel } from '../models/workflow_error';
@@ -173,6 +173,34 @@ export class GatewayBusiness {
   }
 
   /**
+   * Verify that the workflow ID of a message can be trusted: the workflow exists, its template matches the message
+   * and the gateway template is a part of the workflow's BPMN schema.
+   * @param {object} messageObject Message object.
+   * @returns {Promise<string|null>} Verified workflow ID or null.
+   */
+  async verifyMessageWorkflowId(messageObject: any): Promise<string | null> {
+    try {
+      const { workflowId, workflowTemplateId, gatewayTemplateId } = messageObject || {};
+      if (!workflowId) {
+        return null;
+      }
+      const workflow = await this.workflowModel.findById(workflowId);
+      if (!workflow) {
+        return null;
+      }
+      if (workflowTemplateId !== undefined && workflowTemplateId !== null && String(workflowTemplateId) !== String(workflow.workflowTemplateId)) {
+        return null;
+      }
+      if (!(await this.isGatewayTemplateInWorkflow(gatewayTemplateId, workflowId))) {
+        return null;
+      }
+      return workflowId;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Create from message.
    * @param {object} messageObject AMQP message object.
    * @param {string} messageObject.workflowId Workflow ID.
@@ -180,6 +208,8 @@ export class GatewayBusiness {
    * @param {string[]} messageObject.sequenceIds Sequence ID list.
    */
   async createFromMessage(messageObject: any) {
+    // Set once the message workflow ID is verified against the gateway template.
+    let verifiedWorkflowId: string | null | undefined;
     try {
       // Define params.
       const workflowId = messageObject.workflowId;
@@ -198,9 +228,10 @@ export class GatewayBusiness {
       // The gateway template must belong to the template of the workflow. Ack and drop forged/mismatched messages
       // without recording a workflow error (that would let a forged message mark a foreign workflow as errored).
       if (!(await this.isGatewayTemplateInWorkflow(gatewayTemplateId, workflowId))) {
-        getLog().save('gateway-handling|template-workflow-mismatch', pickMessageMeta(messageObject));
+        getLog().save('gateway-handling|template-workflow-mismatch', gatewayMessageLogContext(messageObject));
         return true;
       }
+      verifiedWorkflowId = workflowId;
       const gatewayTypeId = gatewayTemplate.gatewayTypeId;
       const name = gatewayTemplate.name;
       const jsonSchema = gatewayTemplate.jsonSchema;
@@ -266,18 +297,19 @@ export class GatewayBusiness {
           version: createdGateway.version,
         });
 
-        // Send message to RabbitMQ.
+        // Report back to manager.
         const outMessage = { workflowId, gatewayId: createdGateway.id };
 
-        getMessageQueue().produce(outMessage);
+        await getMessageBus().publish(DESTINATION_MANAGER, outMessage);
       }
 
       // Inform about handling status.
     } catch (error: any) {
-      getLog().save('document-creating-by-message-from-queue-error', { ...pickMessageMeta(messageObject), error: error && error.message });
+      const logContext = gatewayMessageLogContext(messageObject);
 
       // If enabled debug model.
       if (typeof messageObject.debugId !== 'undefined' && messageObject && messageObject.workflowId) {
+        getLog().save('document-creating-by-message-from-queue-error', { ...logContext, error: errorRef(error) });
         await this.workflowDebugModel.create({
           id: messageObject.debugId,
           workflowId: messageObject.workflowId,
@@ -285,27 +317,39 @@ export class GatewayBusiness {
           data: { error: error.message, queueMessage: messageObject },
         });
       } else {
+        const linkedWorkflowId = verifiedWorkflowId !== undefined ? verifiedWorkflowId : await this.verifyMessageWorkflowId(messageObject);
+        let errorId: number | undefined;
         try {
-          await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject });
-          await this.workflowModel.setError(messageObject.workflowId);
+          errorId = await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject }, { workflowId: linkedWorkflowId });
+          if (linkedWorkflowId) {
+            await this.workflowModel.setError(linkedWorkflowId as any);
+          }
         } catch (error: any) {
-          getLog().save('workflow-id-not-found-error', { ...pickMessageMeta(messageObject), error: error.message });
+          getLog().save('workflow-id-not-found-error', { ...logContext, error: errorRef(error) });
         }
+        getLog().save('document-creating-by-message-from-queue-error', {
+          ...logContext,
+          error: errorRef(error),
+          errorId,
+          ...(linkedWorkflowId ? {} : { workflowLinked: false }),
+        });
 
-        try {
-          const workflowTemplate = await this.workflowTemplateModel.findIdAndNameAndErrorsSubscribersById(messageObject.workflowTemplateId);
-          const gatewayTemplate = await this.gatewayTemplateModel.findIdAndNameById(messageObject.gatewayTemplateId);
+        if (linkedWorkflowId) {
+          try {
+            const workflowTemplate = await this.workflowTemplateModel.findIdAndNameAndErrorsSubscribersById(messageObject.workflowTemplateId);
+            const gatewayTemplate = await this.gatewayTemplateModel.findIdAndNameById(messageObject.gatewayTemplateId);
 
-          await this.systemNotifier.sendEmails({
-            workflowId: messageObject.workflowId,
-            workflowTemplateName: workflowTemplate?.name,
-            workflowErrorsSubscribers: workflowTemplate?.errorsSubscribers,
-            gatewayTemplateId: gatewayTemplate?.id,
-            gatewayTemplateName: gatewayTemplate?.name,
-            error: error?.message,
-          });
-        } catch (error: any) {
-          getLog().save('system-notifier-error', error.message);
+            await this.systemNotifier.sendEmails({
+              workflowId: linkedWorkflowId,
+              workflowTemplateName: workflowTemplate?.name,
+              workflowErrorsSubscribers: workflowTemplate?.errorsSubscribers,
+              gatewayTemplateId: gatewayTemplate?.id,
+              gatewayTemplateName: gatewayTemplate?.name,
+              error: error?.message,
+            });
+          } catch (error: any) {
+            getLog().save('system-notifier-error', { error: errorRef(error) });
+          }
         }
       }
     }

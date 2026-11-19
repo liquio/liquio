@@ -1,7 +1,56 @@
+import * as amqplib from 'amqplib';
 import type { Response as SupertestResponse } from 'supertest';
 
 import { TestApp } from './test-app';
-import { prepareFixtures } from './fixtures';
+import { prepareFixtures, WORKFLOW_FIXTURES } from './fixtures';
+import { asAdmin, grantAllAdminUnits } from './fixtures/auth';
+import { getLog } from '../src/lib/context';
+
+const createBpmnEntities = async () => {
+  const sequelize = (await import('../src/lib/context')).getDb();
+  const now = '2000-01-01T00:00:00.000Z';
+  const [[eventType]]: any = await sequelize.query('SELECT id FROM event_types LIMIT 1');
+  const [[gatewayType]]: any = await sequelize.query('SELECT id FROM gateway_types LIMIT 1');
+  await sequelize.query(
+    `INSERT INTO task_templates (id, name, json_schema, html_template, created_at, updated_at) VALUES (9001, 't', '{}', '', '${now}', '${now}');
+     INSERT INTO event_templates (id, event_type_id, name, json_schema, created_at, updated_at) VALUES (9001, ${eventType.id}, 'e', '{}', '${now}', '${now}');
+     INSERT INTO gateway_templates (id, gateway_type_id, name, json_schema, created_at, updated_at) VALUES (9001, ${gatewayType.id}, 'g', '{}', '${now}', '${now}');`,
+  );
+  const [WF1, WF2] = WORKFLOW_FIXTURES.map(({ id }) => id);
+  const insert = async (table: string, extra: string, extraValues: string, workflowId: string, id: string) => {
+    await sequelize.query(
+      `INSERT INTO ${table} (id, workflow_id, ${extra}, created_at, updated_at) VALUES ('${id}', '${workflowId}', ${extraValues}, '${now}', '${now}')`,
+    );
+  };
+  await insert('tasks', 'task_template_id, created_by, updated_by', "9001, 't', 't'", WF1, '10000000-0000-0000-0000-000000000001');
+  await insert('tasks', 'task_template_id, created_by, updated_by', "9001, 't', 't'", WF2, '10000000-0000-0000-0000-000000000002');
+  await insert(
+    'events',
+    'event_template_id, event_type_id, created_by, updated_by, data',
+    `9001, ${eventType.id}, 't', 't', '{}'`,
+    WF1,
+    '20000000-0000-0000-0000-000000000001',
+  );
+  await insert(
+    'gateways',
+    'gateway_template_id, gateway_type_id, created_by, updated_by, data',
+    `9001, ${gatewayType.id}, 't', 't', '{}'`,
+    WF1,
+    '30000000-0000-0000-0000-000000000001',
+  );
+};
+
+const removeBpmnEntities = async () => {
+  const sequelize = (await import('../src/lib/context')).getDb();
+  await sequelize.query(
+    `DELETE FROM tasks WHERE task_template_id = 9001;
+     DELETE FROM events WHERE event_template_id = 9001;
+     DELETE FROM gateways WHERE gateway_template_id = 9001;
+     DELETE FROM task_templates WHERE id = 9001;
+     DELETE FROM event_templates WHERE id = 9001;
+     DELETE FROM gateway_templates WHERE id = 9001;`,
+  );
+};
 
 describe('Workflow Process Controller', () => {
   let app: TestApp;
@@ -12,6 +61,8 @@ describe('Workflow Process Controller', () => {
 
     // Insert fixture data into the database
     await prepareFixtures(app);
+    await grantAllAdminUnits(app);
+    await grantAllAdminUnits(app);
   });
 
   afterAll(async () => {
@@ -319,105 +370,176 @@ describe('Workflow Process Controller', () => {
   });
 
   describe('POST /workflow-processes/:id/restart', () => {
+    const [WF1, WF2] = WORKFLOW_FIXTURES.map(({ id }) => id);
+    const UNKNOWN = '00000000-0000-0000-0000-0000000000ff';
+    const QUEUES = ['test-admin-to-manager', 'test-admin-to-task', 'test-admin-to-event', 'test-admin-to-gateway'];
+    let connection: any;
+    let channel: any;
+    const ids = {
+      task1: '10000000-0000-0000-0000-000000000001',
+      task2: '10000000-0000-0000-0000-000000000002',
+    };
+
+    const drain = async () => {
+      const messages: any[] = [];
+      for (const queue of QUEUES) {
+        for (let message = await channel.get(queue, { noAck: true }); message; message = await channel.get(queue, { noAck: true })) {
+          messages.push({ queue, body: JSON.parse(message.content.toString()) });
+        }
+      }
+      return messages;
+    };
+    const waitDelivered = async (expected: number) => {
+      const found: any[] = [];
+      for (let i = 0; i < 100 && found.length < expected; i++) {
+        found.push(...(await drain()));
+        if (found.length < expected) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+      return found;
+    };
+    const restart = (id: string, message: any) => asAdmin(app, 'post', `/workflow-processes/${id}/restart`).send({ message });
+    const restartCount = (id: string) => app.model('workflowRestart').count({ where: { workflow_id: id } });
+
+    beforeAll(async () => {
+      connection = await amqplib.connect(TestApp.amqpUrl);
+      channel = await connection.createChannel();
+      for (const queue of QUEUES) {
+        await channel.assertQueue(queue, { durable: true });
+        await channel.purgeQueue(queue);
+      }
+      await createBpmnEntities();
+    });
+
+    afterAll(async () => {
+      await channel?.close().catch(() => undefined);
+      await connection?.close().catch(() => undefined);
+    });
+
+    beforeEach(async () => {
+      await drain();
+    });
+
     it('should fail without auth', async () => {
       await app
         .request()
-        .post('/workflow-processes/00000000-0000-0000-0000-000000000003/restart')
-        .send({ message: { workflowId: '00000000-0000-0000-0000-000000000003' } })
+        .post(`/workflow-processes/${WF2}/restart`)
+        .send({ message: { workflowId: WF2 } })
         .expect(401);
     });
 
-    it('should accept restart request when authenticated', async () => {
-      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+    it('should accept restart request when authenticated and publish the message', async () => {
+      await restart(WF1, { workflowId: WF1, stepId: 'start', debug: false }).expect(202);
 
-      app
-        .nock('http://id-api:8100')
-        .get('/user/info')
-        .query({ access_token: payload.authTokens.accessToken })
-        .once()
-        .reply(200, {
-          userId: '61efddaa351d6219eee09043',
-          role: 'admin',
-          services: { eds: { data: { pem: 'PEM' } } },
-        });
-
-      await app
-        .request()
-        .post('/workflow-processes/00000000-0000-0000-0000-000000000001/restart')
-        .send({
-          message: {
-            workflowId: '00000000-0000-0000-0000-000000000001',
-            stepId: 'start',
-            debug: false,
-          },
-        })
-        .set('token', jwt)
-        .expect(202);
+      const delivered = await waitDelivered(1);
+      expect(delivered).toHaveLength(1);
+      expect(delivered[0].queue).toBe('test-admin-to-manager');
+      expect(delivered[0].body).toMatchObject({ workflowId: WF1, amqpMessageId: expect.any(String) });
     });
 
     it('should support resolve_error query parameter', async () => {
-      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
-
-      app
-        .nock('http://id-api:8100')
-        .get('/user/info')
-        .query({ access_token: payload.authTokens.accessToken })
-        .once()
-        .reply(200, {
-          userId: '61efddaa351d6219eee09043',
-          role: 'admin',
-          services: { eds: { data: { pem: 'PEM' } } },
-        });
-
-      await app
-        .request()
-        .post('/workflow-processes/00000000-0000-0000-0000-000000000001/restart')
+      await asAdmin(app, 'post', `/workflow-processes/${WF1}/restart`)
         .query({ resolve_error: true })
-        .send({
-          message: {
-            workflowId: '00000000-0000-0000-0000-000000000001',
-            stepId: 'start',
-          },
-        })
-        .set('token', jwt)
+        .send({ message: { workflowId: WF1, stepId: 'start' } })
         .expect(202);
+    });
+
+    it('should publish a message that references a task of the workflow to the manager queue', async () => {
+      await restart(WF1, { taskId: ids.task1 }).expect(202);
+
+      const delivered = await waitDelivered(1);
+      expect(delivered).toHaveLength(1);
+      expect(delivered[0]).toMatchObject({ queue: 'test-admin-to-manager', body: { taskId: ids.task1 } });
+    });
+
+    describe('rejected messages', () => {
+      const expectRejected = async (id: string, message: any, status: number, text: string) => {
+        const restartsBefore = await restartCount(id);
+        const finalBefore = (await app.model('workflow').findByPk(id))?.is_final;
+
+        const response = await restart(id, message).expect(status);
+        expect(JSON.stringify(response.body)).toContain(text);
+
+        expect(await drain()).toEqual([]);
+        expect(await restartCount(id)).toBe(restartsBefore);
+        expect((await app.model('workflow').findByPk(id))?.is_final).toBe(finalBefore);
+      };
+
+      it('rejects a workflowId of another workflow', async () => {
+        await expectRejected(WF1, { workflowId: WF2 }, 400, 'Message workflowId does not match the workflow in the URL.');
+      });
+
+      it('rejects a task of a foreign workflow', async () => {
+        await expectRejected(WF1, { taskId: ids.task2 }, 400, 'Referenced task does not belong to the workflow in the URL.');
+      });
+
+      it('rejects unknown entities', async () => {
+        await expectRejected(WF1, { taskId: UNKNOWN }, 400, 'Referenced task not found.');
+        await expectRejected(WF1, { eventId: UNKNOWN }, 400, 'Referenced event not found.');
+        await expectRejected(WF1, { gatewayId: UNKNOWN }, 400, 'Referenced gateway not found.');
+      });
+
+      it('rejects a template message without a workflowId', async () => {
+        await expectRejected(WF1, { taskTemplateId: 1 }, 400, 'Message must reference the workflow');
+      });
+
+      it('answers 404 for an unknown workflow', async () => {
+        await restart(UNKNOWN, { workflowId: UNKNOWN }).expect(404);
+        expect(await drain()).toEqual([]);
+      });
     });
   });
 
   describe('POST /workflow-processes/restart-bulk', () => {
+    const [WF1, WF2] = WORKFLOW_FIXTURES.map(({ id }) => id);
+
+    afterAll(async () => {
+      await removeBpmnEntities();
+    });
+
     it('should fail without auth', async () => {
       await app
         .request()
         .post('/workflow-processes/restart-bulk')
-        .send({ messages: [{ workflowId: '00000000-0000-0000-0000-000000000003' }] })
+        .send({ messages: [{ workflowId: WF2 }] })
         .expect(401);
     });
 
-    it('should accept bulk restart request when authenticated', async () => {
-      const { jwt, payload } = app.generateUserToken('61efddaa351d6219eee09043');
+    it('should publish valid messages, skip and log a foreign reference, and answer 202', async () => {
+      const connection = await amqplib.connect(TestApp.amqpUrl);
+      const channel = await connection.createChannel();
+      await channel.assertQueue('test-admin-to-manager', { durable: true });
+      await channel.purgeQueue('test-admin-to-manager');
+      const logs = getLog().getLogs();
+      const before = logs.length;
 
-      app
-        .nock('http://id-api:8100')
-        .get('/user/info')
-        .query({ access_token: payload.authTokens.accessToken })
-        .once()
-        .reply(200, {
-          userId: '61efddaa351d6219eee09043',
-          role: 'admin',
-          services: { eds: { data: { pem: 'PEM' } } },
-        });
-
-      await app
-        .request()
-        .post('/workflow-processes/restart-bulk')
+      await asAdmin(app, 'post', '/workflow-processes/restart-bulk')
         .send({
           messages: [
-            { workflowId: '00000000-0000-0000-0000-000000000001', stepId: 'start' },
-            { workflowId: '00000000-0000-0000-0000-000000000002', stepId: 'process' },
+            { workflowId: WF1, stepId: 'start' },
+            { workflowId: WF1, taskId: '10000000-0000-0000-0000-000000000002' },
+            { workflowId: WF2, stepId: 'process' },
           ],
         })
-        .set('token', jwt)
         .expect(202);
+
+      const bodies: any[] = [];
+      for (let i = 0; i < 100 && bodies.length < 2; i++) {
+        const message = await channel.get('test-admin-to-manager', { noAck: true });
+        if (message) {
+          bodies.push(JSON.parse(message.content.toString()));
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      }
+      await channel.close();
+      await connection.close();
+
+      expect(bodies.map((body) => body.stepId).sort()).toEqual(['process', 'start']);
+      const rejected = logs.slice(before).filter((entry) => entry[0] === 'restart-process-from-step-bulk-message-rejected');
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0][1]).toEqual({ workflowId: WF1, reason: 'Referenced task does not belong to the workflow in the URL.' });
     });
   });
 

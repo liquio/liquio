@@ -1,8 +1,10 @@
 import amqp from 'amqplib/callback_api';
+import { getRetryDelayMs, MessageBusUnavailableError } from '@liquio/back-core';
 
 import { Rmq } from '../src/lib/rmq';
 import { TestApp } from './test-app';
-import { getConfig, getMessageQueue, getModels, getRedisClient, setAppContext } from '../src/lib/context';
+import { getConfig, getLog, getMessageBus, getModels, getRedisClient, setAppContext } from '../src/lib/context';
+import { createEventMessageBus } from '../src/lib/message_bus';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -56,9 +58,10 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
     await TestApp.beforeAll();
     // TestApp.setup() already calls app.init(); a second init would open a second set of channels and break acks.
     app = await TestApp.setup({});
-    amqpUrl = app.messageQueue.config.amqpConnection;
-    readingQueue = app.messageQueue.config.readingQueueName;
-    writingQueue = app.messageQueue.config.writingQueueName;
+    const mqConfig = getConfig().message_queue;
+    amqpUrl = mqConfig.amqpConnection;
+    readingQueue = mqConfig.readingQueueName;
+    writingQueue = mqConfig.writingQueueName;
     raw = await connect(amqpUrl);
   });
 
@@ -75,12 +78,12 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
     await TestApp.beforeEach(app);
   });
 
-  async function seedDelay(ids: { wfTpl: number; evTpl: number; wf: string }, schema: any = { delay: '2h' }) {
+  async function seedDelay(ids: { wfTpl: number; evTpl: number; wf: string }, schema: any = { delay: '2h' }, xml?: string) {
     await app.model('workflowTemplate').create({
       id: ids.wfTpl,
       name: 'Group A workflow',
       description: 'Group A',
-      xml_bpmn_schema: '<?xml version="1.0" encoding="UTF-8"?>',
+      xml_bpmn_schema: xml ?? `<?xml version="1.0" encoding="UTF-8"?><definitions><serviceTask id="event-${ids.evTpl}" /></definitions>`,
       data: {},
       is_active: true,
       errors_subscribers: [],
@@ -124,10 +127,10 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
       });
       expect(events).toHaveLength(1);
       expect(events[0]).toMatchObject({ workflow_id: ids.wf, event_type_id: 2, done: false });
-      expect(app.messageQueue.consumingCount).toBeGreaterThanOrEqual(0);
+      expect(app.messageBus.health().inFlight).toBeGreaterThanOrEqual(0);
     });
 
-    it('acks a malformed message and keeps consuming the next one', async () => {
+    it('discards a malformed message and keeps consuming the next one', async () => {
       const ids = { wfTpl: 960002, evTpl: 960002001, wf: 'a0000002-0000-4000-8000-000000000002' };
       await seedDelay(ids);
 
@@ -135,7 +138,7 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
       publishRaw(readingQueue, JSON.stringify({ workflowId: ids.wf, eventTemplateId: ids.evTpl, workflowTemplateId: ids.wfTpl }));
 
       await waitFor(async () => (await findEvents(ids.evTpl)).length > 0);
-      await waitFor(async () => app.messageQueue.consumingCount === 0);
+      await waitFor(async () => app.messageBus.health().inFlight === 0);
       const logs = (app as any).logs || [];
       expect(Array.isArray(logs)).toBe(true);
     });
@@ -143,23 +146,25 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
     it('records a failing event with retry info, produces a postponed retry message and notFailOnError event', async () => {
       const ids = { wfTpl: 960003, evTpl: 960003001, wf: 'a0000003-0000-4000-8000-000000000003' };
       await seedDelay(ids, { delay: "() => { throw new Error('boom'); }", retryIfError: ['10m'], notFailOnError: true });
-      const produceSpy = jest.spyOn(getMessageQueue(), 'produce');
+      const publishSpy = jest.spyOn(getMessageBus(), 'publish');
 
       publishRaw(readingQueue, JSON.stringify({ workflowId: ids.wf, eventTemplateId: ids.evTpl, workflowTemplateId: ids.wfTpl }));
-      await waitFor(async () => produceSpy.mock.calls.length > 0);
-      expect(produceSpy.mock.calls[0][1]).toBe('10m');
-      expect(produceSpy.mock.calls[0][0]).toMatchObject({ retryIterator: 1, workflowId: ids.wf });
+      await waitFor(async () => publishSpy.mock.calls.length > 0);
+      expect(publishSpy.mock.calls[0][0]).toBe('event');
+      expect(publishSpy.mock.calls[0][2]).toEqual({ delayMs: getRetryDelayMs('10m') });
+      expect(publishSpy.mock.calls[0][1]).toMatchObject({ retryIterator: 1, workflowId: ids.wf });
 
       // Second pass (iterator exhausted) -> notFailOnError path creates failed event and produces outgoing message.
-      produceSpy.mockClear();
+      publishSpy.mockClear();
       publishRaw(readingQueue, JSON.stringify({ workflowId: ids.wf, eventTemplateId: ids.evTpl, workflowTemplateId: ids.wfTpl, retryIterator: 1 }));
-      await waitFor(async () => produceSpy.mock.calls.length > 0);
+      await waitFor(async () => publishSpy.mock.calls.length > 0);
+      expect(publishSpy.mock.calls[0][0]).toBe('manager');
       const rows: any[] = await waitFor(async () => {
         const r = await findEvents(ids.evTpl);
         return r.some((e: any) => e.data?.notFailOnError) ? r : null;
       });
       expect(rows.length).toBeGreaterThan(0);
-      produceSpy.mockRestore();
+      publishSpy.mockRestore();
     });
 
     it('fails the workflow on error without retry and writes a debug record when debugId is passed', async () => {
@@ -216,7 +221,7 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
         // The wip marker is never cleared by the consumer; drop it so the duplicate takes the cache path instead of the 5 minute wip wait.
         fakeRedis.store.delete('amqp-message-id.amqp-id-a-1.wip');
         publishRaw(readingQueue, JSON.stringify(body));
-        await waitFor(async () => app.messageQueue.consumingCount === 0);
+        await waitFor(async () => app.messageBus.health().inFlight === 0);
         await sleep(500);
 
         expect(await findEvents(ids.evTpl)).toHaveLength(1);
@@ -266,98 +271,260 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
     });
   });
 
-  describe('MessageQueue producer', () => {
-    it('sends to the writing queue and to postponed queues', async () => {
-      // Drain the writing queue.
-      while (await getMessage(raw.channel, writingQueue)) {
-        /* drain */
-      }
-      const cfg0 = app.messageQueue.config;
-      for (const q of [cfg0.errorQueueName10M, cfg0.errorQueueName1H, cfg0.errorQueueName2H, cfg0.errorQueueName8H, cfg0.errorQueueName1D]) {
+  describe('Message bus producer', () => {
+    it('publishes to the writing queue and to postponed queues', async () => {
+      const retryQueues = ['10m', '1h', '2h', '8h', '1d'].map((label) => `${readingQueue}-errors-${label}`);
+      for (const q of [writingQueue, ...retryQueues]) {
         while (await getMessage(raw.channel, q)) {
           /* drain */
         }
       }
-      expect(app.messageQueue.produce({ workflowId: 'w1', eventId: 'e1' })).toBe(true);
+      await app.messageBus.publish('manager', { workflowId: 'w1', eventId: 'e1' });
       const msg: any = await waitFor(() => getMessage(raw.channel, writingQueue));
       const body = JSON.parse(msg.content.toString());
       expect(body).toMatchObject({ workflowId: 'w1', eventId: 'e1' });
       expect(body.amqpMessageId).toEqual(expect.any(String));
 
-      const cfg = app.messageQueue.config;
-      const cases: [any, string][] = [
-        ['10m', cfg.errorQueueName10M],
-        ['1h', cfg.errorQueueName1H],
-        ['2h', cfg.errorQueueName2H],
-        ['8h', cfg.errorQueueName8H],
-        ['1d', cfg.errorQueueName1D],
-        ['unknown', cfg.errorQueueName1D],
+      const cases: [string, string][] = [
+        ['10m', '10m'],
+        ['1h', '1h'],
+        ['2h', '2h'],
+        ['8h', '8h'],
+        ['1d', '1d'],
+        ['unknown', '1d'],
       ];
-      for (const [time] of cases) {
-        expect(app.messageQueue.produce({ k: time }, time)).toBe(true);
+      for (const [k, label] of cases) {
+        await app.messageBus.publish('event', { k }, { delayMs: getRetryDelayMs(k) });
+        const delayed: any = await waitFor(() => getMessage(raw.channel, `${readingQueue}-errors-${label}`));
+        expect(JSON.parse(delayed.content.toString()).k).toBe(k);
       }
-      const q10: any = await waitFor(() => getMessage(raw.channel, cfg.errorQueueName10M));
-      expect(JSON.parse(q10.content.toString()).k).toBe('10m');
-      const q1d: any = await waitFor(() => getMessage(raw.channel, cfg.errorQueueName1D));
-      expect(JSON.parse(q1d.content.toString()).k).toBeDefined();
     });
 
-    it('rethrows produce errors', () => {
-      const original = app.messageQueue.channels.writing.sendToQueue;
-      app.messageQueue.channels.writing.sendToQueue = () => {
-        throw new Error('channel broken');
-      };
+    it('rejects a publish while the bus is closed', async () => {
+      const closedBus = createEventMessageBus(getConfig());
+      await closedBus.init();
+      await closedBus.close();
+      await expect(closedBus.publish('manager', { a: 1 })).rejects.toBeInstanceOf(MessageBusUnavailableError);
+    });
+
+    it('accepts a retry queue declared with the legacy arguments', async () => {
+      const queue = `${readingQueue}-errors-10m`;
+      const check = await connect(amqpUrl);
+      await new Promise<void>((resolve, reject) =>
+        check.channel.assertQueue(
+          queue,
+          { durable: true, arguments: { 'x-dead-letter-exchange': '', 'x-message-ttl': 600000, 'x-dead-letter-routing-key': readingQueue } },
+          (e: any) => (e ? reject(e) : resolve()),
+        ),
+      );
+      const second = createEventMessageBus(getConfig());
       try {
-        expect(() => app.messageQueue.produce({ a: 1 })).toThrow();
+        await second.init();
+        expect(second.health().status).toBe('connected');
       } finally {
-        app.messageQueue.channels.writing.sendToQueue = original;
+        await second.close();
+        await new Promise<void>((resolve) => check.connection.close(() => resolve()));
       }
-    });
-
-    it('returns queue params and creates new channels', async () => {
-      expect(app.messageQueue.getQueueParams('any-queue')).toMatchObject({ durable: true });
-      const channel = await app.messageQueue.createNewChannel();
-      expect(channel).toBeDefined();
-      await new Promise<void>((resolve) => channel.close(() => resolve()));
-    });
-
-    it('reconnect is a no-op while closing or when already scheduled', () => {
-      const mq = app.messageQueue;
-      const prevClosing = mq.isClosing;
-      clearTimeout(mq.reconnectTimeout);
-      mq.reconnectTimeout = null;
-      mq.isClosing = true;
-      mq.reconnect();
-      expect(mq.reconnectTimeout).toBeFalsy();
-      mq.isClosing = false;
-      mq.reconnectTimeout = 123;
-      mq.reconnect();
-      expect(mq.reconnectTimeout).toBe(123);
-      mq.reconnectTimeout = null;
-      mq.isClosing = prevClosing;
-    });
-
-    it('exitGracefully waits for in-flight consumers and exits when idle', async () => {
-      const mq = app.messageQueue;
-      const exitSpy = jest.spyOn(process, 'exit').mockImplementation((() => undefined) as any);
-      const cancelSpy = jest.spyOn(mq.channels.reading, 'cancel').mockImplementation((() => undefined) as any);
-      mq.consumingCount = 1;
-      // Don't leave the 5 s retry timer running: with --runInBand it would fire in a later suite after teardown.
-      const timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((() => undefined) as any);
-      await mq.exitGracefully(false);
-      expect(timeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);
-      timeoutSpy.mockRestore();
-      mq.consumingCount = 0;
-      await mq.exitGracefully(false);
-      await sleep(50);
-      expect(exitSpy).toHaveBeenCalledWith(1);
-      // BUG (see BUGS.md): ERRORS_TO_RESTART.some is called without a callback, so this always throws a TypeError.
-      expect(() => mq.checkErrorAndExitIfNeedIt({ message: 'Error: socket hang up' })).toThrow(TypeError);
-      exitSpy.mockRestore();
-      cancelSpy.mockRestore();
     });
   });
 
+  describe('Handler failures', () => {
+    const wf = 'a0000010-0000-4000-8000-000000000010';
+    const handlerErrors = () => getLog().logs.filter((l: any) => l.type === 'message-bus-handler-error');
+    const readyCount = () =>
+      new Promise<number>((resolve, reject) => raw.channel.checkQueue(readingQueue, (e: any, ok: any) => (e ? reject(e) : resolve(ok.messageCount))));
+
+    const cases: [string, 'threw' | 'invalid-result', () => Promise<any>, number][] = [
+      ['rejects', 'threw', () => Promise.reject(new Error('SENTINEL-MSG')), 960010],
+      ['resolves undefined', 'invalid-result', () => Promise.resolve(undefined), 960011],
+    ];
+
+    it.each(cases)('discards the message once and records a failure row when the handler %s', async (_title, failure, impl, wfTpl) => {
+      const ids = { wfTpl, evTpl: wfTpl * 1000 + 1, wf: `a00000${wfTpl % 100}-0000-4000-8000-0000000000${wfTpl % 100}` };
+      await seedDelay(ids);
+      const spy = jest.spyOn(app.eventBusiness, 'createFromMessage').mockImplementationOnce(impl as any);
+      const before = app.messageBus.health().counters.handlerErrors;
+
+      publishRaw(readingQueue, JSON.stringify({ workflowId: ids.wf, eventTemplateId: ids.evTpl, workflowTemplateId: ids.wfTpl }));
+      await waitFor(async () => handlerErrors().length > 0, 5000);
+      await sleep(1000);
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(await readyCount()).toBe(0);
+      expect(app.messageBus.health().counters.handlerErrors).toBe(before + 1);
+      expect(app.messageBus.health().lastHandlerErrorAt).toBeDefined();
+      expect(handlerErrors()).toHaveLength(1);
+      const entry = handlerErrors()[0].data;
+      expect(entry).toMatchObject({
+        failure,
+        workflowId: ids.wf,
+        eventTemplateId: ids.evTpl,
+        error: expect.objectContaining({ name: expect.any(String) }),
+      });
+      expect(entry.errorId).toEqual(expect.any(Number));
+      expect(JSON.stringify(getLog().logs)).not.toContain('SENTINEL-MSG');
+
+      const row = await app.model('workflowError').findByPk(entry.errorId);
+      expect(row.service_name).toBe('event');
+      expect(row.workflow_id).toBeNull();
+      expect(row.data).toMatchObject({ failure, queueMessage: { workflowId: ids.wf } });
+      expect(row.data.error).toEqual(expect.any(String));
+      expect((await app.model('workflow').findByPk(ids.wf)).has_unresolved_errors).toBe(false);
+      spy.mockRestore();
+    });
+
+    it('reports one in-flight handler while handling and none afterwards', async () => {
+      const spy = jest.spyOn(app.eventBusiness, 'createFromMessage').mockImplementationOnce((async () => {
+        await sleep(800);
+        return true;
+      }) as any);
+      publishRaw(readingQueue, JSON.stringify({ workflowId: wf, eventTemplateId: 1 }));
+      await waitFor(async () => app.messageBus.health().inFlight === 1, 5000, 50);
+      await waitFor(async () => app.messageBus.health().inFlight === 0, 5000, 50);
+      expect(spy).toHaveBeenCalledTimes(1);
+      spy.mockRestore();
+    });
+  });
+
+  describe('Logs and failure records on the business path', () => {
+    const logsOf = (type: string) => getLog().logs.filter((l: any) => l.type === type);
+    const failing = "() => { throw new Error('SENTINEL-MSG'); }";
+
+    it('does not put message bodies into logs', async () => {
+      const unknownTemplate = 960019001;
+      // A message without a known event template fails before any schema is parsed.
+      publishRaw(
+        readingQueue,
+        JSON.stringify({
+          workflowId: 'a0000019-0000-4000-8000-000000000019',
+          eventTemplateId: unknownTemplate,
+          initData: { x: 'SENTINEL-E' },
+          sequenceIds: ['SENTINEL-U'],
+        }),
+      );
+      await waitFor(async () => logsOf('unknown-error').length > 0);
+      await waitFor(async () => app.messageBus.health().inFlight === 0);
+      expect(JSON.stringify(getLog().logs)).not.toContain('SENTINEL');
+    });
+
+    it('logs the failure row id and the error name only for a failed event', async () => {
+      const ids = { wfTpl: 960020, evTpl: 960020001, wf: 'a0000020-0000-4000-8000-000000000020' };
+      await seedDelay(ids, { delay: failing });
+      const sendEmails = jest.spyOn((app.eventBusiness as any).systemNotifier, 'sendEmails').mockResolvedValue(undefined as any);
+
+      publishRaw(readingQueue, JSON.stringify({ workflowId: ids.wf, eventTemplateId: ids.evTpl, workflowTemplateId: ids.wfTpl }));
+      await waitFor(async () => logsOf('event-handling-by-message-from-queue-error').length > 0);
+      await waitFor(async () => app.messageBus.health().inFlight === 0);
+
+      const entry = logsOf('event-handling-by-message-from-queue-error')[0].data;
+      expect(entry.error).toEqual({ name: 'EvaluateSchemaFunctionError' });
+      expect(entry.errorId).toEqual(expect.any(Number));
+      const row = await app.model('workflowError').findByPk(entry.errorId);
+      expect(row).toMatchObject({ type: 'error', workflow_id: ids.wf });
+      // The sandbox logs the evaluated function failure itself, outside the bus and the business handler.
+      const ownLogs = getLog().logs.filter((l: any) => !['sandbox-error', 'eval-error'].includes(l.type));
+      expect(JSON.stringify(ownLogs)).not.toContain('SENTINEL-MSG');
+      sendEmails.mockRestore();
+    });
+
+    it('logs the warning row id when the workflow status cannot be set', async () => {
+      const ids = { wfTpl: 960021, evTpl: 960021001, wf: 'a0000021-0000-4000-8000-000000000021' };
+      await seedDelay(ids);
+      const spy = jest.spyOn(app.eventBusiness as any, 'setWorkflowStatus').mockRejectedValueOnce(new Error('SENTINEL-MSG'));
+
+      publishRaw(readingQueue, JSON.stringify({ workflowId: ids.wf, eventTemplateId: ids.evTpl, workflowTemplateId: ids.wfTpl }));
+      await waitFor(async () => logsOf('set-workflow-status-error').length > 0);
+
+      const entry = logsOf('set-workflow-status-error')[0].data;
+      expect(entry.error).toEqual({ name: 'Error' });
+      const row = await app.model('workflowError').findByPk(entry.errorId);
+      expect(row).toMatchObject({ type: 'warning', workflow_id: ids.wf });
+      expect(JSON.stringify(getLog().logs)).not.toContain('SENTINEL-MSG');
+      spy.mockRestore();
+    });
+  });
+
+  describe('Trusted workflow linking on failure paths', () => {
+    const failing = "() => { throw new Error('boom'); }";
+    const noEventNode = '<?xml version="1.0" encoding="UTF-8"?><definitions><serviceTask id="event-1" /></definitions>';
+    const errorRows = async (wf: string) => (await app.model('workflowError').findAll()).filter((r: any) => r.data?.queueMessage?.workflowId === wf);
+    let publish: jest.SpyInstance;
+    let sendEmails: jest.SpyInstance;
+
+    beforeEach(() => {
+      publish = jest.spyOn(getMessageBus(), 'publish').mockResolvedValue({ messageId: 'x' });
+      sendEmails = jest.spyOn((app.eventBusiness as any).systemNotifier, 'sendEmails').mockResolvedValue(undefined as any);
+    });
+
+    afterEach(() => {
+      publish.mockRestore();
+      sendEmails.mockRestore();
+    });
+
+    const message = (ids: any, extra: any = {}) => ({ workflowId: ids.wf, eventTemplateId: ids.evTpl, workflowTemplateId: ids.wfTpl, ...extra });
+
+    it('does not mark, notify, create events or publish for a workflow that does not contain the event', async () => {
+      const ids = { wfTpl: 960030, evTpl: 960030001, wf: 'a0000030-0000-4000-8000-000000000030' };
+      await seedDelay(ids, { delay: failing }, noEventNode);
+
+      expect(await app.eventBusiness.createFromMessage(message(ids))).toBe(true);
+
+      const rows = await errorRows(ids.wf);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].workflow_id).toBeNull();
+      expect((await app.model('workflow').findByPk(ids.wf)).has_unresolved_errors).toBe(false);
+      expect(await findEvents(ids.evTpl)).toHaveLength(0);
+      expect(publish).not.toHaveBeenCalled();
+      expect(sendEmails).not.toHaveBeenCalled();
+    });
+
+    it('creates no failed event and no follow-up message with notFailOnError for such a workflow', async () => {
+      const ids = { wfTpl: 960031, evTpl: 960031001, wf: 'a0000031-0000-4000-8000-000000000031' };
+      await seedDelay(ids, { delay: failing, notFailOnError: true }, noEventNode);
+
+      expect(await app.eventBusiness.createFromMessage(message(ids))).toBe(true);
+
+      expect((await errorRows(ids.wf))[0].workflow_id).toBeNull();
+      expect(await findEvents(ids.evTpl)).toHaveLength(0);
+      expect(publish).not.toHaveBeenCalled();
+    });
+
+    it('still schedules the retry but links nothing for such a workflow', async () => {
+      const ids = { wfTpl: 960032, evTpl: 960032001, wf: 'a0000032-0000-4000-8000-000000000032' };
+      await seedDelay(ids, { delay: failing, retryIfError: ['10m'] }, noEventNode);
+
+      expect(await app.eventBusiness.createFromMessage(message(ids))).toBe(true);
+      await waitFor(async () => ((await errorRows(ids.wf)).length ? true : null));
+      await sleep(200);
+
+      expect(publish).toHaveBeenCalledWith('event', expect.objectContaining({ retryIterator: 1 }), { delayMs: getRetryDelayMs('10m') });
+      expect((await errorRows(ids.wf))[0]).toMatchObject({ type: 'warning', workflow_id: null });
+      expect(await findEvents(ids.evTpl)).toHaveLength(0);
+    });
+
+    it('links, marks and notifies for a valid workflow', async () => {
+      const ids = { wfTpl: 960033, evTpl: 960033001, wf: 'a0000033-0000-4000-8000-000000000033' };
+      await seedDelay(ids, { delay: failing });
+
+      expect(await app.eventBusiness.createFromMessage(message(ids))).toBe(true);
+
+      expect((await errorRows(ids.wf))[0]).toMatchObject({ type: 'error', workflow_id: ids.wf });
+      expect((await app.model('workflow').findByPk(ids.wf)).has_unresolved_errors).toBe(true);
+      expect(sendEmails).toHaveBeenCalledWith(expect.objectContaining({ workflowId: ids.wf }));
+    });
+
+    it('links the row, creates the failed event and reports back with notFailOnError for a valid workflow', async () => {
+      const ids = { wfTpl: 960034, evTpl: 960034001, wf: 'a0000034-0000-4000-8000-000000000034' };
+      await seedDelay(ids, { delay: failing, notFailOnError: true });
+
+      expect(await app.eventBusiness.createFromMessage(message(ids))).toBe(true);
+
+      expect((await errorRows(ids.wf))[0]).toMatchObject({ type: 'warning', workflow_id: ids.wf });
+      const events: any[] = await findEvents(ids.evTpl);
+      expect(events).toHaveLength(1);
+      expect(publish).toHaveBeenCalledWith('manager', { workflowId: ids.wf, eventId: events[0].id });
+    });
+  });
   describe('Rmq (request/response over RabbitMQ)', () => {
     const suffix = Date.now();
     const opts = (extra: any = {}) => ({
@@ -811,7 +978,7 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
 
     it('runDaemon sends due delay events and retries postponed notifications', async () => {
       const bus: any = app.eventBusiness;
-      const produce = jest.spyOn(getMessageQueue(), 'produce').mockReturnValue(true);
+      const publish = jest.spyOn(getMessageBus(), 'publish').mockResolvedValue({ messageId: 'x' });
       const running = jest.spyOn(bus.runningEvents, 'lockAndGetRunningEvents').mockResolvedValue([{ id: 'e-delay' }]);
       const setDone = jest.spyOn(bus.eventModel, 'setDone').mockResolvedValue({ workflowId: 'wf-d' } as any);
       const unlock = jest.spyOn(bus.eventModel, 'unlockOldLockedEvents').mockResolvedValue(undefined as any);
@@ -834,15 +1001,15 @@ describe('Group A - message queue consumer, producer, RMQ and event business', (
         await waitFor(async () => update.mock.calls.length >= 3);
         await sleep(200);
         bus.stopDaemon();
-        expect(produce).toHaveBeenCalledWith({ workflowId: 'wf-d', eventId: 'e-delay' });
-        expect(produce).toHaveBeenCalledWith({ workflowId: 'wf-n', eventId: 'e-ok' });
+        expect(publish).toHaveBeenCalledWith('manager', { workflowId: 'wf-d', eventId: 'e-delay' });
+        expect(publish).toHaveBeenCalledWith('manager', { workflowId: 'wf-n', eventId: 'e-ok' });
         expect(badEvent.data.statuses['2030-01-01']).toMatch(/^Error/);
         expect(badEvent.data.dueDate).toBe('2031-01-01');
         expect((badEvent2.data as any).dueDate).toBeUndefined();
       } finally {
         bus.stopDaemon();
         getConfig().delayer.interval = prevInterval;
-        [produce, running, setDone, unlock, postponed, send, update].forEach((s) => s.mockRestore());
+        [publish, running, setDone, unlock, postponed, send, update].forEach((s) => s.mockRestore());
       }
     });
 

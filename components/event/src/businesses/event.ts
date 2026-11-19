@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 
 import * as jsoncParser from 'jsonc-parser';
 import Queue from 'queue-promise';
-import { getTraceId, Sandbox } from '@liquio/back-core';
+import { getTraceId, Sandbox, errorRef, getRetryDelayMs } from '@liquio/back-core';
 
 import { FileStorage as Filestorage } from '../lib/filestorage';
 import { PersistLink } from '../lib/persist_link';
@@ -31,7 +31,8 @@ import { EvaluateSchemaFunctionError } from '../lib/errors';
 import { SYSTEM_USER } from '../constants/common';
 import { CRUD_TYPE } from '../constants/http';
 import { getConfig } from '../lib/config';
-import { getConfig as getAppConfig, getLog, getModels, getMessageQueue } from '../lib/context';
+import { getConfig as getAppConfig, getLog, getModels, getMessageBus } from '../lib/context';
+import { DESTINATION_EVENT, DESTINATION_MANAGER, eventMessageLogContext } from '../lib/message_bus';
 
 // Constants.
 const ERROR_WRONG_EVENT_TYPE = 'Wrong event type.';
@@ -1364,6 +1365,57 @@ export class EventBusiness {
   }
 
   /**
+   * Check that the event template is a part of the BPMN schema of the workflow's template.
+   * @param {number} eventTemplateId Event template ID.
+   * @param {string} workflowId Workflow ID.
+   * @returns {Promise<boolean>} True if the event belongs to the workflow template.
+   */
+  async isEventTemplateInWorkflow(eventTemplateId: number, workflowId: string): Promise<boolean> {
+    if (!Number.isInteger(Number(eventTemplateId))) {
+      return false;
+    }
+    const workflow = await this.workflowModel.findById(workflowId);
+    if (!workflow || !workflow.workflowTemplateId) {
+      return false;
+    }
+    const workflowTemplate = await this.workflowTemplateModel.findXmlBpmnSchemaById(workflow.workflowTemplateId);
+    const xmlBpmnSchema = workflowTemplate && workflowTemplate.xmlBpmnSchema;
+    if (typeof xmlBpmnSchema !== 'string') {
+      return false;
+    }
+
+    return new RegExp(`\\bid\\s*=\\s*["']event-${Number(eventTemplateId)}["']`, 'i').test(xmlBpmnSchema);
+  }
+
+  /**
+   * Verify that the workflow ID of a message can be trusted: the workflow exists, its template matches the message
+   * and the event template is a part of the workflow's BPMN schema.
+   * @param {object} messageObject Message object.
+   * @returns {Promise<string|null>} Verified workflow ID or null.
+   */
+  async verifyMessageWorkflowId(messageObject: any): Promise<string | null> {
+    try {
+      const { workflowId, workflowTemplateId, eventTemplateId } = messageObject || {};
+      if (!workflowId) {
+        return null;
+      }
+      const workflow = await this.workflowModel.findById(workflowId);
+      if (!workflow) {
+        return null;
+      }
+      if (workflowTemplateId !== undefined && workflowTemplateId !== null && String(workflowTemplateId) !== String(workflow.workflowTemplateId)) {
+        return null;
+      }
+      if (!(await this.isEventTemplateInWorkflow(eventTemplateId, workflowId))) {
+        return null;
+      }
+      return workflowId;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Create from message.
 
    * @param {object} messageObject AMQP message object.
@@ -1376,6 +1428,14 @@ export class EventBusiness {
     let jsonSchemaObject;
     let name;
     let dueDate;
+    // Resolved lazily: the message workflow ID is trusted only after verification.
+    let verifiedWorkflowId: string | null | undefined;
+    const getVerifiedWorkflowId = async () => {
+      if (verifiedWorkflowId === undefined) {
+        verifiedWorkflowId = await this.verifyMessageWorkflowId(messageObject);
+      }
+      return verifiedWorkflowId;
+    };
     try {
       // Define workflow.
       workflowId = messageObject.workflowId;
@@ -1523,8 +1583,8 @@ export class EventBusiness {
             events,
           });
         } catch (error) {
-          getLog().save('set-workflow-status-error', { workflowId, error: error.toString() });
-          await this.workflowErrorModel.create(
+          const trustedWorkflowId = await getVerifiedWorkflowId();
+          const errorId = await this.workflowErrorModel.create(
             {
               error: 'Can not set the workflow status.',
               details: {
@@ -1533,14 +1593,21 @@ export class EventBusiness {
               queueMessage: messageObject,
             },
             'warning',
+            { workflowId: trustedWorkflowId },
           );
+          getLog().save('set-workflow-status-error', {
+            ...eventMessageLogContext(messageObject),
+            error: errorRef(error),
+            errorId,
+            ...(trustedWorkflowId ? {} : { workflowLinked: false }),
+          });
         }
 
         if (resultContext.done) {
-          // Send message to RabbitMQ.
+          // Report back to manager.
           const outMessage = { workflowId, eventId: createdEvent.id };
           if (typeof messageObject.onlyExecute === 'undefined') {
-            getMessageQueue()?.produce?.(outMessage);
+            await getMessageBus()?.publish(DESTINATION_MANAGER, outMessage);
           }
 
           // Save custom logs.
@@ -1548,17 +1615,20 @@ export class EventBusiness {
         }
       }
     } catch (error) {
-      try {
-        // Create error.
+      let handlingErrorLogged = false;
+      const logHandlingError = (extra: any = {}) => {
+        handlingErrorLogged = true;
         getLog().save('event-handling-by-message-from-queue-error', {
-          messageObject,
-          error: error.toString(),
-          stack: error.stack,
-          details: error.cause,
+          ...eventMessageLogContext(messageObject),
+          error: errorRef(error),
+          ...extra,
         });
+      };
 
+      try {
         // If enabled debug model.
         if (typeof messageObject.debugId !== 'undefined' && messageObject && messageObject.workflowId) {
+          logHandlingError();
           await this.workflowDebugModel.create({
             id: messageObject.debugId,
             workflowId: messageObject.workflowId,
@@ -1574,33 +1644,49 @@ export class EventBusiness {
         // Retry if need it.
         const retryInfo = this.getRetryInfo(messageObject, jsonSchemaObject);
         if (retryInfo) {
+          logHandlingError();
+
           // Retry.
           const { retryMessage, postponedTime } = retryInfo;
           if (typeof messageObject.onlyExecute === 'undefined') {
-            getMessageQueue().produce(retryMessage, postponedTime);
+            await getMessageBus().publish(DESTINATION_EVENT, retryMessage, { delayMs: getRetryDelayMs(postponedTime) });
           }
 
           // Save event was failed, async.
           (async () => {
+            const trustedWorkflowId = await getVerifiedWorkflowId();
+
             // Event entity.
             try {
-              const lastVersionWorkflowHistory = await this.workflowHistoryModel.findLastVersionByWorkflowTemplateId(
-                messageObject.workflowTemplateId,
-              );
+              if (trustedWorkflowId) {
+                const lastVersionWorkflowHistory = await this.workflowHistoryModel.findLastVersionByWorkflowTemplateId(
+                  messageObject.workflowTemplateId,
+                );
 
-              await this.eventModel.create({
-                eventTemplateId,
-                workflowId,
-                eventTypeId,
-                name,
-                data: { error: error.toString(), cause: error.cause, details: error.details, notFailOnError, retryInfo, messageObject, retry: true },
-                done: false,
-                createdBy: SYSTEM_USER,
-                updatedBy: SYSTEM_USER,
-                version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
-              } as any);
+                await this.eventModel.create({
+                  eventTemplateId,
+                  workflowId: trustedWorkflowId,
+                  eventTypeId,
+                  name,
+                  data: {
+                    error: error.toString(),
+                    cause: error.cause,
+                    details: error.details,
+                    notFailOnError,
+                    retryInfo,
+                    messageObject,
+                    retry: true,
+                  },
+                  done: false,
+                  createdBy: SYSTEM_USER,
+                  updatedBy: SYSTEM_USER,
+                  version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
+                } as any);
+              } else {
+                getLog().save('event-unverified-workflow', { ...eventMessageLogContext(messageObject), workflowLinked: false });
+              }
             } catch (error) {
-              getLog().save('event-error-catch-creating-error', { messageObject, error: error.toString() });
+              getLog().save('event-error-catch-creating-error', { ...eventMessageLogContext(messageObject), error: errorRef(error) });
             }
 
             // Workflow error entity.
@@ -1615,9 +1701,10 @@ export class EventBusiness {
                   retry: true,
                 },
                 type,
+                { workflowId: trustedWorkflowId },
               );
             } catch (error) {
-              getLog().save('workflow-id-not-found-error', { messageObject, error: error.toString() });
+              getLog().save('workflow-id-not-found-error', { ...eventMessageLogContext(messageObject), error: errorRef(error) });
             }
           })();
 
@@ -1625,9 +1712,11 @@ export class EventBusiness {
         }
 
         // Check log type.
+        const trustedWorkflowId = await getVerifiedWorkflowId();
+        let errorId: number | undefined;
         try {
           const type = notFailOnError ? 'warning' : 'error';
-          await this.workflowErrorModel.create(
+          errorId = await this.workflowErrorModel.create(
             {
               error: error.toString(),
               details: error.details,
@@ -1636,53 +1725,62 @@ export class EventBusiness {
               traceId: getTraceId(),
             },
             type,
+            { workflowId: trustedWorkflowId },
           );
         } catch (error) {
-          getLog().save('workflow-id-not-found-error', { messageObject, error: error.toString() });
+          getLog().save('workflow-id-not-found-error', { ...eventMessageLogContext(messageObject), error: errorRef(error) });
+        }
+        logHandlingError({ errorId, ...(trustedWorkflowId ? {} : { workflowLinked: false }) });
+        if (!trustedWorkflowId) {
+          getLog().save('event-unverified-workflow', { ...eventMessageLogContext(messageObject), workflowLinked: false });
         }
 
         // Check if no need to fail on error.
         if (notFailOnError) {
-          let createdEvent;
-          try {
-            const lastVersionWorkflowHistory = await this.workflowHistoryModel.findLastVersionByWorkflowTemplateId(messageObject.workflowTemplateId);
+          if (trustedWorkflowId) {
+            let createdEvent;
+            try {
+              const lastVersionWorkflowHistory = await this.workflowHistoryModel.findLastVersionByWorkflowTemplateId(
+                messageObject.workflowTemplateId,
+              );
 
-            createdEvent = await this.eventModel.create({
-              eventTemplateId,
-              workflowId,
-              eventTypeId,
-              name,
-              data: { error: error.toString(), cause: error.cause, details: error.details, notFailOnError, messageObject },
-              done: false,
-              dueDate,
-              createdBy: SYSTEM_USER,
-              updatedBy: SYSTEM_USER,
-              version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
-            } as any);
-          } catch (error) {
-            getLog().save('event-error-catch-creating-error', { messageObject, error: error.toString() });
-          }
+              createdEvent = await this.eventModel.create({
+                eventTemplateId,
+                workflowId: trustedWorkflowId,
+                eventTypeId,
+                name,
+                data: { error: error.toString(), cause: error.cause, details: error.details, notFailOnError, messageObject },
+                done: false,
+                dueDate,
+                createdBy: SYSTEM_USER,
+                updatedBy: SYSTEM_USER,
+                version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
+              } as any);
+            } catch (error) {
+              getLog().save('event-error-catch-creating-error', { ...eventMessageLogContext(messageObject), error: errorRef(error) });
+            }
 
-          // Send message to RabbitMQ.
-          const outMessage = { workflowId, eventId: createdEvent.id };
-          if (typeof messageObject.onlyExecute === 'undefined') {
-            getMessageQueue().produce(outMessage);
+            // Report back to manager.
+            const outMessage = { workflowId: trustedWorkflowId, eventId: createdEvent.id };
+            if (typeof messageObject.onlyExecute === 'undefined') {
+              await getMessageBus().publish(DESTINATION_MANAGER, outMessage);
+            }
           }
-        } else {
-          await this.workflowModel.setError(messageObject.workflowId);
+        } else if (trustedWorkflowId) {
+          await this.workflowModel.setError(trustedWorkflowId);
         }
 
         // Try to inform admins.
         try {
-          // Inform only if we need to fail on error.
-          if (!notFailOnError) {
+          // Inform only if we need to fail on error and the workflow is verified.
+          if (!notFailOnError && trustedWorkflowId) {
             const [workflowTemplate, eventTemplate] = await Promise.all([
               this.workflowTemplateModel.findIdAndNameAndErrorsSubscribersByIdCached(messageObject.workflowTemplateId),
               this.eventTemplateModel.findIdAndNameByIdCached(messageObject.eventTemplateId),
             ]);
 
             await this.systemNotifier.sendEmails({
-              workflowId: messageObject.workflowId,
+              workflowId: trustedWorkflowId,
               workflowTemplateName: workflowTemplate?.name,
               workflowErrorsSubscribers: workflowTemplate?.errorsSubscribers,
               eventTemplateId: eventTemplate?.id,
@@ -1691,10 +1789,13 @@ export class EventBusiness {
             });
           }
         } catch (error) {
-          getLog().save('system-notifier-error', { error: error.toString(), stack: error.stack }, 'error');
+          getLog().save('system-notifier-error', { ...eventMessageLogContext(messageObject), error: errorRef(error) }, 'error');
         }
-      } catch (error) {
-        getLog().save('unknown-error', { error: (error && error.toString()) || error, messageObject });
+      } catch (unknownError) {
+        if (!handlingErrorLogged) {
+          logHandlingError();
+        }
+        getLog().save('unknown-error', { ...eventMessageLogContext(messageObject), error: errorRef(unknownError) });
       }
     }
 
@@ -1754,8 +1855,8 @@ export class EventBusiness {
           // Set done.
           const doneEvent = await this.eventModel.setDone(event.id);
 
-          // Send message to RabbitMQ.
-          getMessageQueue().produce({
+          // Report back to manager.
+          await getMessageBus().publish(DESTINATION_MANAGER, {
             workflowId: doneEvent.workflowId,
             eventId: event.id,
           });
@@ -1814,8 +1915,8 @@ export class EventBusiness {
               },
             );
 
-            // Send message to RabbitMQ.
-            getMessageQueue().produce({ workflowId: event.workflowId, eventId: event.id });
+            // Report back to manager.
+            await getMessageBus().publish(DESTINATION_MANAGER, { workflowId: event.workflowId, eventId: event.id });
           } catch (error) {
             event.data.statuses[event.data.dueDate] = 'Error: ' + ((error && error.toString()) || 'Unknown error!');
             if (event.data.dueDates && event.data.dueDates.length) {
