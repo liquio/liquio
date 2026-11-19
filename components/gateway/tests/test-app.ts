@@ -278,6 +278,18 @@ export class TestApp {
     });
   }
 
+  // Count the messages left on a queue (ready; unacked ones return to ready once the consumer connection is closed).
+  async countQueueMessages(queueName: string): Promise<number> {
+    const connection = await this.getTestConnection();
+    const channel = await connection.createChannel();
+    try {
+      const { messageCount } = await channel.checkQueue(queueName);
+      return messageCount;
+    } finally {
+      await channel.close().catch(() => undefined);
+    }
+  }
+
   // Destroy the application.
   async destroy() {
     if (this.testAmqpChannel) {

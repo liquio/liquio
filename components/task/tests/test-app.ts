@@ -370,10 +370,8 @@ export class TestApp extends BpmnTaskCore {
   async destroy() {
     await this.testAmqpChannel?.close().catch(() => undefined);
     await this.testAmqpConnection?.close().catch(() => undefined);
-    // The bus connects in the background; let it settle so closing does not race the handshake.
     const bus = getMessageBus();
     if (bus) {
-      await this.waitFor(() => bus.health().status !== 'connecting', 10000, 50).catch(() => undefined);
       await bus.close();
     }
     // Drop keep-alive sockets so close() can't hang, then stop (awaits server close).

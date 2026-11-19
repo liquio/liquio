@@ -407,5 +407,7 @@ describe('Workflow Business (via RabbitMQ)', () => {
 
     const outMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueGateway);
     expect(outMessage).toMatchObject({ workflowId: drainWorkflowId });
+    expect(await app.countQueueMessages(app.config.message_queue.readingQueueName)).toBe(0);
+    expect(app.log.getLogs().some(([type]) => type === 'message-bus-settle-error')).toBe(false);
   });
 });

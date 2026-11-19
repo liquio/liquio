@@ -466,5 +466,7 @@ describe('Gateway Business (via RabbitMQ)', () => {
 
     const outMessage = await app.consumeFromQueue(app.config.message_queue.writingQueueName);
     expect(outMessage).toMatchObject({ workflowId });
+    expect(await app.countQueueMessages(app.config.message_queue.readingQueueName)).toBe(0);
+    expect(app.log.getLogs().some(([type]) => type === 'message-bus-settle-error')).toBe(false);
   });
 });

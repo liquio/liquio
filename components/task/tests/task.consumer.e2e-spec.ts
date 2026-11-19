@@ -237,6 +237,20 @@ describe('Task message bus consumers', () => {
     }
   });
 
+  it('closes a bus that is still connecting without an unhandled rejection', async () => {
+    const unhandled = jest.fn();
+    process.on('unhandledRejection', unhandled);
+    const bus = createTaskMessageBus(getConfig());
+    try {
+      await bus.init();
+      await expect(bus.close()).resolves.toBeUndefined();
+      await sleep(200);
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
   it('finishes the message in flight and acks it when the app stops', async () => {
     const from = allLogs().length;
     let finished = false;
@@ -253,6 +267,8 @@ describe('Task message bus consumers', () => {
 
     expect(finished).toBe(true);
     expect(logsOf('message-bus-handled', from).some((entry) => entry.destination === 'task')).toBe(true);
+    expect(logsOf('message-bus-settle-error', from)).toHaveLength(0);
+    expect(await readyCount(READING_QUEUE)).toBe(0);
     await app.testAmqpChannel?.close().catch(() => undefined);
     await app.testAmqpConnection?.close().catch(() => undefined);
     (app as any).sandbox?.isolatedEngine?.isolate?.dispose();
