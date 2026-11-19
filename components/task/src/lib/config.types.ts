@@ -33,7 +33,7 @@ export interface TaskConfig {
 
   /** Logging options. */
   log: {
-    console: { name: string; [key: string]: any };
+    console: any;
     [key: string]: any;
   };
 

@@ -1,6 +1,7 @@
 import { Config } from '@liquio/back-core';
 
 import { setAppContext } from './context';
+import { buildTaskConfigSchema } from './config.schema';
 import type { TaskConfig } from './config.types';
 
 let config: TaskConfig | undefined;
@@ -22,7 +23,7 @@ export function getConfig(): TaskConfig {
  * @returns {object} Config object.
  */
 export function loadConfig(configPath: string): TaskConfig {
-  config = Config.load<TaskConfig>({ configPath, envPrefix: 'LIQUIO_BPMN_TASK_' }).toObject();
+  config = Config.load<TaskConfig>({ configPath, envPrefix: 'LIQUIO_BPMN_TASK_', schema: buildTaskConfigSchema() }).toObject();
   setAppContext({ config });
   return config;
 }
