@@ -346,6 +346,111 @@ describe('rabbitmq provider', () => {
     });
   });
 
+  describe('shutdown through the bus', () => {
+    const order: string[] = [];
+    const makeBus = () =>
+      createMessageBus({ destinations: { a: { address: 'qa' } }, getLog, providerOptions: { amqpConnection: URL }, reconnectDelayMs: 1000 });
+    const track = (channel: FakeChannel) => {
+      channel.cancel.mockImplementation(async () => void order.push('cancel'));
+      channel.ack.mockImplementation(() => void order.push('ack'));
+      channel.close.mockImplementation(async () => void order.push('channel-close'));
+    };
+
+    beforeEach(() => {
+      order.length = 0;
+    });
+
+    it('cancels, settles the in-flight ack on the open channel, then closes the channel and connection', async () => {
+      const bus = makeBus();
+      await bus.init();
+      connections[0].close.mockImplementation(async () => void order.push('connection-close'));
+      let release!: () => void;
+      await bus.subscribe('a', () => new Promise<boolean>((resolve) => (release = () => resolve(true))));
+      const channel = connections[0].channels[0];
+      track(channel);
+      const m = msg({});
+      channel.consumer!(m);
+      await jest.advanceTimersByTimeAsync(0);
+      const closing = bus.close({ drainTimeoutMs: 5000 });
+      await jest.advanceTimersByTimeAsync(300);
+      expect(order).toEqual(['cancel']);
+      channel.consumer!(msg({ late: true }));
+      expect(channel.nack).toHaveBeenCalledWith(expect.anything(), false, true);
+      release();
+      await jest.advanceTimersByTimeAsync(200);
+      await closing;
+      expect(order).toEqual(['cancel', 'ack', 'channel-close', 'connection-close']);
+      expect(channel.ack).toHaveBeenCalledWith(m);
+      expect(save).not.toHaveBeenCalledWith('message-bus-settle-error', expect.anything(), expect.anything());
+    });
+
+    it('closes the channel and connection after the drain timeout when a handler never settles', async () => {
+      const bus = makeBus();
+      await bus.init();
+      connections[0].close.mockImplementation(async () => void order.push('connection-close'));
+      await bus.subscribe('a', () => new Promise<boolean>(() => undefined));
+      const channel = connections[0].channels[0];
+      track(channel);
+      channel.consumer!(msg({}));
+      await jest.advanceTimersByTimeAsync(0);
+      const closing = bus.close({ drainTimeoutMs: 250 });
+      await jest.advanceTimersByTimeAsync(400);
+      await closing;
+      expect(order).toEqual(['cancel', 'channel-close', 'connection-close']);
+      expect(channel.ack).not.toHaveBeenCalled();
+    });
+
+    it('close during a background connect waits for it, leaks nothing and does not reject', async () => {
+      let resolveConnect!: (connection: FakeConnection) => void;
+      const late = new FakeConnection();
+      connectMock.mockImplementation(() => new Promise((resolve) => (resolveConnect = resolve)));
+      const bus = createMessageBus({
+        destinations: { a: { address: 'qa' } },
+        getLog,
+        providerOptions: { amqpConnection: URL },
+        connectInBackground: true,
+      });
+      await bus.init();
+      expect(bus.health().status).toBe('connecting');
+      let closed = false;
+      const closing = bus.close().then(() => (closed = true));
+      await jest.advanceTimersByTimeAsync(10);
+      expect(closed).toBe(false);
+      resolveConnect(late);
+      await jest.advanceTimersByTimeAsync(10);
+      await closing;
+      expect(late.close).toHaveBeenCalledTimes(1);
+      expect(late.createConfirmChannel).not.toHaveBeenCalled();
+      expect(bus.health().status).toBe('closed');
+      expect(connectMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('close during channel setup closes the new connection', async () => {
+      const bus = createMessageBus({
+        destinations: { a: { address: 'qa' } },
+        getLog,
+        providerOptions: { amqpConnection: URL },
+        connectInBackground: true,
+      });
+      let resolveChannel!: (channel: FakeChannel) => void;
+      connectMock.mockImplementation(async () => {
+        const connection = new FakeConnection();
+        connection.createConfirmChannel.mockImplementation(() => new Promise((resolve) => (resolveChannel = resolve)));
+        connections.push(connection);
+        return connection;
+      });
+      await bus.init();
+      await jest.advanceTimersByTimeAsync(0);
+      const closing = bus.close();
+      await jest.advanceTimersByTimeAsync(0);
+      resolveChannel(connections[0].confirm);
+      await jest.advanceTimersByTimeAsync(10);
+      await closing;
+      expect(connections[0].close).toHaveBeenCalledTimes(1);
+      expect(bus.health().status).toBe('closed');
+    });
+  });
+
   it('is the default provider of createMessageBus', async () => {
     const bus = createMessageBus({ destinations: { a: { address: 'qa' } }, getLog, providerOptions: { amqpConnection: URL } });
     await bus.init();
