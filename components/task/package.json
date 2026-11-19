@@ -1,6 +1,6 @@
 {
   "name": "liquio-task",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "engines": {
     "node": "24"
   },
