@@ -11,7 +11,7 @@ import nock from 'nock';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
-import * as Multiconf from 'multiconf';
+import { Config } from '@liquio/back-core';
 
 import { bootstrap } from '../src/bootstrap';
 import { getConfig, getDb } from '../src/lib/context';
@@ -69,7 +69,7 @@ const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_GATEWAY';
 
 // Obtain the default configuration object.
-const defaultConfig = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
+const defaultConfig = Config.load({ configPath: CONFIG_PATH, secretPath: null, envPrefix: `${LIQUIO_CONFIG_PREFIX}_` }).toObject();
 
 export class TestApp {
   static pgContainer;
