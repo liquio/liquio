@@ -56,6 +56,7 @@ export class MessageBus {
   private lastHandlerErrorAt?: string;
   private initPromise?: Promise<void>;
   private closePromise?: Promise<void>;
+  private closing = false;
 
   /**
    * @param {object} config Message bus config.
@@ -121,14 +122,17 @@ export class MessageBus {
   }
 
   private async onConnected(): Promise<void> {
-    if (this.status === 'closed') return;
+    if (this.status === 'closed' || this.closing) return;
     this.status = 'connected';
     this.connectedTimes++;
     if (this.connectedTimes > 1) this.reconnects++;
     this.log('message-bus-connected', { provider: this.provider?.name });
     try {
       await this.provider!.declare([...this.destinations.values()]);
-      for (const subscription of this.subscriptions) await this.attach(subscription);
+      for (const subscription of this.subscriptions) {
+        if (this.closing) return;
+        await this.attach(subscription);
+      }
     } catch (error) {
       this.log('message-bus-connection-error', { error: errorRef(error) }, 'error');
     }
@@ -222,6 +226,7 @@ export class MessageBus {
   }
 
   private async attach(subscription: ActiveSubscription): Promise<void> {
+    if (this.closing) return;
     const previous = subscription.consumer;
     subscription.consumer = undefined;
     if (previous) await previous.cancel().catch((error) => this.log('message-bus-connection-error', { error: errorRef(error) }, 'error'));
@@ -361,6 +366,7 @@ export class MessageBus {
   }
 
   private async doClose(options: CloseOptions): Promise<void> {
+    this.closing = true;
     const provider = this.provider;
     if (!provider) {
       this.status = 'closed';
@@ -371,7 +377,7 @@ export class MessageBus {
       const consumer = subscription.consumer;
       subscription.consumer = undefined;
       try {
-        await consumer?.cancel();
+        await (consumer?.stop ? consumer.stop() : consumer?.cancel());
       } catch (error) {
         this.log('message-bus-connection-error', { error: errorRef(error) }, 'error');
       }

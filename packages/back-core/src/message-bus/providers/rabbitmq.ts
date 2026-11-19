@@ -51,6 +51,9 @@ export class RabbitMqMessageBusProvider implements MessageBusProvider {
   private connection?: ChannelModel;
   private confirmChannel?: ConfirmChannel;
   private connected = false;
+  private establishing?: Promise<boolean>;
+  private readonly consumerChannels = new Set<Channel>();
+  private readonly stoppedChannels = new WeakSet<object>();
   private closing = false;
   private disconnectedGeneration = 0;
   private reconnectTimer?: NodeJS.Timeout;
@@ -72,7 +75,7 @@ export class RabbitMqMessageBusProvider implements MessageBusProvider {
     if (!this.options.amqpConnection) throw new MessageBusConfigError('rabbitmq provider: amqpConnection is required');
     this.events = events;
     this.dedup.init();
-    if (await this.establish()) events.onConnected();
+    if (await this.establishOnce()) events.onConnected();
   }
 
   async declare(destinations: ProviderDestination[]): Promise<void> {
@@ -125,26 +128,42 @@ export class RabbitMqMessageBusProvider implements MessageBusProvider {
     const { address } = destination;
     const channel = await connection.createChannel();
     this.watch(channel, generation);
+    this.consumerChannels.add(channel);
     await channel.prefetch(options.maxInFlight);
     const { consumerTag } = await channel.consume(
       address,
       (msg) => {
         if (!msg) {
-          this.handleClose(generation, new Error('consumer cancelled'));
+          if (!this.stoppedChannels.has(channel)) this.handleClose(generation, new Error('consumer cancelled'));
+          return;
+        }
+        if (this.stoppedChannels.has(channel)) {
+          try {
+            channel.nack(msg, false, true);
+          } catch {
+            // The channel is already closed.
+          }
           return;
         }
         void this.deliver(channel, generation, address, msg, handle);
       },
       { noAck: false },
     );
+    const stop = async (): Promise<void> => {
+      if (this.stoppedChannels.has(channel)) return;
+      this.stoppedChannels.add(channel);
+      this.cancelledChannels.add(channel);
+      try {
+        if (!this.closedChannels.has(channel)) await channel.cancel(consumerTag);
+      } catch {
+        // The channel is already closed.
+      }
+    };
     return {
+      stop,
       cancel: async (): Promise<void> => {
-        this.cancelledChannels.add(channel);
-        try {
-          if (!this.closedChannels.has(channel)) await channel.cancel(consumerTag);
-        } catch {
-          // The channel is already closed.
-        }
+        await stop();
+        this.consumerChannels.delete(channel);
         try {
           if (!this.closedChannels.has(channel)) await channel.close();
         } catch {
@@ -165,10 +184,21 @@ export class RabbitMqMessageBusProvider implements MessageBusProvider {
     }
     this.sleepers.clear();
     this.failPendingConfirms();
+    await this.establishing?.catch(() => undefined);
     await this.dedup.close();
     const connection = this.connection;
     this.connection = undefined;
     this.confirmChannel = undefined;
+    const channels = [...this.consumerChannels];
+    this.consumerChannels.clear();
+    for (const channel of channels) {
+      this.cancelledChannels.add(channel);
+      try {
+        if (!this.closedChannels.has(channel)) await channel.close();
+      } catch {
+        // The channel is already closed.
+      }
+    }
     if (!connection) return;
     try {
       await connection.close();
@@ -234,6 +264,10 @@ export class RabbitMqMessageBusProvider implements MessageBusProvider {
         }
         const generation = this.generation + 1;
         const confirmChannel = await connection.createConfirmChannel();
+        if (this.closing) {
+          await connection.close().catch(() => undefined);
+          return false;
+        }
         this.generation = generation;
         this.connection = connection;
         this.confirmChannel = confirmChannel;
@@ -243,6 +277,7 @@ export class RabbitMqMessageBusProvider implements MessageBusProvider {
         return true;
       } catch (error) {
         if (connection) await connection.close().catch(() => undefined);
+        if (this.closing) return false;
         this.log('message-bus-connection-error', { provider: this.name, error: errorRef(error) }, 'error');
         await this.sleep(this.context.reconnectDelayMs);
       }
@@ -280,9 +315,19 @@ export class RabbitMqMessageBusProvider implements MessageBusProvider {
     }, delayMs);
   }
 
+  private establishOnce(): Promise<boolean> {
+    const run = this.establish();
+    this.establishing = run;
+    const clear = (): void => {
+      if (this.establishing === run) this.establishing = undefined;
+    };
+    run.then(clear, clear);
+    return run;
+  }
+
   private async reconnect(): Promise<void> {
     if (this.closing) return;
-    if (await this.establish()) this.events?.onConnected();
+    if (await this.establishOnce()) this.events?.onConnected();
   }
 
   private failPendingConfirms(): void {
