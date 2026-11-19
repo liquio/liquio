@@ -55,7 +55,7 @@
     "jest": "^30.5.2",
     "nock": "^14.0.10",
     "portfinder": "^1.0.37",
-    "supertest": "^7.3.1",
+    "supertest": "^7.3.2",
     "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
