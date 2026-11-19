@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { Config } from '@liquio/back-core';
+import { Config, ConfigValidationError } from '@liquio/back-core';
 
 import { LoggerService } from '../observability/logger.service';
+import { configurationSchema } from './configuration.schema';
 
 export const CONFIG_PATH = process.env.CONFIG_PATH || '../../config/sign-tool';
 export const SECRET_PATH = process.env.SECRET_PATH;
@@ -36,6 +37,7 @@ export class ConfigurationService {
         configPath: CONFIG_PATH,
         secretPath: SECRET_PATH ?? null,
         envPrefix: `${LIQUIO_CONFIG_PREFIX}_`,
+        schema: configurationSchema,
       }).toObject();
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -43,6 +45,9 @@ export class ConfigurationService {
         error: err.message,
         stack: err.stack,
       });
+      if (e instanceof ConfigValidationError) {
+        throw e;
+      }
       throw new Error('Unable to load configuration');
     }
   }
