@@ -12,3 +12,4 @@ export * from './register-api';
 export * from './message-bus';
 export * from './bpmn-messages';
 export * from './common/graceful_shutdown';
+export * from './config';
