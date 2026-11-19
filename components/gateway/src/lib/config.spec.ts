@@ -39,7 +39,7 @@ describe('gateway config loader', () => {
   it('applies LIQUIO_CFG_GATEWAY_ env overrides', () => {
     process.env.LIQUIO_CFG_GATEWAY_app = '{"x":1}';
     const dir = makeDir({ app: { x: 0 } });
-    expect(loadGatewayConfig(dir).app).toEqual({ x: 1 });
+    expect((loadGatewayConfig(dir) as Record<string, any>).app).toEqual({ x: 1 });
   });
 
   it('uses LIQUIO_CONFIG_PREFIX instead of the default prefix', () => {
@@ -47,7 +47,7 @@ describe('gateway config loader', () => {
     process.env.FOO_app = '{"x":2}';
     process.env.LIQUIO_CFG_GATEWAY_app = '{"x":3}';
     const dir = makeDir({ app: { x: 0 } });
-    expect(loadGatewayConfig(dir).app).toEqual({ x: 2 });
+    expect((loadGatewayConfig(dir) as Record<string, any>).app).toEqual({ x: 2 });
   });
 
   it('reads ../config/gateway when no path is given', () => {
@@ -57,29 +57,29 @@ describe('gateway config loader', () => {
     fs.mkdirSync(path.join(root, 'config', 'gateway'), { recursive: true });
     fs.writeFileSync(path.join(root, 'config', 'gateway', 'app.json'), JSON.stringify({ from: 'default' }));
     process.chdir(work);
-    expect(loadGatewayConfig().app).toEqual({ from: 'default' });
+    expect((loadGatewayConfig() as Record<string, any>).app).toEqual({ from: 'default' });
   });
 
   it('prefers CONFIG_PATH over the default path', () => {
     process.env.CONFIG_PATH = makeDir({ app: { from: 'env' } });
-    expect(loadGatewayConfig().app).toEqual({ from: 'env' });
+    expect((loadGatewayConfig() as Record<string, any>).app).toEqual({ from: 'env' });
   });
 
   it('prefers an explicit path over CONFIG_PATH', () => {
     process.env.CONFIG_PATH = makeDir({ app: { from: 'env' } });
     const dir = makeDir({ app: { from: 'explicit' } });
-    expect(loadGatewayConfig(dir).app).toEqual({ from: 'explicit' });
+    expect((loadGatewayConfig(dir) as Record<string, any>).app).toEqual({ from: 'explicit' });
   });
 
   it('merges SECRET_PATH over the config dir', () => {
     process.env.SECRET_PATH = makeDir({ app: { token: 'secret' } });
     const dir = makeDir({ app: { token: 'plain', other: 1 } });
-    expect(loadGatewayConfig(dir).app).toEqual({ token: 'secret', other: 1 });
+    expect((loadGatewayConfig(dir) as Record<string, any>).app).toEqual({ token: 'secret', other: 1 });
   });
 
   it('ignores a missing SECRET_PATH', () => {
     process.env.SECRET_PATH = path.join(os.tmpdir(), 'gateway-config-missing-dir');
     const dir = makeDir({ app: { x: 0 } });
-    expect(loadGatewayConfig(dir).app).toEqual({ x: 0 });
+    expect((loadGatewayConfig(dir) as Record<string, any>).app).toEqual({ x: 0 });
   });
 });
