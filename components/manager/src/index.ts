@@ -1,25 +1,14 @@
-import fs from 'node:fs';
-
-import Multiconf from 'multiconf';
-
 import { bootstrap } from './bootstrap';
+import { loadManagerConfig } from './lib/config';
 import { getLog } from './lib/context';
 import { registerShutdown } from './lib/shutdown';
-
-// Constants.
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config/manager';
-const SECRET_PATH = process.env.SECRET_PATH;
-const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_MANAGER';
 
 // Set proxess title.
 process.title = 'bpmn-manager';
 
 module.exports = (async () => {
   // Init config.
-  const config: Record<string, any> = Multiconf.get(
-    [CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])],
-    `${LIQUIO_CONFIG_PREFIX}_`,
-  );
+  const config = loadManagerConfig();
 
   // Log unhandled rejections.
   process.on('unhandledRejection', (error: any) => {
