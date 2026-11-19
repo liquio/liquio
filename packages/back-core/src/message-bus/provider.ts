@@ -22,7 +22,10 @@ export interface ProviderEvents {
   onDisconnected(error?: Error): void;
 }
 export interface ProviderConsumer {
+  /** Stop deliveries and release the consumer resources. */
   cancel(): Promise<void>;
+  /** Stop new deliveries only; unsettled deliveries can still be settled until the provider closes. */
+  stop?(): Promise<void>;
 }
 export interface MessageBusProvider {
   readonly name: string;

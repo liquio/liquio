@@ -53,7 +53,7 @@ await bus.close({ drainTimeoutMs: 20000 });
 - Size. A serialized message over the limit is rejected with `MessageTooLargeError`; nothing is sent.
 - Delays. With tiers, a `delayMs` is rounded up to the first tier that is at least as long, or the largest tier. Without tiers, a provider with arbitrary delay support takes the raw value; otherwise the publish is rejected with `MessageBusConfigError`. `getRetryDelayMs('10m' | '1h' | '2h' | '8h' | '1d')` maps a postponed-time label to `MESSAGE_BUS_RETRY_DELAYS`; anything else gives one day.
 - Reconnect. After every (re)connect the bus declares the destinations again and re-attaches all subscriptions. Outcomes for deliveries from a dropped connection are ignored by the provider.
-- Close. `close({ drainTimeoutMs })` cancels consumers, waits for in-flight handlers up to the timeout, then closes the provider. Later publishes reject with `MessageBusUnavailableError`.
+- Close. `close({ drainTimeoutMs })` stops consumers (the RabbitMQ consumers are cancelled but their channels stay open), waits for in-flight handlers up to the timeout so in-flight messages are acked or nacked on the open channel, then closes channels and the connection. A close during a background connect waits for the connect attempt to end and closes whatever it opened. Later publishes reject with `MessageBusUnavailableError`.
 - Health. `health()` returns status, reconnects, in-flight count, subscriptions, counters (`handled`, `redelivered`, `discarded`, `handlerErrors`, `parseErrors`, `publishErrors`) and `lastHandlerErrorAt`.
 - Duplicate suppression is a provider option, see the provider sections.
 
