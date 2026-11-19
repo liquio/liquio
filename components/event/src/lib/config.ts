@@ -1,12 +1,14 @@
 import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
-let config: Record<string, any> | undefined;
+import type { EventConfig } from './config.types';
+
+let config: EventConfig | undefined;
 
 /**
  * Get config instance.
  * @returns {object} Config object.
  */
-export function getConfig(): Record<string, any> {
+export function getConfig(): EventConfig {
   if (!config) {
     throw new Error('Config not loaded');
   }
@@ -18,8 +20,8 @@ export function getConfig(): Record<string, any> {
  * @param {string} [configPath] Path to config directory (overrides CONFIG_PATH and the default).
  * @returns {object} Config object.
  */
-export function loadConfig(configPath?: string): Record<string, any> {
-  config = Config.load({
+export function loadConfig(configPath?: string): EventConfig {
+  config = Config.load<EventConfig>({
     configPath,
     defaultConfigPath: '../config/event',
     envPrefix: resolveEnvPrefix('LIQUIO_CFG_EVENT'),
