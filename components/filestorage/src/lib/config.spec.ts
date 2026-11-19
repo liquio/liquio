@@ -11,7 +11,11 @@ describe('lib/config', () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-cfg-'));
     secretDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-sec-'));
     fs.writeFileSync(path.join(dir, 'db.json'), JSON.stringify({ host: 'base-host', port: 5432 }));
-    fs.writeFileSync(path.join(dir, 'app.json'), JSON.stringify({ name: 'base' }));
+    fs.writeFileSync(path.join(dir, 'app.json'), JSON.stringify({ processTitle: 'base' }));
+    for (const name of ['admin', 'log', 'providers', 'server']) {
+      fs.writeFileSync(path.join(dir, `${name}.json`), '{}');
+    }
+    fs.writeFileSync(path.join(dir, 'auth.json'), JSON.stringify({ tokens: [`Basic ${Buffer.from('user:pass-1').toString('base64')}`] }));
     delete process.env.LIQUIO_CONFIG_PREFIX;
     delete process.env.SECRET_PATH;
     process.env.CONFIG_PATH = dir;
@@ -59,6 +63,11 @@ describe('lib/config', () => {
     const mod = load();
     expect(mod.initialize()).toBe(mod.initialize());
     expect(mod.getConfig()).toBe(mod.initialize());
+  });
+
+  it('initialize() rejects an invalid config', () => {
+    fs.writeFileSync(path.join(dir, 'auth.json'), JSON.stringify({ tokens: [] }));
+    expect(() => load().initialize()).toThrow(expect.objectContaining({ code: 'CONFIG_VALIDATION' }));
   });
 
   it('getConfig() throws before initialize()', () => {

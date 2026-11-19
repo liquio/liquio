@@ -10,7 +10,7 @@ export interface FilestorageConfig {
     [key: string]: any;
   };
   auth: {
-    tokens: string[];
+    tokens?: string[];
     [key: string]: any;
   };
   db: Record<string, any>;
@@ -21,7 +21,7 @@ export interface FilestorageConfig {
     [key: string]: any;
   };
   modules_settings?: Record<string, any>;
-  pagination: Record<string, any>;
+  pagination?: Record<string, any>;
   preview?: Record<string, any>;
   providers: {
     activeProvider?: string | null;

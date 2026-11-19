@@ -6,20 +6,11 @@ import { Providers } from './providers';
 import { Models } from './models';
 import { Router } from './router';
 import { FilestorageConfig } from './lib/config.types';
-import { validateAuthConfig } from './lib/config_validation';
 
 /**
- * Validates auth config, inits DB, providers, models, optional CLI and starts the router.
- * Throws when the auth config is invalid; the entry point turns that into a process exit.
+ * Inits DB, providers, models, optional CLI and starts the router.
  */
-export async function bootstrap(config: FilestorageConfig, log: Log) {
-  // Do not start with missing or publicly known auth tokens.
-  const authConfigProblems = validateAuthConfig(config);
-  if (authConfigProblems.length) {
-    log.save('config-validation-error', { problems: authConfigProblems }, 'error');
-    throw new Error(`Invalid auth config: ${authConfigProblems.join('; ')}`);
-  }
-
+export async function bootstrap(config: FilestorageConfig, _log: Log) {
   // Init DB.
   setAppContext({ db: await Db.getInstance(config.db) });
 

@@ -1,6 +1,7 @@
 import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
 import { FilestorageConfig } from './config.types';
+import { filestorageConfigSchema } from './config.schema';
 
 /**
  * Configuration module.
@@ -20,6 +21,7 @@ export function initialize(): FilestorageConfig {
   config = Config.load<FilestorageConfig>({
     defaultConfigPath: '../config/filestorage',
     envPrefix: resolveEnvPrefix('LIQUIO_CFG_FILESTORAGE'),
+    schema: filestorageConfigSchema,
   }).toObject();
 
   return config;
