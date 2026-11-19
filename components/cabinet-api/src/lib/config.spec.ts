@@ -2,6 +2,8 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { ConfigValidationError } from '@liquio/back-core';
+
 import { loadCabinetApiConfig } from './config';
 
 describe('loadCabinetApiConfig', () => {
@@ -11,6 +13,10 @@ describe('loadCabinetApiConfig', () => {
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'cabinet-cfg-'));
     writeFileSync(join(dir, 'server.json'), JSON.stringify({ port: 1 }));
+    writeFileSync(join(dir, 'auth.json'), JSON.stringify({ LiquioId: {} }));
+    writeFileSync(join(dir, 'db.json'), '{}');
+    writeFileSync(join(dir, 'discovery.json'), '{}');
+    writeFileSync(join(dir, 'log.json'), JSON.stringify({ console: [] }));
     delete process.env.LIQUIO_CONFIG_PREFIX;
     delete process.env.SECRET_PATH;
     process.env.CONFIG_PATH = dir;
@@ -44,5 +50,16 @@ describe('loadCabinetApiConfig', () => {
     expect(loadCabinetApiConfig().server.extra).toBe('x');
     rmSync(secret, { recursive: true, force: true });
     expect(loadCabinetApiConfig().server.port).toBe(1);
+  });
+
+  it('rejects a config without a required section', () => {
+    rmSync(join(dir, 'server.json'));
+    try {
+      loadCabinetApiConfig();
+      throw new Error('expected failure');
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(ConfigValidationError);
+      expect(e.issues.map((i: any) => i.path)).toContain('server');
+    }
   });
 });
