@@ -1,5 +1,7 @@
 import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
-export function loadCabinetApiConfig(): Record<string, any> {
-  return Config.load({ defaultConfigPath: '../config/cabinet-api', envPrefix: resolveEnvPrefix('LIQUIO_CFG_CABINET') }).toObject();
+import type { CabinetApiConfig } from './config.types';
+
+export function loadCabinetApiConfig(): CabinetApiConfig {
+  return Config.load<CabinetApiConfig>({ defaultConfigPath: '../config/cabinet-api', envPrefix: resolveEnvPrefix('LIQUIO_CFG_CABINET') }).toObject();
 }

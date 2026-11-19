@@ -7,16 +7,17 @@ import RedisClient from './lib/redis_client';
 import typeOf from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
 import { setAppContext } from './lib/context';
+import type { CabinetApiConfig } from './lib/config.types';
 
 /**
  * Init globals, DB, models, Redis (if enabled) and start the HTTP server.
  * @param config Cabinet-api config.
  */
-export async function bootstrap(config: any): Promise<void> {
+export async function bootstrap(config: CabinetApiConfig): Promise<void> {
   setAppContext({ config });
 
   // Init log.
-  const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, {
+  const consoleLogProvider = new ConsoleLogProvider((config.log.console as { name?: string }).name, {
     excludeParams: config.log.excludeParams,
     disableDefaultRedaction: config.log.disableDefaultRedaction === true,
   });
@@ -38,8 +39,8 @@ export async function bootstrap(config: any): Promise<void> {
   if (config?.redis?.isEnabled) {
     new RedisClient({
       host: config.redis.host,
-      port: config.redis.port,
-      defaultTtl: config.redis.defaultTtl,
+      port: config.redis.port as number,
+      defaultTtl: config.redis.defaultTtl as number,
     });
   }
 
