@@ -88,7 +88,7 @@
     "detect-browser": "5.0.0",
     "diagram-js": "8.8.0",
     "file-saver": "2.0.5",
-    "filesize": "^6.4.0",
+    "filesize": "^11.0.33",
     "focus-visible": "5.2.0",
     "fuse.js": "6.4.3",
     "handlebars": "4.7.8",
