@@ -1,14 +1,12 @@
-import fs from 'node:fs';
+import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
-import Multiconf from 'multiconf';
-
-let config: any = {};
+let config: Record<string, any> | undefined;
 
 /**
  * Get config instance.
  * @returns {object} Config object.
  */
-export function getConfig(): any {
+export function getConfig(): Record<string, any> {
   if (!config) {
     throw new Error('Config not loaded');
   }
@@ -16,11 +14,15 @@ export function getConfig(): any {
 }
 
 /**
- * Load config.
- * @param {string} configPath Path to config directory.
+ * Load the event config once (config dir, optional SECRET_PATH, env overrides).
+ * @param {string} [configPath] Path to config directory (overrides CONFIG_PATH and the default).
+ * @returns {object} Config object.
  */
-export function loadConfig(configPath: string): any {
-  const SECRET_PATH = process.env.SECRET_PATH;
-  config = Multiconf.get([configPath, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], 'KITSOFT_BPMN_EVENT_');
+export function loadConfig(configPath?: string): Record<string, any> {
+  config = Config.load({
+    configPath,
+    defaultConfigPath: '../config/event',
+    envPrefix: resolveEnvPrefix('LIQUIO_CFG_EVENT'),
+  }).toObject();
   return config;
 }

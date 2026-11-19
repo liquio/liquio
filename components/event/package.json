@@ -29,7 +29,7 @@
     "event"
   ],
   "dependencies": {
-    "@liquio/back-core": "^1.3.1",
+    "@liquio/back-core": "^1.4.0",
     "@liquio/plugin-installer": "^1.0.2",
     "@liquio/plugin-sdk": "^1.0.0",
     "amqplib": "^0.10.9",
@@ -45,7 +45,6 @@
     "lodash": "^4.17.21",
     "moment": "^2.29.4",
     "moment-business-days": "^1.2.0",
-    "multiconf": "^4.0.0",
     "multistream": "^4.1.0",
     "node-fetch": "^3.3.0",
     "pdf-parse": "^1.1.1",
