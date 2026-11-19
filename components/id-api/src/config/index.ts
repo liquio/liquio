@@ -1,4 +1,3 @@
-
 import { Config as ConfigLoader } from '@liquio/back-core';
 import { StrategyOptions } from 'passport-oauth2';
 import { Dialect } from 'sequelize';
