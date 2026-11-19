@@ -2,6 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { ConfigValidationError } from '@liquio/back-core';
+
 import { LoggerService } from '@components/observability/logger.service';
 import { ConfigurationService } from './configuration.service';
 
@@ -47,5 +49,11 @@ describe('ConfigurationService', () => {
     expect(() => create()).toThrow('Unable to load configuration');
     expect(logger.error).toHaveBeenCalledWith('configuration-error', { error: expect.any(String) });
     expect(JSON.stringify(logger.error.mock.calls)).not.toContain('sentinel-secret-value');
+  });
+
+  it('rethrows schema failures and logs them', () => {
+    writeFileSync(join(dir, 'server.json'), JSON.stringify({}));
+    expect(() => create()).toThrow(ConfigValidationError);
+    expect(logger.error).toHaveBeenCalledWith('configuration-error', { error: expect.stringContaining('server.port') });
   });
 });

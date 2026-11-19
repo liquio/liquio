@@ -3,9 +3,6 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 
 import { AppModule } from 'src/app.module';
-import { configureApp } from 'src/app.setup';
-import { LoggerService } from '@components/observability/logger.service';
-import { ObservabilityModule } from '@components/observability/observability.module';
 import { createE2eApp, setConfig, TEST_AUTH_PASSWORD, TEST_AUTH_USERNAME } from './helpers/create-app';
 
 describe('App setup (e2e)', () => {
@@ -46,17 +43,14 @@ describe('App setup (e2e)', () => {
     expect(res.status).not.toBe(401);
   });
 
-  describe('assertAuthConfig through configureApp', () => {
+  describe('auth token rules at configuration load', () => {
     const originalEnv = process.env.NODE_ENV;
     let restore: () => void;
 
-    const configure = async (tokens: unknown[], nodeEnv?: string) => {
+    const configure = (tokens: unknown[], nodeEnv?: string) => {
       restore = setConfig({ auth: { basicAuthTokens: tokens } });
       if (nodeEnv) process.env.NODE_ENV = nodeEnv;
-      const moduleFixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
-      const logger = new LoggerService(ObservabilityModule.getAlsInstance());
-      app = moduleFixture.createNestApplication({ logger });
-      return () => configureApp(app as INestApplication, logger);
+      return Test.createTestingModule({ imports: [AppModule] }).compile();
     };
 
     afterEach(() => {
@@ -66,7 +60,7 @@ describe('App setup (e2e)', () => {
     });
 
     it('refuses the publicly known default credential', async () => {
-      expect(await configure(['username:password'])).toThrow(/publicly known default credential/);
+      await expect(configure(['username:password'])).rejects.toThrow(/publicly known default credential/);
     });
 
     it.each([
@@ -75,7 +69,7 @@ describe('App setup (e2e)', () => {
       [['nocolon'], /must have the form/],
       [['u:short'], /shorter than 8/],
     ])('production rejects %j', async (tokens, pattern) => {
-      expect(await configure(tokens as unknown[], 'production')).toThrow(pattern);
+      await expect(configure(tokens as unknown[], 'production')).rejects.toThrow(pattern);
     });
   });
 });
