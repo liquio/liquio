@@ -4,7 +4,7 @@ import { BasicStrategy as Strategy } from 'passport-http';
 
 import { AuthConfig } from '@common/types/config.types';
 import { Config } from '@lib/config';
-import { assertValidBasicAuthTokens, isBasicAuthTokenAllowed } from '@modules/auth/auth-tokens';
+import { isBasicAuthTokenAllowed } from '@modules/auth/auth-tokens';
 
 @Injectable()
 export class BasicAuthStrategy extends PassportStrategy(Strategy) {
@@ -13,10 +13,7 @@ export class BasicAuthStrategy extends PassportStrategy(Strategy) {
   constructor() {
     super({ passReqToCallback: true });
 
-    // Refuse to start without explicitly configured, non-default credentials.
-    const basicAuthTokens = Config.get<AuthConfig | undefined>('auth')?.basicAuthTokens;
-    assertValidBasicAuthTokens(basicAuthTokens);
-    this.basicAuthTokens = basicAuthTokens;
+    this.basicAuthTokens = Config.get<AuthConfig>('auth').basicAuthTokens;
   }
 
   validate(_req: unknown, username: string, password: string): Promise<boolean> {

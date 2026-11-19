@@ -4,7 +4,6 @@ import { createBodyParserMiddleware } from '@common/middlewares';
 import { AuthConfig, ServerConfig } from '@common/types/config.types';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { asyncLocalStorageMiddleware } from './lib/async-local-storage';
-import { assertValidBasicAuthTokens } from '@modules/auth/auth-tokens';
 import { Config } from './lib/config';
 
 /**
@@ -16,8 +15,7 @@ import { Config } from './lib/config';
 export function configureApp(app: INestApplication): ServerConfig {
   app.enableCors();
   const serverConfig = Config.get<ServerConfig>('server');
-  const basicAuthTokens = Config.get<AuthConfig | undefined>('auth')?.basicAuthTokens;
-  assertValidBasicAuthTokens(basicAuthTokens);
+  const basicAuthTokens = Config.get<AuthConfig>('auth').basicAuthTokens;
   app.use(
     createBodyParserMiddleware({
       defaultLimit: serverConfig.defaultBodyLimit,
