@@ -6,13 +6,14 @@ import { RouterService } from './services/router';
 import { WorkflowBusiness } from './businesses/workflow';
 import { RedisClient } from './lib/redis_client';
 import { setAppContext, getConfig } from './lib/context';
+import type { ManagerConfig } from './lib/config.types';
 
 /**
  * Initializes globals and services of the manager.
  * @param config Configuration object.
  * @returns Initialized services.
  */
-export async function bootstrap(config: Record<string, any>) {
+export async function bootstrap(config: ManagerConfig) {
   setAppContext({ config });
 
   // Init redis.
