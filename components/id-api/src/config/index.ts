@@ -52,9 +52,9 @@ export interface OIDCProviderConfig {
   tokenURL?: string;
   userInfoURL?: string;
   endSessionURL?: string;
-  clientID: string;
-  clientSecret: string;
-  callbackURL: string;
+  clientID?: string;
+  clientSecret?: string;
+  callbackURL?: string;
   scope?: string;
   isEnabled?: boolean;
   mapping?: Record<string, string>;
@@ -77,13 +77,13 @@ export interface Config {
     database: string;
     username: string;
     password: string;
-    logging: boolean;
-    dialect: Dialect;
+    logging?: boolean;
+    dialect?: Dialect;
     ssl?: boolean;
     dialectOptions?: any;
   };
   host?: string;
-  port: number;
+  port?: number;
   modules?: {
     denyToUpdateUserName?: boolean;
     denyToUpdateUserValidParams?: boolean;
@@ -319,14 +319,14 @@ export interface Config {
   testConfirmations?: {
     codes?: string[];
   };
-  versions: {
+  versions?: {
     services: {
       name: string;
       minVersion: string;
     }[];
   };
   confirmCode?: {
-    ttlMinutes: number;
+    ttlMinutes?: number;
     // Limits for sending confirmation codes (defaults: DEFAULT_SEND_LIMIT).
     sendLimit?: {
       recipientMax?: number;
