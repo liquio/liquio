@@ -19,6 +19,7 @@ import typeOf from './lib/type_of';
 import { HttpClient } from './lib/http_client';
 import { ExternalServicesStatusesDaemon } from './lib/external_services_statuses_daemon';
 import { loadConfig } from './lib/config';
+import type { TaskConfig } from './lib/config.types';
 import { assertBasicAuthConfig, assertDownloadTokenConfig, assertTestAuthConfig, buildSandboxConfig } from './lib/config_validation';
 import * as JSONPath from './lib/jsonpath';
 import { Keywords } from './services/document_validator/keywords';
@@ -115,7 +116,7 @@ export class BpmnTaskCore {
     process.title = processTitle;
 
     // Init config.
-    const config: any = loadConfig(configPath);
+    const config: TaskConfig = loadConfig(configPath);
 
     setAppContext({ config });
 

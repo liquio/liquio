@@ -1,14 +1,15 @@
 import { Config } from '@liquio/back-core';
 
 import { setAppContext } from './context';
+import type { TaskConfig } from './config.types';
 
-let config: Record<string, any> | undefined;
+let config: TaskConfig | undefined;
 
 /**
  * Get config instance.
  * @returns {object} Config object.
  */
-export function getConfig(): Record<string, any> {
+export function getConfig(): TaskConfig {
   if (!config) {
     throw new Error('Config not loaded');
   }
@@ -20,8 +21,8 @@ export function getConfig(): Record<string, any> {
  * @param {string} configPath Path to config directory.
  * @returns {object} Config object.
  */
-export function loadConfig(configPath: string): Record<string, any> {
-  config = Config.load({ configPath, envPrefix: 'LIQUIO_BPMN_TASK_' }).toObject();
+export function loadConfig(configPath: string): TaskConfig {
+  config = Config.load<TaskConfig>({ configPath, envPrefix: 'LIQUIO_BPMN_TASK_' }).toObject();
   setAppContext({ config });
   return config;
 }
