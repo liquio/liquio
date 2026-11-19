@@ -68,7 +68,7 @@ export function checkAuthConfig(config: Pick<Config, 'auth'>, env: string | unde
  */
 export function checkEncryptionConfig(config: Pick<Config, 'encryption'>, encryptedKeysExist: boolean): string[] {
   const key = config?.encryption?.key;
-  const checkOnStartup = !!(config?.encryption as { check_on_startup?: boolean } | undefined)?.check_on_startup;
+  const checkOnStartup = !!config?.encryption?.check_on_startup;
 
   if (typeof key === 'string' && key !== '' && isPlaceholder(key)) {
     return ['encryption.key is a placeholder value.'];

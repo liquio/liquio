@@ -14,7 +14,7 @@ export const config: Config = ConfigLoader.load<Config>({
 
 export interface Config {
   access_log: { keyIds: string[] };
-  admin: { swagger: boolean };
+  admin?: { swagger?: boolean };
   afterhandler: {
     options: { reindexLimit: number };
     blockchain: any;
@@ -62,11 +62,13 @@ export interface Config {
     key: string;
     iv_size: number;
     batch_job_size: number;
+    /** Fail startup when the key is empty or malformed, even if no encrypted keys exist. */
+    check_on_startup?: boolean;
   };
   filters: {
     wrongValues: string[];
   };
-  key_signature: {
+  key_signature?: {
     [key: string]: { validationIdentity: string[] };
   };
   log: {
@@ -82,14 +84,14 @@ export interface Config {
     maxCsvExportRecords?: number;
     packetLimit: number;
   };
-  redis: {
-    isEnabled: boolean;
-    host: string;
-    port: number;
-    defaultTtl: number;
+  redis?: {
+    isEnabled?: boolean;
+    host?: string;
+    port?: number;
+    defaultTtl?: number;
   };
   sandbox?: SandboxConfig;
-  search: {
+  search?: {
     [key: string]: {
       /** Data path used when the request has no `search_key` (instead of the derived `search_string`). */
       defaultSearchKey?: string;
