@@ -33,7 +33,7 @@
     "node-cache": "^4.1.1",
     "node-cron": "^1.2.0",
     "nodemailer": "^10.0.15",
-    "pg": "^8.20.0",
+    "pg": "^8.23.1",
     "sequelize": "^6.37.8",
     "sequelize-cli": "^6.6.5",
     "xml-stream": "^0.4.5",
