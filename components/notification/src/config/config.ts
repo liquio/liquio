@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
+import { buildNotificationConfigSchema } from './config.schema';
 import type { NotificationConfig } from './config.types';
 
 const CONFIG_PATH = process.env.CONFIG_PATH || path.join(process.cwd(), '../config/notification');
@@ -16,6 +17,7 @@ const mergedConfig: any = Config.load({
   configPath: CONFIG_PATH,
   envPrefix: resolveEnvPrefix('LIQUIO_CFG_NOTIFICATION'),
   transform: (raw: any) => raw.config,
+  schema: buildNotificationConfigSchema(),
 }).toObject();
 
 // Init config versions.
@@ -24,15 +26,9 @@ const versionsConf = JSON.parse(versionsConfText || '{}');
 
 // Get NODE_ENV.
 export const env: string = process.env.NODE_ENV || mergedConfig.default_env || 'test';
-if (typeof env !== 'string' || !env) {
-  throw new Error(`ENV [${env}] is not defined.`);
-}
 
 // Resolve current environment config.
 const currentEnvConf = mergedConfig[env];
-if (typeof currentEnvConf === 'undefined' || typeof currentEnvConf.db === 'undefined') {
-  throw new Error('Variable currentEnvConf.db is not defined.');
-}
 
 // Add version config.
 export const conf: NotificationConfig & Record<string, any> = { ...currentEnvConf, ...versionsConf };

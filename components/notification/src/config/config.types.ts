@@ -46,3 +46,11 @@ export interface NotificationConfig {
     token?: string;
   };
 }
+
+/**
+ * Notification raw config: the multi-environment object loaded from `config.json`.
+ */
+export interface NotificationRawConfig {
+  default_env?: string;
+  [env: string]: unknown;
+}

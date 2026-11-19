@@ -59,13 +59,23 @@ describe('config', () => {
 
   it('throws when the section has no db', () => {
     write({ default_env: 'a', a: {} });
-    expect(() => load()).toThrow('Variable currentEnvConf.db is not defined.');
+    expect(() => load()).toThrow(expect.objectContaining({ code: 'CONFIG_VALIDATION' }));
+    expect(() => load()).toThrow('a.db: is not defined');
   });
 
   it('includes versions keys in conf', () => {
     write({ default_env: 'a', a: { db: {} } });
     const versions = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/config/versions.json.default'), 'utf8') || '{}');
     expect(load().conf).toMatchObject(versions);
+  });
+
+  it('migrations config rejects a default_env section without db', () => {
+    write({ default_env: 'a', a: {} });
+    expect(() => {
+      jest.isolateModules(() => {
+        require('../../migrations-config.js');
+      });
+    }).toThrow(expect.objectContaining({ code: 'CONFIG_VALIDATION' }));
   });
 
   it('migrations config returns default_env db regardless of NODE_ENV', () => {
