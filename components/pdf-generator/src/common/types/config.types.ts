@@ -7,9 +7,10 @@ export interface ServerConfig {
 }
 
 export interface PlaywrightConfig {
-  timeout: number;
-  maxWorkers: number;
-  maxConcurrentJobs: number;
+  timeout?: number;
+  workerTimeout?: number;
+  maxWorkers?: number;
+  maxConcurrentJobs?: number;
   maxQueueSize?: number;
   allowedHosts?: string[];
   /** Page console message types to log (log, debug, info, error, warning...). Default: warning, error. */
@@ -22,4 +23,12 @@ export interface PlaywrightConfig {
 
 export interface AuthConfig {
   basicAuthTokens: string[];
+}
+
+/** Root pdf-generator configuration, as merged from config files, secrets and environment. */
+export interface PdfGeneratorConfig {
+  server: ServerConfig;
+  playwright?: PlaywrightConfig;
+  auth?: AuthConfig;
+  [key: string]: unknown;
 }
