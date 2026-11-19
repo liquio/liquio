@@ -10,7 +10,7 @@ import { Challenge } from './captcha.dto';
 
 @Injectable()
 export class CaptchaService {
-  private readonly cfg: Configuration['captcha'];
+  private readonly cfg: NonNullable<Configuration['captcha']>;
 
   constructor(private readonly config: ConfigurationService) {
     this.cfg = config.get('captcha') || {};

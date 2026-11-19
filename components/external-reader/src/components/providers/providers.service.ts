@@ -9,7 +9,7 @@ import { HttpProvider } from './http.provider';
 
 @Injectable()
 export class ProvidersService implements OnModuleInit {
-  private readonly cfg: Configuration['services'];
+  private readonly cfg: NonNullable<Configuration['services']>;
   private services = new Map<string, BaseProvider<unknown>>();
   private providers: { [key: string]: typeof BaseProvider<unknown> };
   private pluginRegistry?: PluginRegistry;

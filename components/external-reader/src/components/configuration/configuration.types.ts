@@ -1,19 +1,19 @@
 import { PluginsConfig } from '@liquio/plugin-sdk';
 
 export interface Configuration {
-  auth: {
-    basicAuthTokens: string[];
+  auth?: {
+    basicAuthTokens?: string[];
   };
   server: {
-    port: number;
+    port: number | string;
     isSwaggerEnabled?: boolean;
   };
-  captcha: {
+  captcha?: {
     hmacKey?: string;
     isEnabled?: boolean;
     isEnabledFor?: string[];
   };
-  services: {
+  services?: {
     [key: string]: {
       isEnabled: boolean;
       class: string;
