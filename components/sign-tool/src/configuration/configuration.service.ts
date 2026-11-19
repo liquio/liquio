@@ -1,11 +1,7 @@
-import { existsSync } from 'fs';
-
 import { Injectable } from '@nestjs/common';
+import { Config } from '@liquio/back-core';
 
 import { LoggerService } from '../observability/logger.service';
-
-// Use require() instead of ES6 import for CommonJS module
-const Multiconf = require('multiconf');
 
 export const CONFIG_PATH = process.env.CONFIG_PATH || '../../config/sign-tool';
 export const SECRET_PATH = process.env.SECRET_PATH;
@@ -36,7 +32,11 @@ export class ConfigurationService {
   constructor(private readonly logger: LoggerService) {
     this.logger.setContext(ConfigurationService.name);
     try {
-      this.config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`);
+      this.config = Config.load<Configuration>({
+        configPath: CONFIG_PATH,
+        secretPath: SECRET_PATH ?? null,
+        envPrefix: `${LIQUIO_CONFIG_PREFIX}_`,
+      }).toObject();
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
       this.logger.error('configuration-error', {
