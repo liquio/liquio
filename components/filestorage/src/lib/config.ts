@@ -1,6 +1,4 @@
-import fs from 'node:fs';
-
-import Multiconf from 'multiconf';
+import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
 /**
  * Configuration module.
@@ -17,10 +15,10 @@ export function initialize() {
     return config;
   }
 
-  const CONFIG_PATH = process.env.CONFIG_PATH || '../config/filestorage';
-  const SECRET_PATH = process.env.SECRET_PATH;
-  const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_FILESTORAGE';
-  config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`);
+  config = Config.load<any>({
+    defaultConfigPath: '../config/filestorage',
+    envPrefix: resolveEnvPrefix('LIQUIO_CFG_FILESTORAGE'),
+  }).toObject();
 
   return config;
 }
