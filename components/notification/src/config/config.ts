@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
+import type { NotificationConfig } from './config.types';
+
 const CONFIG_PATH = process.env.CONFIG_PATH || path.join(process.cwd(), '../config/notification');
 
 if (!fs.existsSync(CONFIG_PATH)) {
@@ -33,4 +35,4 @@ if (typeof currentEnvConf === 'undefined' || typeof currentEnvConf.db === 'undef
 }
 
 // Add version config.
-export const conf: any = { ...currentEnvConf, ...versionsConf };
+export const conf: NotificationConfig & Record<string, any> = { ...currentEnvConf, ...versionsConf };
