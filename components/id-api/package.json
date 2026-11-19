@@ -26,7 +26,7 @@
     "migration-down-name": "sequelize db:migrate:undo --config ./migrations-config.js --name $name"
   },
   "dependencies": {
-    "@liquio/back-core": "^1.0.2",
+    "@liquio/back-core": "^1.4.0",
     "@node-oauth/oauth2-server": "^5.3.1",
     "asn1js": "^3.0.10",
     "axios": "^1.20.0",
@@ -44,7 +44,6 @@
     "ldapts": "^9.2.0",
     "lodash": "^4.18.1",
     "mappr": "^6.1.0",
-    "multiconf": "^4.2.2",
     "node-cache": "^5.1.2",
     "node-jose": "^2.2.0",
     "node-rsa": "^2.0.0",

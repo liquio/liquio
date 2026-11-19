@@ -1,6 +1,5 @@
-import fs from 'node:fs';
 
-import Multiconf from 'multiconf';
+import { Config as ConfigLoader } from '@liquio/back-core';
 import { StrategyOptions } from 'passport-oauth2';
 import { Dialect } from 'sequelize';
 
@@ -489,15 +488,18 @@ export function loadConfig(): Config {
     if (typeof parsedEnvConfig[env] === 'undefined') {
       throw new Error(`LIQUIO_ID_CONFIG [${env}] is not defined object config.`);
     }
-    config = parsedEnvConfig[env] as Config;
+    config = ConfigLoader.fromObject<Config>(parsedEnvConfig[env]).toObject();
     validateOIDCConfig(config);
     validateLdapConfig(config);
     validateInternalTransportConfig(config, env);
     return config;
   }
 
-  const paths = [CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])];
-  const raw = Multiconf.get(paths, 'LIQUIO_CFG_ID_') as any;
+  const raw = ConfigLoader.load<Record<string, any>>({
+    configPath: CONFIG_PATH,
+    secretPath: SECRET_PATH ?? null,
+    envPrefix: 'LIQUIO_CFG_ID_',
+  }).toObject();
 
   const configData = raw.config;
   const resolvedEnv = env !== 'localhost' ? env : (configData?.default_env ?? 'localhost');
