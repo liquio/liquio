@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import type { Configuration } from './configuration.service';
+import type { SignToolConfig } from './configuration.service';
 
-export const configurationSchema: z.ZodType<Configuration> = z.looseObject({
+export const signToolConfigSchema: z.ZodType<SignToolConfig> = z.looseObject({
   x509: z
     .looseObject({
       caCerts: z.array(z.string()).optional(),
