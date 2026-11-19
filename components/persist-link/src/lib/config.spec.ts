@@ -4,6 +4,9 @@ import path from 'node:path';
 
 import { loadPersistLinkConfig } from './config';
 
+const BASE_DB = '{"database":"base"}';
+const BASE_SERVER = '{"port":3000}';
+
 const MIGRATIONS_CONFIG = path.resolve(__dirname, '../../migrations-config.js');
 const ENV_KEYS = ['LIQUIO_CONFIG_PREFIX', 'CONFIG_PATH', 'SECRET_PATH'];
 
@@ -25,6 +28,7 @@ describe('persist-link config loading', () => {
     }
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pl-config-'));
     process.env.CONFIG_PATH = tmp;
+    process.env.LIQUIO_CFG_PERSIST_LINK_server = BASE_SERVER;
   });
 
   afterEach(() => {
@@ -34,13 +38,17 @@ describe('persist-link config loading', () => {
 
   describe('loadPersistLinkConfig', () => {
     it('reads default prefix env', () => {
+      process.env.LIQUIO_CFG_PERSIST_LINK_db = BASE_DB;
       process.env.LIQUIO_CFG_PERSIST_LINK_log = '{"level":"debug"}';
       expect(loadPersistLinkConfig().log).toEqual({ level: 'debug' });
     });
 
     it('honours LIQUIO_CONFIG_PREFIX', () => {
       process.env.LIQUIO_CONFIG_PREFIX = 'FOO';
+      process.env.FOO_db = BASE_DB;
+      process.env.FOO_server = BASE_SERVER;
       process.env.FOO_log = '{"level":"warn"}';
+      process.env.LIQUIO_CFG_PERSIST_LINK_db = BASE_DB;
       process.env.LIQUIO_CFG_PERSIST_LINK_log = '{"level":"debug"}';
       expect(loadPersistLinkConfig().log).toEqual({ level: 'warn' });
     });
@@ -48,6 +56,17 @@ describe('persist-link config loading', () => {
     it('reads CONFIG_PATH files', () => {
       fs.writeFileSync(path.join(tmp, 'db.json'), JSON.stringify({ database: 'file' }));
       expect(loadPersistLinkConfig().db).toEqual({ database: 'file' });
+    });
+
+    it('throws ConfigValidationError when db is missing', () => {
+      let error: any;
+      try {
+        loadPersistLinkConfig();
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.code).toBe('CONFIG_VALIDATION');
+      expect(error.issues.map((i: { path: string }) => i.path)).toContain('db');
     });
 
     it('merges SECRET_PATH', () => {
@@ -64,6 +83,17 @@ describe('persist-link config loading', () => {
   });
 
   describe('migrations-config', () => {
+    it('throws ConfigValidationError when db is missing', () => {
+      let error: any;
+      try {
+        loadMigrations();
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.code).toBe('CONFIG_VALIDATION');
+      expect(error.issues.map((i: { path: string }) => i.path)).toContain('db');
+    });
+
     it('uses the new prefix', () => {
       process.env.LIQUIO_CFG_PERSIST_LINK_db = '{"database":"new"}';
       expect(loadMigrations().database).toBe('new');
