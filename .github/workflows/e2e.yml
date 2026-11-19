@@ -1,6 +1,7 @@
 name: E2E Tests
 
-# Component e2e suites (components/*/tests). Each one boots the NestJS/Express app
+# Component unit (src/**/*.spec.ts) and e2e suites (components/*/tests); coverage
+# from both is uploaded to Codecov together under the component flag. Each e2e suite boots the NestJS/Express app
 # in-process and starts its backing services (Postgres, Redis, RabbitMQ, Dex,
 # OpenLDAP) with testcontainers against the runner's Docker daemon.
 # Playwright suites in test/ are not covered here.
@@ -106,9 +107,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Unit tests run first and are cheap; their coverage is merged with e2e coverage
+      # on upload. Absolute coverage dir: some components set jest rootDir=src.
+      - name: Run unit tests
+        id: unit
+        timeout-minutes: 15
+        run: npm test -- --ci --coverage --coverageReporters=lcov --coverageDirectory="$PWD/coverage/unit"
+
       # ci:e2e runs without --forceExit: leaked handles must surface, not be hidden.
       # The step timeout is a backstop in case a leak hangs jest's main process.
       - name: Run e2e tests
+        if: ${{ !cancelled() }}
         timeout-minutes: 30
         run: |
           set -o pipefail
@@ -129,19 +138,26 @@ jobs:
         id: lcov
         if: ${{ !cancelled() }}
         run: |
-          f=coverage/e2e/lcov.info
-          if [ -f "$f" ]; then
+          files=()
+          for f in coverage/unit/lcov.info coverage/e2e/lcov.info; do
+            [ -f "$f" ] || continue
             sed -i -E 's#^SF:([^/])#SF:components/${{ matrix.name }}/\1#' "$f"
-            echo "found=true" >> "$GITHUB_OUTPUT"
+            files+=("components/${{ matrix.name }}/$f")
+          done
+          if [ ${#files[@]} -gt 0 ]; then
+            echo "files=$(IFS=,; echo "${files[*]}")" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload e2e coverage to Codecov
-        if: ${{ !cancelled() && steps.lcov.outputs.found == 'true' }}
+      # One upload with both reports: Codecov merges them into a single
+      # unit+e2e coverage result for the component flag.
+      - name: Upload unit + e2e coverage to Codecov
+        if: ${{ !cancelled() && steps.lcov.outputs.files != '' }}
         uses: codecov/codecov-action@v7
         with:
-          files: components/${{ matrix.name }}/coverage/e2e/lcov.info
+          files: ${{ steps.lcov.outputs.files }}
+          disable_search: true
           flags: ${{ matrix.name }}
-          name: e2e-${{ matrix.name }}
+          name: ${{ matrix.name }}
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
