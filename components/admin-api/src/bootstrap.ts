@@ -13,6 +13,7 @@ import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
 import { warnPlainHttpInternalUrls } from './lib/internal_transport';
 import { buildSandboxConfig } from './lib/sandbox_config';
+import { AdminApiConfig } from './lib/config.types';
 import { setAppContext, getLog } from './lib/context';
 
 /**
@@ -21,7 +22,7 @@ import { setAppContext, getLog } from './lib/context';
  * @param options Startup config check results to log.
  * @returns Initialized services.
  */
-export async function bootstrap(config: Record<string, any>, options: { placeholderSecrets?: string[]; placeholderSecretWarnings?: string[] } = {}) {
+export async function bootstrap(config: AdminApiConfig, options: { placeholderSecrets?: string[]; placeholderSecretWarnings?: string[] } = {}) {
   const { placeholderSecrets = [], placeholderSecretWarnings = [] } = options;
   setAppContext({ config });
 
