@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { z } from 'zod';
 import type { SandboxConfig } from '@liquio/back-core';
 
-import type { Config } from './config';
+import type { RegisterConfig } from './config';
 import type { TlsConfig } from './tls';
 
 /** Minimum length of the password part of a Basic auth token. */
@@ -28,10 +28,10 @@ const flag = () => z.custom<boolean>((v) => typeof v === 'boolean' || typeof v =
 const anything = <T>() => z.custom<T>(() => true);
 
 /**
- * Build the zod schema for the register `Config`. Rules that depend on the environment use `env` (default `NODE_ENV`).
+ * Build the zod schema for the register `RegisterConfig`. Rules that depend on the environment use `env` (default `NODE_ENV`).
  * Messages name settings only, never values.
  */
-export function buildRegisterConfigSchema(env: string | undefined = process.env.NODE_ENV): z.ZodType<Config> {
+export function buildRegisterConfigSchema(env: string | undefined = process.env.NODE_ENV): z.ZodType<RegisterConfig> {
   return z
     .looseObject({
       access_log: z.looseObject({ keyIds: anything<string[]>() }),
@@ -48,7 +48,7 @@ export function buildRegisterConfigSchema(env: string | undefined = process.env.
         trustedCallers: z.array(z.string()).optional(),
         userAllowTokens: z.record(z.string(), z.array(z.string())).optional(),
         limitedAccess: anything<Array<{ user: string; keys: string[] }>>().optional(),
-        servicePermissions: anything<Config['auth']['servicePermissions']>().optional(),
+        servicePermissions: anything<RegisterConfig['auth']['servicePermissions']>().optional(),
         strict: anything<boolean>().optional(),
         allowKnownDefaultToken: flag().optional(),
       }),
@@ -60,8 +60,8 @@ export function buildRegisterConfigSchema(env: string | undefined = process.env.
         username: z.string(),
         password: z.string(),
         operatorsAliases: flag(),
-        dialectOptions: anything<Config['db']['dialectOptions']>(),
-        pool: anything<Config['db']['pool']>(),
+        dialectOptions: anything<RegisterConfig['db']['dialectOptions']>(),
+        pool: anything<RegisterConfig['db']['pool']>(),
         logging: flag(),
         migrationStorageTableName: z.string(),
       }),
@@ -94,7 +94,7 @@ export function buildRegisterConfigSchema(env: string | undefined = process.env.
         })
         .optional(),
       sandbox: z.custom<SandboxConfig>((v) => isObject(v), { message: 'must be an object' }).optional(),
-      search: z.record(z.string(), anything<NonNullable<Config['search']>[string]>()).optional(),
+      search: z.record(z.string(), anything<NonNullable<RegisterConfig['search']>[string]>()).optional(),
       server: z.looseObject({
         hostname: z.string(),
         port: numeric(),
@@ -183,8 +183,8 @@ export function buildRegisterConfigSchema(env: string | undefined = process.env.
       if (typeof key === 'string' && key !== '' && isPlaceholder(key)) {
         add(['encryption', 'key'], 'is a placeholder value.');
       }
-    }) as unknown as z.ZodType<Config>;
+    }) as unknown as z.ZodType<RegisterConfig>;
 }
 
-/** Zod schema for the register `Config`, built for the current `NODE_ENV`. */
-export const registerConfigSchema: z.ZodType<Config> = buildRegisterConfigSchema();
+/** Zod schema for the register `RegisterConfig`, built for the current `NODE_ENV`. */
+export const registerConfigSchema: z.ZodType<RegisterConfig> = buildRegisterConfigSchema();

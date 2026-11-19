@@ -1,10 +1,10 @@
 import { assertEncryptionConfig, checkEncryptionConfig, warnPlainHttpSign, warnEmptySignToken } from './config_guard';
-import { Config } from './config';
+import { RegisterConfig } from './config';
 import { setAppContext } from './context';
 
 const GOOD_KEY = '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
 
-const cfg = (auth: any, encryption: any): Config => ({ auth, encryption }) as unknown as Config;
+const cfg = (auth: any, encryption: any): RegisterConfig => ({ auth, encryption }) as unknown as RegisterConfig;
 
 describe('config_guard', () => {
   describe('encryption', () => {

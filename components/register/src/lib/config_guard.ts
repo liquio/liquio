@@ -1,4 +1,4 @@
-import { Config } from './config';
+import { RegisterConfig } from './config';
 import { parseEncryptionKey } from './encryption';
 import { isPlaceholder } from './config.schema';
 import { getLog } from './context';
@@ -9,7 +9,7 @@ import { getLog } from './context';
  * (`encryptedKeysExist`) or `encryption.check_on_startup` is on; otherwise the register just can't store encrypted keys.
  * Never generates or replaces a key.
  */
-export function checkEncryptionConfig(config: Pick<Config, 'encryption'>, encryptedKeysExist: boolean): string[] {
+export function checkEncryptionConfig(config: Pick<RegisterConfig, 'encryption'>, encryptedKeysExist: boolean): string[] {
   const key = config?.encryption?.key;
   const checkOnStartup = !!config?.encryption?.check_on_startup;
 
@@ -37,7 +37,7 @@ function fail(problems: string[]): void {
 }
 
 /** Startup guard for the encryption key; call once the DB is reachable. */
-export function assertEncryptionConfig(config: Config, encryptedKeysExist: boolean): void {
+export function assertEncryptionConfig(config: RegisterConfig, encryptedKeysExist: boolean): void {
   fail(checkEncryptionConfig(config, encryptedKeysExist));
 }
 
@@ -46,7 +46,7 @@ export function assertEncryptionConfig(config: Config, encryptedKeysExist: boole
  * Does not refuse to start: shipped Helm values still use http for the in-cluster call (protected by NetworkPolicies).
  * @returns {boolean} true when a warning was logged.
  */
-export function warnPlainHttpSign(config: Config, env: string | undefined = process.env.NODE_ENV): boolean {
+export function warnPlainHttpSign(config: RegisterConfig, env: string | undefined = process.env.NODE_ENV): boolean {
   const sign = config?.sign;
   if (!env || !['production', 'prod'].includes(env) || sign?.allowPlainHttp === true) return false;
   if (typeof sign?.url !== 'string' || !/^http:\/\//i.test(sign.url.trim())) return false;
@@ -64,7 +64,7 @@ export function warnPlainHttpSign(config: Config, env: string | undefined = proc
  * and the shipped config/Helm values use an empty token, so a refusal would break every install.
  * @returns {boolean} true when a warning was logged.
  */
-export function warnEmptySignToken(config: Config, env: string | undefined = process.env.NODE_ENV): boolean {
+export function warnEmptySignToken(config: RegisterConfig, env: string | undefined = process.env.NODE_ENV): boolean {
   const sign = config?.sign;
   if (!env || !['production', 'prod'].includes(env) || sign?.allowEmptyToken === true) return false;
   const token = sign?.token;

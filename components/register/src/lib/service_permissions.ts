@@ -1,4 +1,4 @@
-import { Config } from './config';
+import { RegisterConfig } from './config';
 
 /** Per-user permission entry (`auth.servicePermissions[user]`). */
 export interface ServicePermission {
@@ -34,7 +34,7 @@ export interface PermissionDecision {
   route: string;
 }
 
-type Auth = Config['auth'];
+type Auth = RegisterConfig['auth'];
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 

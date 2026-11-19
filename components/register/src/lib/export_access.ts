@@ -1,6 +1,6 @@
 import RecordEntity from '../entities/record';
 import KeyEntity from '../entities/key';
-import { Config } from './config';
+import { RegisterConfig } from './config';
 import { resolveCallerAccess } from './caller_access';
 
 /** Thrown when an export is requested for a key whose records the caller must not read. */
@@ -25,7 +25,7 @@ export const RESTRICTED_EXPORT_ACCESS: ExportAccess = { full: false, tokens: [] 
  * Resolve export rights from the Basic user. Client-supplied flags are never honoured here.
  * @throws On malformed `auth.trustedCallers` / `auth.userAllowTokens` config.
  */
-export function resolveExportAccess(req: { auth?: { user?: string } }, config: Pick<Config, 'auth'>): ExportAccess {
+export function resolveExportAccess(req: { auth?: { user?: string } }, config: Pick<RegisterConfig, 'auth'>): ExportAccess {
   const access = resolveCallerAccess(req, config);
   return { full: access.trusted, tokens: access.allowTokens };
 }

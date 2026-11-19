@@ -7,14 +7,14 @@ export const CONFIG_PATH = process.env.CONFIG_PATH || '../config/register';
 export const SECRET_PATH = process.env.SECRET_PATH;
 export const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_REGISTER';
 
-export const config: Config = ConfigLoader.load<Config>({
+export const config: RegisterConfig = ConfigLoader.load<RegisterConfig>({
   configPath: CONFIG_PATH,
   secretPath: SECRET_PATH ?? null,
   envPrefix: `${LIQUIO_CONFIG_PREFIX}_`,
   schema: buildRegisterConfigSchema(),
 }).toObject();
 
-export interface Config {
+export interface RegisterConfig {
   access_log: { keyIds: string[] };
   admin?: { swagger?: boolean };
   afterhandler: {
