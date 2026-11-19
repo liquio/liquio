@@ -1,5 +1,6 @@
 import { Config, resolveEnvPrefix } from '@liquio/back-core';
 
+import { gatewayConfigSchema } from './config.schema';
 import type { GatewayConfig } from './config.types';
 
 export const DEFAULT_CONFIG_PATH = '../config/gateway';
@@ -15,5 +16,6 @@ export function loadGatewayConfig(configPath?: string): GatewayConfig {
     configPath,
     defaultConfigPath: DEFAULT_CONFIG_PATH,
     envPrefix: resolveEnvPrefix(DEFAULT_ENV_PREFIX),
+    schema: gatewayConfigSchema,
   }).toObject();
 }

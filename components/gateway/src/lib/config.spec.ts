@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import { ConfigValidationError } from '@liquio/back-core';
+
 import { loadGatewayConfig } from './config';
 
 const ENV_KEYS = ['LIQUIO_CFG_GATEWAY_app', 'FOO_app', 'LIQUIO_CONFIG_PREFIX', 'CONFIG_PATH', 'SECRET_PATH'];
@@ -11,7 +13,10 @@ describe('gateway config loader', () => {
   const dirs: string[] = [];
   const cwd = process.cwd();
 
-  const makeDir = (files: Record<string, unknown>): string => {
+  const baseFiles: Record<string, unknown> = { db: {}, log: { console: { name: 'test' } }, message_queue: {} };
+
+  const makeDir = (files: Record<string, unknown>, withBase = true): string => {
+    files = withBase ? { ...baseFiles, ...files } : files;
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gateway-config-'));
     dirs.push(dir);
     for (const [name, value] of Object.entries(files)) {
@@ -51,11 +56,13 @@ describe('gateway config loader', () => {
   });
 
   it('reads ../config/gateway when no path is given', () => {
-    const root = makeDir({});
+    const root = makeDir({}, false);
     const work = path.join(root, 'work');
     fs.mkdirSync(work);
     fs.mkdirSync(path.join(root, 'config', 'gateway'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'config', 'gateway', 'app.json'), JSON.stringify({ from: 'default' }));
+    for (const [name, value] of Object.entries({ ...baseFiles, app: { from: 'default' } })) {
+      fs.writeFileSync(path.join(root, 'config', 'gateway', `${name}.json`), JSON.stringify(value));
+    }
     process.chdir(work);
     expect((loadGatewayConfig() as Record<string, any>).app).toEqual({ from: 'default' });
   });
@@ -81,5 +88,10 @@ describe('gateway config loader', () => {
     process.env.SECRET_PATH = path.join(os.tmpdir(), 'gateway-config-missing-dir');
     const dir = makeDir({ app: { x: 0 } });
     expect((loadGatewayConfig(dir) as Record<string, any>).app).toEqual({ x: 0 });
+  });
+
+  it('rejects a config dir without the log section', () => {
+    const dir = makeDir({ db: {}, message_queue: {} }, false);
+    expect(() => loadGatewayConfig(dir)).toThrow(ConfigValidationError);
   });
 });
