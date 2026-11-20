@@ -1,6 +1,6 @@
 {
   "name": "liquio-persist-link",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Persist link",
   "main": "dist/index.js",
   "directories": {
