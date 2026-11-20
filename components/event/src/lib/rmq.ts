@@ -233,7 +233,7 @@ export class Rmq {
     await this.initConnection();
     await this.initChannels();
     await this.initQueues();
-    this.subscribeToConsuming(this.consumingHandler.bind(this));
+    await this.subscribeToConsuming(this.consumingHandler.bind(this));
     this.initialized = true;
   }
 
@@ -293,7 +293,14 @@ export class Rmq {
    */
   async initQueues(): Promise<void> {
     // Assert queues.
-    this.channels.reading.assertExchange(this.options.readingExchangeName, 'direct', { durable: this.options.readingExchangeDurable });
+    await new Promise<void>((resolve, reject) => {
+      this.channels.reading.assertExchange(
+        this.options.readingExchangeName,
+        'direct',
+        { durable: this.options.readingExchangeDurable },
+        (error: any) => (error ? reject(error) : resolve()),
+      );
+    });
 
     const readingArguments: any = {};
     if (this.options.readingXMessageTtl) {
@@ -302,9 +309,12 @@ export class Rmq {
     if (this.options.readingXQueueType) {
       readingArguments['x-queue-type'] = this.options.readingXQueueType;
     }
-    this.channels.reading.assertQueue(this.options.readingQueueName, {
-      durable: this.options.readingDurable,
-      arguments: readingArguments,
+    await new Promise<void>((resolve, reject) => {
+      this.channels.reading.assertQueue(
+        this.options.readingQueueName,
+        { durable: this.options.readingDurable, arguments: readingArguments },
+        (error: any) => (error ? reject(error) : resolve()),
+      );
     });
 
     const writingArguments: any = {};
@@ -314,12 +324,13 @@ export class Rmq {
     if (this.options.writingXQueueType) {
       writingArguments['x-queue-type'] = this.options.writingXQueueType;
     }
-    this.channels.writing.assertQueue(this.options.writingQueueName, {
-      durable: this.options.writingDurable,
-      arguments: writingArguments,
+    await new Promise<void>((resolve, reject) => {
+      this.channels.writing.assertQueue(
+        this.options.writingQueueName,
+        { durable: this.options.writingDurable, arguments: writingArguments },
+        (error: any) => (error ? reject(error) : resolve()),
+      );
     });
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
   /**
@@ -386,7 +397,7 @@ export class Rmq {
    * Subscribe to consuming.
    * @param {function(object)} handler Handler to work with message object.
    */
-  subscribeToConsuming(handler: (message: any) => Promise<boolean> | boolean): void {
+  async subscribeToConsuming(handler: (message: any) => Promise<boolean> | boolean): Promise<void> {
     // Decorate handler.
     const decoratedHandler = async (message: any) => {
       // Convert message.
@@ -411,8 +422,20 @@ export class Rmq {
     };
 
     // Get message from queue.
-    this.channels.reading.bindQueue(this.options.readingQueueName, this.options.readingExchangeName, this.options.readingQueueName);
-    this.channels.reading.consume(this.options.readingQueueName, decoratedHandler, { noAck: false });
+    await new Promise<void>((resolve, reject) => {
+      this.channels.reading.bindQueue(
+        this.options.readingQueueName,
+        this.options.readingExchangeName,
+        this.options.readingQueueName,
+        {},
+        (error: any) => (error ? reject(error) : resolve()),
+      );
+    });
+    await new Promise<void>((resolve, reject) => {
+      this.channels.reading.consume(this.options.readingQueueName, decoratedHandler, { noAck: false }, (error: any) =>
+        error ? reject(error) : resolve(),
+      );
+    });
   }
 
   /**
