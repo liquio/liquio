@@ -193,8 +193,9 @@ describe('Preview', () => {
         let requestedUrl = '';
         const scope = nock('http://localhost:3345')
           .post(/\/preview/)
-          .reply(200, function (uri) {
-            requestedUrl = uri;
+          .reply(200, (request: Request) => {
+            const url = new URL(request.url);
+            requestedUrl = url.pathname + url.search;
             return 'preview';
           });
 

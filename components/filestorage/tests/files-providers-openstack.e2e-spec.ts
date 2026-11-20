@@ -85,8 +85,8 @@ describe('Files with the openstack provider', () => {
     let token: string | undefined;
     const swift = nock(SWIFT_HOST)
       .put(OBJECT_PATH)
-      .reply(function () {
-        token = this.req.headers['x-auth-token'] as string;
+      .reply((request: Request) => {
+        token = request.headers.get('x-auth-token') ?? undefined;
         return [201, '', { etag: 'fake-etag' }];
       });
     await app
