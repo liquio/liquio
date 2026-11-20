@@ -1,4 +1,5 @@
 import { cloneDeep } from 'lodash';
+
 import { typeOf } from './type_of';
 
 export class Helpers {

@@ -11,9 +11,9 @@ export class BasicAuthStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(_req: unknown, username: string, password: string): Promise<boolean> {
-    const { basicAuthTokens } = this.configService.get('auth');
+    const basicAuthTokens = this.configService.get('auth')?.basicAuthTokens;
 
-    if (!basicAuthTokens.includes(`${username}:${password}`)) {
+    if (!Array.isArray(basicAuthTokens) || !basicAuthTokens.includes(`${username}:${password}`)) {
       throw new UnauthorizedException();
     }
 

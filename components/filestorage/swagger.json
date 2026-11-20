@@ -763,7 +763,7 @@
           "Files"
         ],
         "summary": "Create ASIC-S container",
-        "description": "Returns created ASIC-S container.",
+        "description": "Returns created ASIC-S container. The stored signature is packaged into META-INF/signature.p7s as is: filestorage does NOT verify it against the file or check the signer, so the response carries `X-Signature-Verified: false`. Consumers must verify the signature themselves (sign-tool) before treating the container as proof. The file entry name is reduced to a safe base name (no path separators or `..`).",
         "produces": [
           "application/octet-stream"
         ],
@@ -1686,7 +1686,7 @@
       "required": true,
       "schema": {
         "type": "string",
-        "example": "Basic dGVzdDE6dGVzdA=="
+        "example": "Basic <base64(user:password)>"
       }
     },
     "contentTypeHeader": {

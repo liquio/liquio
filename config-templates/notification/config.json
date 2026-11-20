@@ -2,7 +2,11 @@
   "default_env": "production",
   "production": {
     "processTitle": "notify",
-    "port": "3003",
+    "port": "8080",
+    "trustProxy": 1,
+    "tls": {
+      "enabled": false
+    },
     "username": "postgres",
     "password": "<REDACTED>",
     "database": "notify",
@@ -18,7 +22,7 @@
       "dialect": "postgres"
     },
     "auth_server": {
-      "host": "http://id-api:8100",
+      "host": "http://id-api:8080",
       "basicAuthToken": "Basic <REDACTED>"
     },
     "smsServer": {
@@ -28,7 +32,7 @@
     },
     "adminConfig": {
       "login": "adminConfigLogin",
-      "password": "secretPassword"
+      "password": ""
     },
     "corezoidConfig": {
       "apiLogin": "",
@@ -41,9 +45,6 @@
       "host": "mail.local",
       "secure": false,
       "port": 25,
-      "tls": {
-        "rejectUnauthorized": false
-      },
       "auth": {
         "user": "username",
         "pass": "<REDACTED>"

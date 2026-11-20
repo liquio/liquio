@@ -4,26 +4,41 @@ import { matchedData } from 'express-validator';
 import { AsyncParser } from 'json2csv';
 import Sequelize from 'sequelize';
 import * as flattenjs from 'flattenjs';
+import { Sandbox } from '@liquio/back-core';
 
 import { Request, Response } from '../router';
 import Controller from './controller';
 import SearchBusiness from '../businesses/search';
 import AccessLogBusiness from '../businesses/access_log';
 import HistoryBusiness from '../businesses/history';
-import RecordModel from '../models/record';
+import RecordModel, { InvalidSortError, PatchValidationError } from '../models/record';
 import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import HistoryModel from '../models/history';
 import JsonSchema from '../lib/json_schema';
+import { PublicError } from '../lib/public_error';
 import KeyEntity from '../entities/key';
 import typeOf from '../lib/typeOf';
-import Isolation from '../lib/isolation';
 import { ModelItemResponse } from '../lib/interfaces';
 import RecordEntity from '../entities/record';
+import { resolveCallerAccess, CallerAccess } from '../lib/caller_access';
+import JoinedRecordAccess from '../lib/joined_record_access';
+import { escapeCsvCell } from '../lib/csv';
+import { canSearchField, canSearchString } from '../lib/record_search_access';
+import HistoryAccess, { HistoryKeyForbiddenError } from '../lib/history_access';
+import { getConfig, getTypeOf } from '../lib/context';
+import ErrorWithDetails from '../lib/errors';
 
 const ADDITIONAL_FILTER_RECORD_MAX_COUNT = 10000;
 const DB_CONSTRAINT_ERROR_CODE = 'DB_CONSTRAINT_ERROR';
 const SEQUELIZE_EXCLUSION_CONSTRAINT_ERROR = 'SequelizeExclusionConstraintError';
+
+/** Thrown while paging when a record's key does not allow reading records. */
+class KeyNotReadableError extends Error {
+  constructor(public readonly keyId: number) {
+    super('Key records are not readable.');
+  }
+}
 
 /**
  * Records controller.
@@ -38,6 +53,7 @@ export default class RecordsController extends Controller {
   private registerModel: RegisterModel;
   private keyModel: KeyModel;
   private historyModel: HistoryModel;
+  private sandbox: Sandbox;
 
   /**
    * Records controller constructor.
@@ -55,10 +71,130 @@ export default class RecordsController extends Controller {
       this.registerModel = RegisterModel.getInstance();
       this.keyModel = KeyModel.getInstance();
       this.historyModel = HistoryModel.getInstance();
+      this.sandbox = Sandbox.getInstance();
 
       RecordsController.singleton = this;
     }
     return RecordsController.singleton;
+  }
+
+  /**
+   * Resolve effective security flags for the caller and log ignored client-supplied flags.
+   * @throws On malformed `auth.trustedCallers` / `auth.userAllowTokens` config.
+   */
+  private getCallerAccess(req: Request, allowSeeAll?: unknown, disableFieldsRules?: unknown, allowTokens?: unknown): CallerAccess {
+    const access = resolveCallerAccess(req, this.config, {
+      allow_see_all_records: allowSeeAll,
+      disable_fields_rules: disableFieldsRules,
+      allow_tokens: allowTokens,
+    });
+    if (access.ignoredFlags.length > 0) {
+      this.log.save('ignored-untrusted-security-flags', { user: req.auth?.user, flags: access.ignoredFlags });
+    }
+    return access;
+  }
+
+  /**
+   * Row tokens to enforce on writes of existing rows. Only with `auth.strict` and for callers not in `auth.trustedCallers`;
+   * otherwise `undefined` (no restriction).
+   * @throws On malformed `auth.trustedCallers` / `auth.userAllowTokens` config.
+   */
+  private getWriteTokens(req: Request): string[] | undefined {
+    const access = this.getCallerAccess(req);
+    return this.config.auth?.strict === true && !access.trusted ? access.allowTokens : undefined;
+  }
+
+  /**
+   * Whether tokens requested for a row are allowed for a caller restricted by `auth.strict`: every one must be held by the caller.
+   * Anything but an array of strings is refused.
+   */
+  private canAssignTokens(requested: unknown, writeTokens: string[]): boolean {
+    return Array.isArray(requested) && requested.every((token) => typeof token === 'string' && writeTokens.includes(token));
+  }
+
+  /** Load a record's key once per request. A missing key stays `undefined` (the caller must deny). */
+  private async getRecordKey(keys: Map<number, KeyEntity | undefined>, keyId: number, options?: Parameters<KeyModel['findById']>[1]) {
+    if (!keyId) return undefined;
+    if (!keys.has(keyId)) keys.set(keyId, (await this.keyModel.findById(keyId, options))?.data);
+    return keys.get(keyId);
+  }
+
+  /**
+   * Stream a `no_limit` CSV export page by page. Memory is bounded by the page size; the export is refused
+   * with 413 when the matching record count exceeds `pagination.maxCsvExportRecords` (default `pagination.maxExportLimit`).
+   */
+  private async streamCsvExport(
+    req: Request,
+    res: Response,
+    params: {
+      csvMap: string;
+      firstPage: { data?: RecordEntity[]; meta?: { count?: number | string } };
+      offset: number;
+      pageSize: number;
+      loadPage: (offset: number, limit: number) => Promise<{ data?: RecordEntity[]; meta?: { count?: number | string } }>;
+      validateIdentity: (records: RecordEntity[]) => Promise<void>;
+    },
+  ) {
+    const { csvMap, firstPage, offset, pageSize, loadPage, validateIdentity } = params;
+    const { pagination } = this.config;
+    const ceiling = pagination.maxCsvExportRecords ?? pagination.maxExportLimit;
+    const total = Math.max(Number(firstPage?.meta?.count) - offset, 0) || 0;
+    if (total > ceiling) {
+      return this.responseError(res, 'Too many records to export as CSV. Narrow the filters.', 413, { count: total, maxCsvExportRecords: ceiling });
+    }
+
+    let csvMapParsed;
+    try {
+      csvMapParsed = JSON.parse(csvMap);
+    } catch (error) {
+      this.log.save('csv-map-parse-error', { error: error?.message });
+      res.header('Content-Disposition', 'attachment; filename=records.csv');
+      res.header('Content-Type', 'text/csv');
+      res.write('Invalid csvMap parameter.');
+      return res.end();
+    }
+    const csvEntries = Object.entries(csvMapParsed);
+
+    let page = firstPage;
+    try {
+      await validateIdentity(page?.data || []);
+    } catch (error) {
+      this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
+      return this.responseError(res, error, 500);
+    }
+
+    res.header('Content-Disposition', 'attachment; filename=records.csv');
+    res.header('Content-Type', 'text/csv');
+    res.write('');
+
+    const asyncParser = new AsyncParser({ quote: '', fields: Object.keys(csvMapParsed) });
+    asyncParser.processor
+      .on('end', () => {
+        res.end();
+      })
+      .pipe(res);
+
+    try {
+      let pageOffset = offset;
+      for (;;) {
+        const records = page?.data || [];
+        this.accessLogBusiness.saveIfNeedIt(records, req.accessInfo);
+        for (const record of records) {
+          const row = csvEntries.reduce((t, [key, value]) => ({ ...t, [key]: escapeCsvCell(_.get(record, value as string) || '') }), {});
+          asyncParser.input.push(JSON.stringify(row));
+        }
+
+        pageOffset += pageSize;
+        if (records.length < pageSize || pageOffset >= offset + total) break;
+        page = await loadPage(pageOffset, pageSize);
+        await validateIdentity(page?.data || []);
+      }
+      asyncParser.input.push(null);
+    } catch (error) {
+      // Headers are already sent: abort the connection so the client does not take a truncated CSV for a complete one.
+      this.log.save('get-records-error', { error: error && error.message });
+      res.destroy(error);
+    }
   }
 
   // Get all records.
@@ -73,9 +209,9 @@ export default class RecordsController extends Controller {
       register_id: registerId,
       key_id: keyId,
       record_id: recordId,
-      allow_see_all_records,
-      disable_fields_rules,
-      allow_tokens: allowTokens,
+      allow_see_all_records: requestedSeeAll,
+      disable_fields_rules: requestedDisableFieldsRules,
+      allow_tokens: requestedAllowTokens,
       data,
       data_nested: dataNested,
       exclude,
@@ -101,8 +237,16 @@ export default class RecordsController extends Controller {
       paths,
       join_by: joinBy,
       csv_map: csvMap,
-      no_limit: noLimit
+      no_limit: noLimit,
     } = { offset: 0, limit: 20, ...matchedQueryData, ...matchedBodyData } as any;
+
+    let access: CallerAccess;
+    try {
+      access = this.getCallerAccess(req, requestedSeeAll, requestedDisableFieldsRules, requestedAllowTokens);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+    const { allowSeeAll: allow_see_all_records, disableFieldsRules: disable_fields_rules, allowTokens } = access;
 
     let recordIdsList;
 
@@ -124,7 +268,7 @@ export default class RecordsController extends Controller {
     let filter: RecordsGetAllFilter = {};
     let dataLike = {};
     if (!allow_see_all_records) {
-      filter.allow_tokens = allowTokens && Array.isArray(allowTokens) ? allowTokens.map((v) => decodeURIComponent(v)) : [];
+      filter.allow_tokens = allowTokens;
     }
     if (registerId) {
       filter.register_id = registerId;
@@ -262,44 +406,50 @@ export default class RecordsController extends Controller {
       residentshipStatusDateFrom,
       residentshipStatusDateTo,
       dataDateFrom,
-      dataDateTo
+      dataDateTo,
     });
 
-    if (csvMap) {
+    // `no_limit` CSV export is read page by page (bounded memory) instead of loading every row at once.
+    const streamCsv = Boolean(csvMap && noLimit);
+    const pageSize = this.config.pagination.maxLimit;
+
+    if (csvMap && !streamCsv) {
       res.header('Content-Disposition', 'attachment; filename=records.csv');
       res.header('Content-Type', 'text/csv');
       res.write('');
     }
 
     if (rawSequelizeParams) {
-      // Rewrite all filters.
-      filter = this.prepareRawSequelizeParams(rawSequelizeParams);
+      // Rewrite the request filters, but never the row-token filter: the raw params are AND-ed under it (`getAll` turns `allow_tokens` into a top-level OR).
+      const rawFilter = { [Sequelize.Op.and]: [this.prepareRawSequelizeParams(rawSequelizeParams)] };
+      filter = filter.allow_tokens !== undefined ? ({ allow_tokens: filter.allow_tokens, ...rawFilter } as RecordsGetAllFilter) : (rawFilter as any);
     }
 
-    // Get records.
-    let recordsModelResponse;
-    try {
-      recordsModelResponse = await this.recordModel.getAll({
-        offset: offset,
-        limit: csvMap && noLimit ? undefined : Math.min(limit, this.config.pagination.maxLimit),
-        filter,
+    // Load one page and apply the per-record access rules and projection.
+    const keys = new Map<number, KeyEntity | undefined>();
+    const joinedAccess = new JoinedRecordAccess(this.keyModel, access.allowTokens, req.auth?.userLimitedAccessKeys, (error) =>
+      this.log.save('joined-record-access-error', { error: error.message }),
+    );
+    const loadPage = async (pageOffset: number, pageLimit: number) => {
+      const pageResponse = await this.recordModel.getAll({
+        offset: pageOffset,
+        limit: pageLimit,
+        filter: streamCsv ? _.cloneDeep(filter) : filter,
         sort,
-        joinBy
+        joinBy,
+        stableOrder: streamCsv,
       });
 
-      if (recordsModelResponse && recordsModelResponse.data) {
-        const recordsKeyId = recordsModelResponse.data[0] && recordsModelResponse.data[0].keyId;
-        const { data: key } = (recordsKeyId && (await this.keyModel.findById(recordsKeyId))) || {};
+      if (pageResponse && pageResponse.data) {
+        // Each record is checked and projected with its own key (a page may mix keys).
+        for (const recordModelResponse of pageResponse.data) {
+          const key = await this.getRecordKey(keys, recordModelResponse.keyId);
+          if (!key || !this.keyModel.checkRecordsReadable(key)) {
+            throw new KeyNotReadableError(recordModelResponse.keyId);
+          }
 
-        // Safeguard for a potential case when getAll is called without keyId (this shouldn't happen)
-        if (key instanceof KeyEntity && !this.keyModel.checkRecordsReadable(key)) {
-          return this.responseError(res, 'Key records are not readable.', 403, { keyId });
-        }
-
-        for (const recordModelResponse of recordsModelResponse.data) {
           // Filter not allowed properties.
           if (!allow_see_all_records) {
-            recordModelResponse.applyColumnLevelSecurity(key, allowTokens);
             recordModelResponse.applyColumnLevelSecurity(key, allowTokens);
           }
 
@@ -312,12 +462,44 @@ export default class RecordsController extends Controller {
             const pathsList = Array.isArray(paths) ? paths : [paths];
             recordModelResponse.filterEntity(pathsList);
           }
+
+          // Authorize the joined record independently of the primary one (after the primary rules; tokens come from the server, never the query).
+          if (joinBy) {
+            if (access.trusted) JoinedRecordAccess.exposeUnfiltered(recordModelResponse);
+            else await joinedAccess.protect(recordModelResponse, joinBy);
+          }
         }
       }
+      return pageResponse;
+    };
+
+    // Get records.
+    let recordsModelResponse;
+    try {
+      recordsModelResponse = await loadPage(offset, streamCsv ? pageSize : Math.min(limit, this.config.pagination.maxLimit));
     } catch (error) {
+      if (error instanceof KeyNotReadableError) {
+        return this.responseError(res, 'Key records are not readable.', 403, { keyId: error.keyId });
+      }
+      if (error instanceof InvalidSortError) {
+        this.log.save('get-records-invalid-sort', { field: String(error.field ?? '').slice(0, 100) }, 'warning');
+        return this.responseError(res, 'Invalid sort parameter.', 400);
+      }
       this.log.save('get-records-error', { error: error && error.message });
-      return this.responseError(res, error.message, 500);
+      return this.responseError(res, error, 500);
     }
+
+    if (streamCsv) {
+      return this.streamCsvExport(req, res, {
+        csvMap,
+        firstPage: recordsModelResponse,
+        offset,
+        pageSize,
+        loadPage,
+        validateIdentity: (pageRecords) => this.checkValidationIdentity('GET', keyId, pageRecords),
+      });
+    }
+
     const { data: records, meta: modelResponseMeta } = recordsModelResponse || {};
     this.accessLogBusiness.saveIfNeedIt(records, req.accessInfo);
 
@@ -326,7 +508,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('GET', keyId, records);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 500);
+      return this.responseError(res, error, 500);
     }
 
     // Response.
@@ -342,7 +524,7 @@ export default class RecordsController extends Controller {
 
       const asyncParser = new AsyncParser({
         quote: '',
-        fields: Object.keys(csvMapParsed)
+        fields: Object.keys(csvMapParsed),
       });
 
       asyncParser.processor
@@ -357,9 +539,9 @@ export default class RecordsController extends Controller {
         const row = csvEntries.reduce(
           (t, [key, value]) => ({
             ...t,
-            [key]: `"${`${_.get(record, value as string) || ''}`.replace(/"/g, '\\"')}"`
+            [key]: escapeCsvCell(_.get(record, value as string) || ''),
           }),
-          {}
+          {},
         );
         asyncParser.input.push(JSON.stringify(row));
       }
@@ -380,9 +562,9 @@ export default class RecordsController extends Controller {
       register_id: registerId,
       key_id: keyId,
       id: recordId,
-      allow_see_all_records,
-      disable_fields_rules,
-      allow_tokens: allowTokens,
+      allow_see_all_records: requestedSeeAll,
+      disable_fields_rules: requestedDisableFieldsRules,
+      allow_tokens: requestedAllowTokens,
       data,
       data_like,
       search,
@@ -403,9 +585,17 @@ export default class RecordsController extends Controller {
       no_limit: noLimit,
       limit: responseLimit = 20,
       offset: responseOffset = 0,
-      additional_filter: queryAdditionalFilter
+      additional_filter: queryAdditionalFilter,
     } = { ...matchedQueryData, ...matchedBodyData } as any;
     const { additionalFilter: bodyAdditionalFilter, additional_filter: bodyAdditionalFilterLegacy, additionalFilterData } = matchedBodyData as any;
+
+    let access: CallerAccess;
+    try {
+      access = this.getCallerAccess(req, requestedSeeAll, requestedDisableFieldsRules, requestedAllowTokens);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+    const { allowSeeAll: allow_see_all_records, disableFieldsRules: disable_fields_rules, allowTokens } = access;
 
     const additionalFilter = queryAdditionalFilter
       ? Buffer.from(decodeURIComponent(queryAdditionalFilter), 'base64').toString('utf8')
@@ -423,7 +613,7 @@ export default class RecordsController extends Controller {
     const filter: RecordsGetAllFilteredFilter = {};
     let dataLike = {};
     if (!allow_see_all_records) {
-      filter.allow_tokens = allowTokens && Array.isArray(allowTokens) ? allowTokens.map((v) => decodeURIComponent(v)) : [];
+      filter.allow_tokens = allowTokens;
     }
     if (registerId) filter.register_id = registerId;
     if (keyId) {
@@ -514,13 +704,6 @@ export default class RecordsController extends Controller {
     let responseOffsetCount = 0;
     let stop = false; // Set `true` if all records are fetched.
 
-    const isolate = new Isolation();
-    isolate.set('element', element).set('step', step).set('document', document).eval(`
-        const additionalFilter = ${additionalFilter};
-        element = element.copySync();
-        step = step.copySync();
-        document = document.copySync();
-      `);
     while (responseRecords.length < sqlLimit && !stop) {
       if (!additionalFilter) {
         stop = true;
@@ -532,19 +715,18 @@ export default class RecordsController extends Controller {
           filter,
           sort,
           changedFrom,
-          changedTo
+          changedTo,
         });
 
         if (recordsModelResponse && recordsModelResponse.data) {
-          const recordsKeyId = recordsModelResponse.data[0] && recordsModelResponse.data[0].keyId;
-          const { data: key } = (recordsKeyId && (await this.keyModel.findById(recordsKeyId, { cacheTime: 1 }))) || {};
-
-          // Safeguard for a potential case when getAll is called without keyId (this shouldn't happen)
-          if (key instanceof KeyEntity && !this.keyModel.checkRecordsReadable(key)) {
-            return this.responseError(res, 'Key records are not readable.', 403, { keyId });
-          }
-
+          // Each record is checked and projected with its own key (a page may mix keys).
+          const keys = new Map<number, KeyEntity | undefined>();
           for (const recordModelResponse of recordsModelResponse.data) {
+            const key = await this.getRecordKey(keys, recordModelResponse.keyId, { cacheTime: 1 });
+            if (!key || !this.keyModel.checkRecordsReadable(key)) {
+              return this.responseError(res, 'Key records are not readable.', 403, { keyId: recordModelResponse.keyId });
+            }
+
             // Filter not allowed properties.
             if (!allow_see_all_records) {
               recordModelResponse.applyColumnLevelSecurity(key, allowTokens);
@@ -556,8 +738,12 @@ export default class RecordsController extends Controller {
           }
         }
       } catch (error) {
+        if (error instanceof InvalidSortError) {
+          this.log.save('get-records-invalid-sort', { field: String(error.field ?? '').slice(0, 100) }, 'warning');
+          return this.responseError(res, 'Invalid sort parameter.', 400);
+        }
         this.log.save('get-records-error', { error: error && error.message });
-        return this.responseError(res, error.message, 500);
+        return this.responseError(res, error, 500);
       }
       records = recordsModelResponse.data;
       if (!modelResponseMeta) modelResponseMeta = recordsModelResponse.meta;
@@ -576,14 +762,14 @@ export default class RecordsController extends Controller {
         if (responseRecords.length > ADDITIONAL_FILTER_RECORD_MAX_COUNT) {
           this.log.save('get-records-filtered-additional-filter-error', {
             recordsCount: responseRecords.length,
-            maxRecordsCount: ADDITIONAL_FILTER_RECORD_MAX_COUNT
+            maxRecordsCount: ADDITIONAL_FILTER_RECORD_MAX_COUNT,
           });
           return this.responseError(res, 'To many records for additional filter.');
         }
         // If filter is not match.
         if (additionalFilter) {
           try {
-            const filter = isolate.set('record', record).eval(`additionalFilter(record.copySync(), element, step, document)`);
+            const filter = this.sandbox.evalWithArgs(additionalFilter, [record, element, step, document]);
 
             if (!filter) {
               modelResponseMeta.count--;
@@ -593,9 +779,9 @@ export default class RecordsController extends Controller {
             this.log.save('get-records-filtered-additional-filter-error', {
               error: error.message,
               additionalFilter,
-              record: record.toJSON()
+              record: record.toJSON(),
             });
-            return this.responseError(res, `Internal Error. Additional filter error. ${error.message}.`);
+            return this.responseError(res, 'Internal Error. Additional filter error.');
           }
         }
 
@@ -614,7 +800,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('GET', keyId, responseRecords);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 500);
+      return this.responseError(res, error, 500);
     }
 
     // Response.
@@ -637,7 +823,7 @@ export default class RecordsController extends Controller {
 
       const asyncParser = new AsyncParser({
         quote: '',
-        fields: Object.keys(csvMapParsed)
+        fields: Object.keys(csvMapParsed),
       });
 
       asyncParser.processor
@@ -652,9 +838,9 @@ export default class RecordsController extends Controller {
         const row = csvEntries.reduce(
           (t, [key, value]) => ({
             ...t,
-            [key]: `"${`${_.get(record, value as string) || ''}`.replace(/"/g, '\\"')}"`
+            [key]: escapeCsvCell(_.get(record, value as string) || ''),
           }),
-          {}
+          {},
         );
         asyncParser.input.push(JSON.stringify(row));
       }
@@ -669,49 +855,89 @@ export default class RecordsController extends Controller {
   async findById(req: Request, res: Response) {
     // Define params.
     const { id } = matchedData(req, { locations: ['params'] });
-    const { paths, allow_tokens: allowTokens } = matchedData(req, { locations: ['query'] });
+    const { paths } = matchedData(req, { locations: ['query'] });
+    let access: CallerAccess;
+    try {
+      // Server-side tokens only; the client-supplied `allow_tokens` is never honoured here.
+      // Trusted callers (e.g. task) keep the unrestricted behaviour.
+      access = this.getCallerAccess(req);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
 
     // Get record.
-    let recordModelResponse;
+    let record: RecordEntity | undefined;
     try {
-      recordModelResponse = await this.recordModel.findById(id);
-
-      // Column-level security.
-      const recordKeyId = recordModelResponse && recordModelResponse.data && recordModelResponse.data.keyId;
-      if (recordKeyId && allowTokens) {
-        const { data: key } = (recordKeyId && (await this.keyModel.findById(recordKeyId))) || {};
-
-        if (!this.keyModel.checkRecordsReadable(key)) {
-          return this.responseError(res, 'Key records are not readable.', 403, { keyId: key.id });
-        }
-
-        recordModelResponse.data.applyColumnLevelSecurity(key, allowTokens).applyResponseFieldsRules(key);
-      }
-
-      // Response paths filter.
-      if (recordModelResponse && recordModelResponse.data && paths) {
-        recordModelResponse.data.filterEntity(paths);
-      }
+      record = (await this.recordModel.findById(id))?.data;
     } catch (error) {
       this.log.save('get-record-by-id-error', { error: error && error.message });
     }
-    const { data: record } = recordModelResponse || {};
 
     // Check.
     if (!record) {
       return this.responseError(res, 'Not found.', 404);
     }
+
+    // Authorize, verify the signature on the original data, then project. Fail closed on any error.
+    try {
+      let key: KeyEntity | undefined;
+      if (!access.trusted) {
+        key = (record.keyId && (await this.keyModel.findById(record.keyId))?.data) || undefined;
+        const limitedKeys = req.auth?.userLimitedAccessKeys;
+        if (!key || !this.keyModel.checkRecordsReadable(key) || (limitedKeys && !limitedKeys.map(String).includes(String(record.keyId)))) {
+          return this.responseError(res, 'Key records are not readable.', 403, { keyId: record.keyId });
+        }
+        if (!this.isRecordReadableByTokens(record, access.allowTokens)) {
+          return this.responseError(res, 'Record is not readable.', 403);
+        }
+      }
+
+      // Signatures cover the original data, including fields that the response hides.
+      try {
+        await this.checkValidationIdentity('GET', record.keyId, [record]);
+      } catch (error) {
+        this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
+        return this.responseError(res, error, 500);
+      }
+
+      if (key) {
+        record.applyColumnLevelSecurity(key, access.allowTokens).applyResponseFieldsRules(key);
+      }
+      if (paths) {
+        record.filterEntity(paths);
+      }
+    } catch (error) {
+      this.log.save('get-record-by-id-access-error', { error: error && error.message });
+      return this.responseError(res, 'Unable to authorize record.', 500);
+    }
     this.accessLogBusiness.saveIfNeedIt([record], req.accessInfo);
 
-    // Check validation identity
-    try {
-      await this.checkValidationIdentity('GET', record.keyId, [record]);
-    } catch (error) {
-      this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 500);
-    }
-
     this.responseData(res, record);
+  }
+
+  /**
+   * Check that the row `allow_tokens` (empty = public) overlap the caller tokens.
+   */
+  private isRecordReadableByTokens(record: RecordEntity, allowTokens: string[]): boolean {
+    const rowTokens = record.allowTokens;
+    if (!Array.isArray(rowTokens) || rowTokens.some((token) => typeof token !== 'string')) {
+      return false;
+    }
+    return rowTokens.length === 0 || rowTokens.some((token) => allowTokens.includes(token));
+  }
+
+  /**
+   * Hide columns and fields of a write-response record for callers that are not trusted.
+   * Fails closed: throws when the key is not found or policies are malformed.
+   */
+  private async projectWriteResponse(req: Request, record: RecordEntity): Promise<void> {
+    const access = this.getCallerAccess(req);
+    if (access.trusted) return;
+    const key = (await this.keyModel.findById(record.keyId))?.data;
+    if (!key) {
+      throw new Error('Key not found.');
+    }
+    record.applyColumnLevelSecurity(key, access.allowTokens).applyResponseFieldsRules(key);
   }
 
   // Bulk import of records.
@@ -724,9 +950,25 @@ export default class RecordsController extends Controller {
       background,
       isCalculateSearchStrings = false,
       updateByDataField,
-      isReturnCreatedRecords
+      isReturnCreatedRecords,
     } = matchedData(req, { locations: ['body'] });
     const { user } = req.auth;
+
+    // Opt-in (`auth.strict`): an untrusted caller updates only public rows or rows that share a token with it.
+    // Other rows are skipped and not counted as updated, so a foreign and a missing row look the same.
+    let writeTokens: string[] | undefined;
+    try {
+      writeTokens = this.getWriteTokens(req);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+    // The caller may set only tokens it holds, on any record of the request (checked before anything is written).
+    if (writeTokens && Array.isArray(records)) {
+      const isDenied = records.some(
+        (v) => v && typeof v === 'object' && v.allowTokens !== undefined && !this.canAssignTokens(v.allowTokens, writeTokens),
+      );
+      if (isDenied) return this.responseError(res, 'Row tokens are not allowed.', 403);
+    }
 
     // Check records.
     if (!Array.isArray(records) || !records.every((v) => typeof v === 'object' && v !== null && typeof v.data === 'object')) {
@@ -766,11 +1008,10 @@ export default class RecordsController extends Controller {
 
     if (isCalculateSearchStrings) {
       const {
-        data: { toSearchString = '() => { return "" }' }
+        data: { toSearchString = '() => { return "" }' },
       } = keyModelResponse;
       records = records.map((record) => {
-        const isolate = new Isolation();
-        const toSearchStringResult = isolate.set('data', record.data).eval(`(${toSearchString})({ data: data })`);
+        const toSearchStringResult = this.sandbox.evalWithArgs(toSearchString, [{ data: record.data }]);
         if (Array.isArray(toSearchStringResult)) {
           const [searchString, searchString2, searchString3] = toSearchStringResult;
           return { ...record, searchString, searchString2, searchString3 };
@@ -793,7 +1034,7 @@ export default class RecordsController extends Controller {
           searchString: isCalculateSearchStrings ? v.searchString : v.data && v.data.fullTextAddress,
           keyId,
           user,
-          isEncrypted: isKeyEncrypted
+          isEncrypted: isKeyEncrypted,
         }));
     }
 
@@ -801,18 +1042,19 @@ export default class RecordsController extends Controller {
     let recordsToUpdate = [];
     if (!updateByDataField) {
       recordsToUpdate =
-        global.typeOf(updateByDataField) === 'string'
+        getTypeOf()(updateByDataField) === 'string'
           ? []
           : records
               .filter((v) => v.id)
               .map((v) => ({
                 meta: {},
-                allowTokens: [],
+                // A restricted caller leaves the row tokens unchanged unless it sends some.
+                allowTokens: writeTokens ? undefined : [],
                 ...v,
                 registerId,
                 keyId,
                 user,
-                isEncrypted: isKeyEncrypted
+                isEncrypted: isKeyEncrypted,
               }));
     }
 
@@ -827,7 +1069,7 @@ export default class RecordsController extends Controller {
           ...v,
           registerId,
           keyId,
-          user
+          user,
         }));
     }
 
@@ -839,10 +1081,10 @@ export default class RecordsController extends Controller {
         {
           keyRecords: records.length,
           recordsToImport: recordsToImport.length,
-          recordsToUpdate: recordsToUpdate.length
+          recordsToUpdate: recordsToUpdate.length,
         },
         undefined,
-        202
+        202,
       );
     }
 
@@ -859,7 +1101,8 @@ export default class RecordsController extends Controller {
     for (const recordToUpdate of recordsToUpdate) {
       const { id } = recordToUpdate;
       try {
-        await this.recordModel.update(id, recordToUpdate);
+        const { data: updatedRecord } = await this.recordModel.update(id, recordToUpdate, undefined, undefined, false, writeTokens);
+        if (writeTokens && !updatedRecord) continue;
         updatedRecords++;
       } catch (error) {
         this.log.save('update-record-error', { error: error && error.message, recordToUpdate });
@@ -870,13 +1113,17 @@ export default class RecordsController extends Controller {
     let updatedRecordsByDataField = 0;
     for (const recordToUpdateByDataField of recordsToUpdateByDataField) {
       try {
-        await this.recordModel.updateByDataField({
-          keyId,
-          registerId,
-          record: recordToUpdateByDataField,
-          dataFieldName: updateByDataField,
-          dataFieldValue: recordToUpdateByDataField.data[updateByDataField]
-        });
+        const { data: updatedRecord } = await this.recordModel.updateByDataField(
+          {
+            keyId,
+            registerId,
+            record: recordToUpdateByDataField,
+            dataFieldName: updateByDataField,
+            dataFieldValue: recordToUpdateByDataField.data[updateByDataField],
+          },
+          writeTokens,
+        );
+        if (writeTokens && !updatedRecord) continue;
         updatedRecordsByDataField++;
       } catch (error) {
         this.log.save('update-record-error', { error: error && error.message, recordToUpdateByDataField });
@@ -891,7 +1138,7 @@ export default class RecordsController extends Controller {
         recordsToUpdate: recordsToUpdate.length,
         importedRecords,
         updatedRecords,
-        updatedRecordsByDataField
+        updatedRecordsByDataField,
       });
     }
   }
@@ -902,7 +1149,7 @@ export default class RecordsController extends Controller {
     const { user: basicAuthUser } = req.auth;
 
     // Check records.
-    if (global.typeOf(recordsData) !== 'array' || !recordsData.every((v) => global.typeOf(v) === 'object')) {
+    if (getTypeOf()(recordsData) !== 'array' || !recordsData.every((v) => getTypeOf()(v) === 'object')) {
       return this.responseError(res, 'Can not create. All records should be defined as objects.', 500);
     }
 
@@ -936,20 +1183,16 @@ export default class RecordsController extends Controller {
     }
 
     const {
-      data: { toSearchString: toSearchStringFunction = '() => { return "" }' }
+      data: { toSearchString: toSearchStringFunction = '() => { return "" }' },
     } = keyModelResponse;
 
     // Create records.
     let createdRecords;
     try {
       const recordsToCreate = recordsData.map((data) => {
-        const isolate = new Isolation();
-        const toSearchString = isolate
-          .set('toSearchStringFunction', toSearchStringFunction)
-          .set('data', data)
-          .eval(`toSearchStringFunction({ data: data })`);
+        const toSearchString = this.sandbox.evalWithArgs(toSearchStringFunction, [{ data }]);
         const [searchString = null, searchString2 = null, searchString3 = null] =
-          global.typeOf(toSearchString) === 'array' ? toSearchString : [toSearchString];
+          getTypeOf()(toSearchString) === 'array' ? toSearchString : [toSearchString];
         return {
           registerId,
           keyId,
@@ -960,14 +1203,19 @@ export default class RecordsController extends Controller {
           searchString: searchString,
           searchString2: searchString2,
           searchString3: searchString3,
-          signature: null
+          signature: null,
+          isEncrypted: !!keyModelResponse.data.isEncrypted,
         };
       });
-      createdRecords = await this.recordModel.bulkCreate(recordsToCreate, true, isDisableHooks);
+      // Hooks perform encryption, so isDisableHooks is ignored for encrypted keys.
+      if (isDisableHooks && keyModelResponse.data.isEncrypted) {
+        this.log.save('bulk-create-records-by-person-disable-hooks-ignored', { keyId });
+      }
+      createdRecords = await this.recordModel.bulkCreate(recordsToCreate, true, isDisableHooks && !keyModelResponse.data.isEncrypted);
     } catch (error) {
       this.log.save('bulk-create-records-by-person-error', { error: error && error.message });
       if (error.name === SEQUELIZE_EXCLUSION_CONSTRAINT_ERROR) {
-        error.code = DB_CONSTRAINT_ERROR_CODE;
+        return this.responseError(res, Object.assign(new PublicError('Database constraint error.'), { code: DB_CONSTRAINT_ERROR_CODE }));
       }
       return this.responseError(res, error);
     }
@@ -1003,23 +1251,23 @@ export default class RecordsController extends Controller {
         {
           register_id: registerId,
           key_id: keyId,
-          id: { [Sequelize.Op.notIn]: skipRecordIds }
+          id: { [Sequelize.Op.notIn]: skipRecordIds },
         },
         undefined,
-        () => {}
+        () => {},
       );
       this.log.save('bulk-delete-records-end', result);
 
       this.responseData(res, {
         removedRecords: result.removedRecords,
-        nonRemovedRecords: result.nonRemovedRecords
+        nonRemovedRecords: result.nonRemovedRecords,
       });
     } catch (error) {
       this.log.save('bulk-delete-records-error', {
         error: error && error.message,
         registerId,
         keyId,
-        skipRecordIds
+        skipRecordIds,
       });
       return this.responseError(res, 'Error while deleting records.', 500);
     }
@@ -1034,7 +1282,7 @@ export default class RecordsController extends Controller {
       split_by_fields: splitByFields = false,
       split_by_fields_order: splitByFieldsOrder = 'asc',
       offset,
-      limit
+      limit,
     } = { offset: 0, limit: 20, ...matchedData(req, { locations: ['query'] }) } as any;
 
     // Get history records.
@@ -1051,15 +1299,36 @@ export default class RecordsController extends Controller {
       return this.responseError(res, 'Not found.', 404);
     }
 
-    if (historyList.length > 0 && historyList[0].keyId) {
-      const keyId = historyList[0].keyId;
-      if (!(await this.keyModel.checkRecordsReadableById(keyId))) {
-        return this.responseError(res, 'Key records are not readable.', 403, { keyId });
+    let access: CallerAccess;
+    try {
+      access = this.getCallerAccess(req);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+
+    let visibleHistory = historyList;
+    if (access.trusted) {
+      if (historyList.length > 0 && historyList[0].keyId) {
+        const keyId = historyList[0].keyId;
+        if (!(await this.keyModel.checkRecordsReadableById(keyId))) {
+          return this.responseError(res, 'Key records are not readable.', 403, { keyId });
+        }
+      }
+    } else {
+      // Snapshots are raw rows: apply the key, row and field rules of live records to every one. Fail closed.
+      try {
+        visibleHistory = await new HistoryAccess(this.keyModel, access.allowTokens, req.auth?.userLimitedAccessKeys).project(historyList);
+      } catch (error) {
+        if (error instanceof HistoryKeyForbiddenError) {
+          return this.responseError(res, 'Key records are not readable.', 403, { keyId: error.keyId });
+        }
+        this.log.save('get-history-by-record-id-access-error', { error: error && error.message });
+        return this.responseError(res, 'Unable to authorize history.', 500);
       }
     }
 
     // Response.
-    const historyToReturn = splitByFields ? this.historyBusiness.splitByFields(historyList, splitByFieldsOrder) : historyList;
+    const historyToReturn = splitByFields ? this.historyBusiness.splitByFields(visibleHistory, splitByFieldsOrder) : visibleHistory;
     this.responseData(res, historyToReturn, meta);
   }
 
@@ -1079,6 +1348,18 @@ export default class RecordsController extends Controller {
     }
 
     const { user } = req.auth;
+
+    // Opt-in (`auth.strict`): an untrusted caller may only put tokens it holds on a new row.
+    if (allowTokensFiltered) {
+      try {
+        const writeTokens = this.getWriteTokens(req);
+        if (writeTokens && !this.canAssignTokens(allowTokensFiltered, writeTokens)) {
+          return this.responseError(res, 'Row tokens are not allowed.', 403);
+        }
+      } catch {
+        return this.responseError(res, 'Invalid register access configuration.', 500);
+      }
+    }
 
     // Get key.
     let keyModelResponse: Awaited<ReturnType<typeof KeyModel.prototype.findById>>;
@@ -1109,7 +1390,7 @@ export default class RecordsController extends Controller {
       }
     } catch (error) {
       this.log.save('create-record-schema-error', { error: error && error.message });
-      return this.responseError(res, 'Invalid JSON schema.', 400, error.toString());
+      return this.responseError(res, 'Invalid JSON schema.', 400);
     }
 
     // Check validation identity
@@ -1117,7 +1398,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('CREATE', keyId, undefined, data, signature);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 400);
+      return this.responseError(res, error, 400);
     }
 
     // Check XSS.
@@ -1125,7 +1406,7 @@ export default class RecordsController extends Controller {
       this.checkXss(data);
     } catch (error) {
       this.log.save('create-record-error|detected-xss', { error: error.toString() });
-      return this.responseError(res, 'Create record error. Detected potential XSS.', 400, { error: error.toString() });
+      return this.responseError(res, 'Create record error. Detected potential XSS.', 400);
     }
 
     // Search string function.
@@ -1134,8 +1415,7 @@ export default class RecordsController extends Controller {
     let searchString2;
     let searchString3;
     try {
-      const isolate = new Isolation();
-      const searchStrings = isolate.set('data', data).eval(`(${toSearchString})({ data: data })`);
+      const searchStrings = this.sandbox.evalWithArgs(toSearchString, [{ data }]);
       if (Array.isArray(searchStrings)) {
         searchString = searchStrings[0];
         searchString2 = searchStrings[1];
@@ -1167,20 +1447,28 @@ export default class RecordsController extends Controller {
           searchString3,
           person,
           signature,
-          isEncrypted: keyModelResponse.data.isEncrypted
+          isEncrypted: keyModelResponse.data.isEncrypted,
         } as any,
         true,
-        historyMeta
+        historyMeta,
       );
     } catch (error) {
       this.log.save('create-record-error', { error: error && error.message });
-      return this.responseError(res, 'Create record error.', 400, error.message);
+      return this.responseError(res, 'Create record error.', 400);
     }
     const { data: record } = recordModelResponse || {};
 
     // Check.
     if (!record) {
       return this.responseError(res, 'Can not create.', 500);
+    }
+
+    // Hide columns and fields the caller cannot read (same rules as reads). Fail closed.
+    try {
+      await this.projectWriteResponse(req, record);
+    } catch (error) {
+      this.log.save('create-record-response-error', { error: error && error.message });
+      return this.responseError(res, 'Unable to authorize record.', 500);
     }
 
     // Response.
@@ -1208,6 +1496,29 @@ export default class RecordsController extends Controller {
     const { user } = req.auth;
     let modelResponse: Awaited<ReturnType<typeof KeyModel.prototype.findById>>;
 
+    // Opt-in (`auth.strict`): an untrusted caller may update only public rows or rows that share a token with it.
+    // A foreign and a missing row are indistinguishable (403). The model repeats the check in the write itself.
+    let writeTokens: string[] | undefined;
+    try {
+      writeTokens = this.getWriteTokens(req);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+    // The caller may set only tokens it holds. Dropping tokens the row carries is refused by the model in the write itself.
+    if (writeTokens && allowTokensFiltered && !this.canAssignTokens(allowTokensFiltered, writeTokens)) {
+      return this.responseError(res, 'Row tokens are not allowed.', 403);
+    }
+    if (writeTokens) {
+      try {
+        if (!(await this.recordModel.isWritableById(id, writeTokens))) {
+          return this.responseError(res, 'Record is not writable.', 403);
+        }
+      } catch (error) {
+        this.log.save('update-record-error', { error: error && error.message });
+        return this.responseError(res, 'Can not update.', 500);
+      }
+    }
+
     // Validate.
     try {
       modelResponse = await this.keyModel.findById(keyId);
@@ -1233,7 +1544,7 @@ export default class RecordsController extends Controller {
       await this.checkValidationIdentity('UPDATE', keyId, undefined, data, signature);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 400);
+      return this.responseError(res, error, 400);
     }
 
     // Check XSS.
@@ -1241,7 +1552,7 @@ export default class RecordsController extends Controller {
       this.checkXss(data);
     } catch (error) {
       this.log.save('update-record-error|detected-xss', { error: error.toString() });
-      return this.responseError(res, 'Update record error. Detected potential XSS.', 400, { error: error.toString() });
+      return this.responseError(res, 'Update record error. Detected potential XSS.', 400);
     }
 
     // Search string function.
@@ -1250,8 +1561,7 @@ export default class RecordsController extends Controller {
     let searchString2;
     let searchString3;
     try {
-      const isolate = new Isolation();
-      const searchStrings = isolate.set('data', data).eval(`(${toSearchString})({ data: data })`);
+      const searchStrings = this.sandbox.evalWithArgs(toSearchString, [{ data }]);
       if (Array.isArray(searchStrings)) {
         searchString = searchStrings[0];
         searchString2 = searchStrings[1];
@@ -1278,19 +1588,30 @@ export default class RecordsController extends Controller {
       person,
       signature,
       isEncrypted: modelResponse.data.isEncrypted,
-      allowTokens: allowTokensFiltered
+      allowTokens: allowTokensFiltered,
     };
     let recordModelResponse;
+    let isUpdateFailed = false;
     try {
-      recordModelResponse = await this.recordModel.update(id, recordToUpdate, true, historyMeta);
+      recordModelResponse = await this.recordModel.update(id, recordToUpdate, true, historyMeta, false, writeTokens);
     } catch (error) {
+      isUpdateFailed = true;
       this.log.save('update-record-error', { error: error && error.message, recordToUpdate });
     }
     const { data: record } = recordModelResponse || {};
 
     // Check.
     if (!record) {
+      // The row was taken or removed since the check above (nothing was written).
+      if (writeTokens && !isUpdateFailed) return this.responseError(res, 'Record is not writable.', 403);
       return this.responseError(res, 'Can not update.', 500);
+    }
+
+    try {
+      await this.projectWriteResponse(req, record);
+    } catch (error) {
+      this.log.save('update-record-response-error', { error: error && error.message });
+      return this.responseError(res, 'Unable to authorize record.', 500);
     }
 
     // Response.
@@ -1306,27 +1627,75 @@ export default class RecordsController extends Controller {
     const { id } = matchedData(req, { locations: ['params'] });
     const { keyId, properties } = matchedData(req, { locations: ['body'] });
 
+    // Only the record data can be patched. Columns such as `key_id`, `id`, `meta`, `allow_tokens` or the audit fields are never writable here.
+    if ((properties || []).some(({ path }) => path !== 'data' && !String(path).startsWith('data.'))) {
+      return this.responseError(res, 'Only `data` properties can be patched.', 400);
+    }
+
+    // A bare `data` path replaces the whole row data (and skips the key schema check), so it must be a plain object.
+    // Sub-paths (`data.x`) are unaffected.
+    if ((properties || []).some(({ path, value }) => path === 'data' && (value === null || typeof value !== 'object' || Array.isArray(value)))) {
+      return this.responseError(res, 'Patching `data` requires an object value.', 400);
+    }
+
     // Check validation identity
     try {
       await this.checkValidationIdentity('BLOCK', keyId);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 400);
+      return this.responseError(res, error, 400);
     }
 
-    if (!(await this.keyModel.checkRecordsWritableById(keyId))) {
-      return this.responseError(res, 'Key records are not writable.', 403);
+    // Opt-in (`auth.strict`): an untrusted caller may patch only public rows or rows that share a token with it.
+    let writeTokens: string[] | undefined;
+    try {
+      writeTokens = this.getWriteTokens(req);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
     }
+    // The patched data must satisfy the key JSON schema (incl. uniqueness), the same as PUT. Checked on the row inside the model write.
+    let schema;
+    try {
+      const keyModelResponse = await this.keyModel.findById(keyId);
+      if (!keyModelResponse) {
+        return this.responseError(res, 'Can not find key.', 404);
+      }
+      if (!this.keyModel.checkRecordsWritable(keyModelResponse.data)) {
+        return this.responseError(res, 'Key records are not writable.', 403);
+      }
+      schema = keyModelResponse.data?.schema;
+    } catch (error) {
+      this.log.save('update-record-schema-error', { error: error && error.message });
+      return this.responseError(res, 'JSON schema validation error.', 500, 'Cannot validate record data');
+    }
+    const validate = async (data, recordId) => {
+      try {
+        return await new JsonSchema(schema ?? {}).check(data, keyId, recordId);
+      } catch (error) {
+        this.log.save('update-record-schema-error', { error: error && error.message });
+        throw new Error('Cannot validate record data');
+      }
+    };
 
     try {
-      const recordModelResponse = await this.recordModel.updatePatch(id, keyId, properties);
+      const recordModelResponse = await this.recordModel.updatePatch(id, keyId, properties, writeTokens, validate);
       if (!recordModelResponse) {
-        return this.responseError(res, 'Cannot update.', 500);
+        // With token enforcement a missing and a foreign row look the same, so existence is not disclosed.
+        return writeTokens ? this.responseError(res, 'Record is not writable.', 403) : this.responseError(res, 'Cannot update.', 500);
       }
 
+      await this.projectWriteResponse(req, recordModelResponse);
       this.responseData(res, recordModelResponse);
     } catch (error) {
+      if (error instanceof PatchValidationError) {
+        return this.responseError(res, 'JSON schema validation error.', 400, error.validatorErrors);
+      }
+      if (error?.message === 'Cannot validate record data') {
+        return this.responseError(res, 'JSON schema validation error.', 500, 'Cannot validate record data');
+      }
       this.log.save('update-record-status-error', { error: error?.message, properties });
+      // Fail closed: never leave the request hanging or return an unprojected record.
+      return this.responseError(res, 'Cannot update.', 500);
     }
   }
 
@@ -1337,21 +1706,49 @@ export default class RecordsController extends Controller {
    */
   async search(req, res) {
     // Define params.
-    const { key_id: keyId, text, search_key: searchKey, allow_tokens: allowTokens, limit, offset = 0 } = matchedData(req, { locations: ['query'] });
+    const { key_id: keyId, text, search_key: searchKey, limit, offset = 0 } = matchedData(req, { locations: ['query'] });
+    let access: CallerAccess;
+    try {
+      // Server-side tokens only; the client-supplied `allow_tokens` is never honoured here.
+      // Trusted callers (e.g. task) keep the unrestricted behaviour.
+      access = this.getCallerAccess(req);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
+    const allowTokens: string[] | undefined = access.trusted ? undefined : access.allowTokens;
     const { main: mainSearchConfig, [keyId]: specificSearchConfig } = this.config.search;
 
-    if (!(await this.keyModel.checkRecordsReadableById(keyId))) {
+    let key: KeyEntity | undefined;
+    try {
+      key = (await this.keyModel.findById(keyId))?.data;
+    } catch (error) {
+      this.log.save('search-record-error', { error: error && error.message });
+      return this.responseError(res, 'Searching error.', 500);
+    }
+    const limitedKeys = req.auth?.userLimitedAccessKeys;
+    if (!key || !this.keyModel.checkRecordsReadable(key) || (limitedKeys && !limitedKeys.map(String).includes(String(keyId)))) {
       return this.responseError(res, 'Key records are not readable.', 403, { keyId });
     }
-    const keyModelResponse = await this.keyModel.findById(keyId);
-    if (keyModelResponse.data.isEncrypted) {
+    if (key.isEncrypted) {
       return this.responseError(res, 'Search is not allowed for encrypted keys.', 400);
     }
 
-    // Define search params.
+    // Define search params. A per-key server default lets existing callers avoid an unsafe derived index.
     const searchConfig = specificSearchConfig || mainSearchConfig;
     const { resultsCount = 10 } = searchConfig;
-    const recordSearchKey = searchKey ? `data.${searchKey}` : 'search_string';
+    const effectiveSearchKey = allowTokens ? searchKey || specificSearchConfig?.defaultSearchKey : searchKey;
+    if (allowTokens) {
+      try {
+        const readable = effectiveSearchKey ? canSearchField(key, effectiveSearchKey, allowTokens) : canSearchString(key, allowTokens);
+        if (!readable) {
+          return this.responseError(res, 'Search field is not readable.', 403);
+        }
+      } catch (error) {
+        this.log.save('search-record-error', { error: error && error.message });
+        return this.responseError(res, 'Searching error.', 500);
+      }
+    }
+    const recordSearchKey = effectiveSearchKey ? `data.${effectiveSearchKey}` : 'search_string';
     let textList;
     try {
       textList = this.searchBusiness.getTextList(text, searchConfig);
@@ -1363,34 +1760,42 @@ export default class RecordsController extends Controller {
     // Find records.
     let records;
     try {
-      records = await this.recordModel.search(keyId, recordSearchKey, textList, limit || resultsCount, offset);
+      records = await this.recordModel.search(keyId, recordSearchKey, textList, limit || resultsCount, offset, allowTokens);
 
-      // Column-level security.
-      const recordsKeyId = records.data && records.data[0] && records.data[0].keyId;
-      if (recordsKeyId && allowTokens) {
-        const { data: key } = (recordsKeyId && (await this.keyModel.findById(recordsKeyId))) || {};
-        for (const recordModelResponse of records.data) {
-          recordModelResponse.applyColumnLevelSecurity(key, allowTokens).applyResponseFieldsRules(key);
+      if (allowTokens) {
+        // Defend against unexpected model results before any response or audit.
+        for (const record of records.data) {
+          if (record.keyId !== key.id || record.isEncrypted || !this.isRecordReadableByTokens(record, allowTokens)) {
+            throw new Error('Search returned an unreadable record.');
+          }
         }
       }
     } catch (error) {
-      this.log.save('search-record-error', { error: error && error.message, stack: error && error.stack });
-    }
-
-    // Check.
-    if (!records) {
+      this.log.save('search-record-error', { error: error && error.message });
       return this.responseError(res, 'Searching error.', 500);
     }
 
-    this.accessLogBusiness.saveIfNeedIt(records && records.data, req.accessInfo);
-
-    // Check validation identity
+    // Check validation identity on the original data, before hiding fields.
     try {
       await this.checkValidationIdentity('GET', keyId, records.data);
     } catch (error) {
       this.log.save('check-validation-identity-error', { error: error.message, details: error.details });
-      return this.responseError(res, error.message, 500);
+      return this.responseError(res, error, 500);
     }
+
+    // Column-level security.
+    if (allowTokens) {
+      try {
+        for (const record of records.data) {
+          record.applyColumnLevelSecurity(key, allowTokens).applyResponseFieldsRules(key);
+        }
+      } catch (error) {
+        this.log.save('search-record-error', { error: error && error.message });
+        return this.responseError(res, 'Searching error.', 500);
+      }
+    }
+
+    this.accessLogBusiness.saveIfNeedIt(records.data, req.accessInfo);
 
     // Response.
     this.responseData(res, records);
@@ -1410,6 +1815,7 @@ export default class RecordsController extends Controller {
 
     // Delete record.
     const historyMeta = { accessInfo: req.accessInfo || {} };
+
     let deletedRowsCountModelResponse;
     try {
       const record = await this.recordModel.findById(id);
@@ -1445,7 +1851,7 @@ export default class RecordsController extends Controller {
         if (Array.isArray(data[dataKey])) {
           if (data[dataKey].includes('null')) {
             data[dataKey] = {
-              [Sequelize.Op.or]: [{ [Sequelize.Op.in]: data[dataKey].filter((v) => v !== 'null') }, { [Sequelize.Op.is]: null }]
+              [Sequelize.Op.or]: [{ [Sequelize.Op.in]: data[dataKey].filter((v) => v !== 'null') }, { [Sequelize.Op.is]: null }],
             };
           } else {
             data[dataKey] = { [Sequelize.Op.in]: data[dataKey] };
@@ -1514,10 +1920,10 @@ export default class RecordsController extends Controller {
     keyId: number,
     records: RecordEntity[] = [],
     recordData?: any,
-    signature?: any
+    signature?: any,
   ) {
     if (type === 'GET') {
-      const validationIdentity = global.config?.key_signature[keyId]?.validationIdentity;
+      const validationIdentity = getConfig()?.key_signature[keyId]?.validationIdentity;
       if (validationIdentity) {
         for (const record of records) {
           if (!record.signature) {
@@ -1531,7 +1937,7 @@ export default class RecordsController extends Controller {
             await this.sign.verifySignatureExternal(recordDataInBase64, record.signature);
           } catch (error) {
             throw new Error(
-              `Internal Error. BPMN Register. Verify signature error. Record ${record.id}. ${error.message}. ${error.response?.body?.error}.`
+              `Internal Error. BPMN Register. Verify signature error. Record ${record.id}. ${error.message}. ${error.response?.body?.error}.`,
             );
           }
         }
@@ -1540,7 +1946,7 @@ export default class RecordsController extends Controller {
         for (const record of records) {
           if (record.signature) {
             throw new Error(
-              `Internal Error. BPMN Register. Record ${record.id} has a signature. But key ${record.keyId} does not require a signature`
+              `Internal Error. BPMN Register. Record ${record.id} has a signature. But key ${record.keyId} does not require a signature`,
             );
           }
         }
@@ -1548,12 +1954,12 @@ export default class RecordsController extends Controller {
     }
 
     if (type === 'UPDATE' || type === 'CREATE') {
-      const validationIdentity = global.config?.key_signature[keyId]?.validationIdentity;
+      const validationIdentity = getConfig()?.key_signature[keyId]?.validationIdentity;
       if (!signature && validationIdentity) {
-        throw new Error(`Internal Error. BPMN Register. Key ${keyId} signature required.`);
+        throw new PublicError(`Internal Error. BPMN Register. Key ${keyId} signature required.`);
       }
       if (signature && !validationIdentity) {
-        throw new Error(`Internal Error. BPMN Register. Signature not allowed for key ${keyId}.`);
+        throw new PublicError(`Internal Error. BPMN Register. Signature not allowed for key ${keyId}.`);
       }
       if (signature && validationIdentity) {
         let verifySignatureResponse;
@@ -1571,19 +1977,19 @@ export default class RecordsController extends Controller {
           !validationIdentity.includes(verifySignatureResponse.data?.subjDRFOCode) &&
           !validationIdentity.includes(verifySignatureResponse.data?.subjEDRPOUCode)
         ) {
-          throw new global.ErrorWithDetails('User do not have permission to sign record.', {
+          throw new ErrorWithDetails('User do not have permission to sign record.', {
             signature,
             verifySignatureResponse,
-            validationIdentity
+            validationIdentity,
           });
         }
       }
     }
 
     if (type === 'BLOCK') {
-      const validationIdentity = global.config?.key_signature[keyId]?.validationIdentity;
+      const validationIdentity = getConfig()?.key_signature[keyId]?.validationIdentity;
       if (validationIdentity) {
-        throw new Error(`Internal Error. BPMN Register. Update patch method doesnt allowed for this key ${keyId}. Key required sign.`);
+        throw new PublicError(`Internal Error. BPMN Register. Update patch method doesnt allowed for this key ${keyId}. Key required sign.`);
       }
     }
   }
@@ -1604,13 +2010,13 @@ export default class RecordsController extends Controller {
       and: Sequelize.Op.and,
       any: Sequelize.Op.any,
       all: Sequelize.Op.all,
-      contains: Sequelize.Op.contains
+      contains: Sequelize.Op.contains,
     };
 
     function replace(object) {
-      if (global.typeOf(object) === 'array') {
+      if (getTypeOf()(object) === 'array') {
         return object.map(replace);
-      } else if (global.typeOf(object) === 'object') {
+      } else if (getTypeOf()(object) === 'object') {
         return Object.fromEntries(Object.entries(object).map(([k, v]) => [k in operators ? operators[k] : k, replace(v)]));
       } else {
         return object;
@@ -1674,7 +2080,7 @@ export default class RecordsController extends Controller {
           'iframe',
           'header',
           'footer',
-          'a'
+          'a',
         ],
         ALLOWED_ATTR: [
           'style',
@@ -1692,8 +2098,8 @@ export default class RecordsController extends Controller {
           'title',
           'href',
           'rel',
-          'target'
-        ]
+          'target',
+        ],
       };
 
       const flattenRecordData = flattenjs.flatten(recordData);
@@ -1706,7 +2112,7 @@ export default class RecordsController extends Controller {
         if (value !== sanitizedValue) {
           errors.push({
             key,
-            value
+            value,
           });
         }
       }

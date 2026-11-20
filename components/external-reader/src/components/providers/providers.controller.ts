@@ -1,18 +1,8 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  HttpException,
-  InternalServerErrorException,
-  Param,
-  Post,
-  Res,
-} from '@nestjs/common';
+import { BadRequestException, Body, Controller, HttpException, InternalServerErrorException, Param, Post, Res } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
 
 import { LoggerService } from '@components/observability/logger.service';
-
 import { ProviderMethodArgs } from './base.provider';
 import { ProvidersService } from './providers.service';
 
@@ -70,10 +60,7 @@ export class ProvidersController {
           error: error.message,
           stack: error.stack,
         });
-        throw new InternalServerErrorException(
-          error,
-          `Error executing method ${method} for service ${service}: ${error.message}`,
-        );
+        throw new InternalServerErrorException(error, `Error executing method ${method} for service ${service}: ${error.message}`);
       }
     } catch (error) {
       this.logger.error('provider-controller|request-failed', {

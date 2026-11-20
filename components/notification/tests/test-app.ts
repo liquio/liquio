@@ -1,27 +1,34 @@
 // @ts-nocheck
-import supertest from 'supertest';
-import * as portfinder from 'portfinder';
-import * as pg from 'pg';
-import nock from 'nock';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
+
+import supertest from 'supertest';
+import * as pg from 'pg';
+import nock from 'nock';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
-import * as Multiconf from 'multiconf';
+import { Config, Log, resetIdApiClient } from '@liquio/back-core';
 
-import { ConsoleLogProvider, Log } from '@liquio/back-core';
-import { testConsoleSmsAdapter } from '../src/adapters/test_console_sms_adapter';
+import { buildAdapters } from '../src/bootstrap';
+import { createConsoleLogProvider } from '../src/lib/console_log_provider';
+import { setAppContext } from '../src/lib/context';
 
 const debug = createDebug;
 
+// Route raw console output through debug, so e2e runs stay quiet unless DEBUG=test:* is set.
+for (const method of ['log', 'info', 'warn', 'error', 'debug']) {
+  console[method] = (...args) => debug('test:console')(...args);
+}
+
 // E2E tests are slow, so we increase the timeout.
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
-jest.mock('back-core', () => {
-  const original = jest.requireActual('back-core');
+jest.mock('@liquio/back-core', () => {
+  const original = jest.requireActual('@liquio/back-core');
   const { Log: OriginalLog } = original;
   const logs = [];
   const emitter = new EventEmitter();
@@ -64,7 +71,7 @@ jest.mock('back-core', () => {
 // Point every still-eager `import { conf } from '../config/config'` (several controllers do this
 // at module scope) at the tracked config-templates directory rather than the gitignored, optional
 // `config/notification` directory a local dev checkout may or may not have populated.
-process.env.CONFIG_PATH = path.join(__dirname, '../../config-templates/notification');
+process.env.CONFIG_PATH = path.join(__dirname, '../../../config-templates/notification');
 
 // Jest force-sets NODE_ENV=test if nothing else set it, before any test file runs. config.ts
 // resolves its env block as `process.env.NODE_ENV || mergedConfig.default_env`, so that forced
@@ -82,13 +89,21 @@ const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_NOT
 // Obtain the default configuration object the same way src/config/config.ts does, without
 // importing that module directly - it has its own CONFIG_PATH resolution and side effects we
 // don't want to entangle this harness with.
-const rawConfig: any = Multiconf.get(CONFIG_TEMPLATE_PATH, `${LIQUIO_CONFIG_PREFIX}_`).config;
+const rawConfig: any = Config.load({
+  configPath: CONFIG_TEMPLATE_PATH,
+  secretPath: null,
+  envPrefix: `${LIQUIO_CONFIG_PREFIX}_`,
+  transform: (raw: any) => raw.config,
+}).toObject();
 const defaultEnv = rawConfig.default_env || 'production';
 const versionsConfText = readFileSync(path.join(__dirname, '../src/config/versions.json.default'), 'utf8');
 const versionsConf = JSON.parse(versionsConfText || '{}');
 const defaultConf = { ...rawConfig[defaultEnv], ...versionsConf };
 
-const confOverride: any = {};
+// The config template ships no admin password (NT-21), so the harness sets a test one.
+export const TEST_ADMIN = { login: 'e2e-admin', password: 'e2e-admin-pass' };
+
+const confOverride: any = { adminConfig: { ...TEST_ADMIN } };
 
 // Credentials for the two auth middlewares (auth.ts's checkAuth/checkTestAuth), injected via
 // config rather than seeded DB rows - checkAuth accepts a plain config.authorization.list match
@@ -107,6 +122,7 @@ export class TestApp {
 
   server: any;
   httpServer: any;
+  port: number;
   log: any;
 
   constructor() {
@@ -160,11 +176,6 @@ export class TestApp {
 
     await TestApp.applyMigrations(confOverride.db);
 
-    confOverride.port = await portfinder.getPortPromise({
-      host: 'localhost',
-      startPort: 60000 + (process.pid % 1000),
-    });
-
     nock.activate();
   }
 
@@ -184,33 +195,43 @@ export class TestApp {
   }
 
   async init() {
-    // Merge config with overrides, mirroring src/app.ts's `{conf, env}` shape.
+    // Merge config with overrides, mirroring src/bootstrap.ts's `{conf, env}` shape.
     const conf = { ...defaultConf, ...confOverride };
     const config = { conf, env: defaultEnv };
 
-    // Init log the same way src/index.ts does, before anything that might read global.log.
-    const consoleLogProvider = new ConsoleLogProvider(conf.log?.console?.name, { excludeParams: conf.log?.excludeParams });
+    // Init log the same way src/index.ts does, before anything that might read the context log.
+    const consoleLogProvider = createConsoleLogProvider(conf.log);
     const log = new Log([consoleLogProvider], ['console']);
     this.log = log;
-    global.log = log;
+    setAppContext({ log });
 
-    // Deferred require: src/app.ts's start() sets global.conf/env/adminStaticDir/extensions and
+    // Deferred require: src/bootstrap.ts's start() sets the app context conf/env/adminStaticDir/extensions and
     // only then requires src/server.ts (and, transitively, every model's DB connection) - importing
-    // it statically here would run that boot sequence before global.log/global.conf are ready.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const start = require('../src/app').default;
+    // it statically here would run that boot sequence before the context log/conf are ready.
+
+    // Each app gets an id-api client built from its own config (start() inits it).
+    resetIdApiClient();
+
+    const start = require('../src/bootstrap').default;
     // Mirror src/index.ts's real adapter wiring: config's defaultMessenger ("testConsoleSmsAdapter")
     // routes through CustomGate to this adapter, which just logs and returns a canned response.
-    this.server = start(config, undefined, { sms: testConsoleSmsAdapter });
+    this.server = start(config, undefined, buildAdapters(conf, log));
   }
 
   async listen() {
-    const { port } = confOverride;
-    await new Promise((resolve) => {
+    // Port 0 lets the OS pick a free port atomically at listen time (no race between workers).
+    await new Promise((resolve, reject) => {
       // express's app.listen() returns the underlying http.Server (not the app) - keep it
       // separately, since that's what actually needs closing in destroy().
-      this.httpServer = this.server.listen(port, () => resolve(undefined));
+      const httpServer = this.server.listen(0, '127.0.0.1');
+      this.httpServer = httpServer;
+      httpServer.once('error', reject);
+      httpServer.once('listening', () => {
+        httpServer.off('error', reject);
+        resolve(undefined);
+      });
     });
+    this.port = this.httpServer.address().port;
   }
 
   // Run this before each test.
@@ -234,7 +255,7 @@ export class TestApp {
 
   // Obtain a client instance to interact with the application.
   request() {
-    return supertest(`http://localhost:${confOverride.port}`);
+    return supertest(`http://127.0.0.1:${this.port}`);
   }
 
   nock(...args: any[]) {
@@ -246,7 +267,7 @@ export class TestApp {
     if (this.httpServer) {
       await new Promise((resolve) => this.httpServer.close(resolve));
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+
     const { connection } = require('../src/models/DB');
     await connection?.close();
   }

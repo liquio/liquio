@@ -1,5 +1,5 @@
-
 import { checkSchema } from 'express-validator';
+
 import { Validator } from './validator';
 
 /**
@@ -41,4 +41,3 @@ export class TestValidator extends Validator {
     return checkSchema({});
   }
 }
-

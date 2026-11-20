@@ -1,4 +1,3 @@
-
 import qrImage from 'qr-image';
 
 // Constants.
@@ -6,7 +5,7 @@ const IMAGE_TYPES = {
   svg: 'svg',
   png: 'png',
   eps: 'eps',
-  pdf: 'pdf'
+  pdf: 'pdf',
 };
 
 /**
@@ -20,7 +19,7 @@ export class QrGenerator {
    */
   constructor() {
     // Define singleton.
-    if (!QrGenerator.singleton) { 
+    if (!QrGenerator.singleton) {
       QrGenerator.singleton = this;
     }
     return QrGenerator.singleton;
@@ -36,4 +35,3 @@ export class QrGenerator {
     return image;
   }
 }
-

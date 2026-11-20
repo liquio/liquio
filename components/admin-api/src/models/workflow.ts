@@ -1,11 +1,11 @@
 import Sequelize from 'sequelize';
-import SqlString from 'sequelize/lib/sql-string';
 import moment from 'moment';
 import _ from 'lodash';
 
 import { Model } from './model';
 import { Entity } from '../entities/entity';
 import { WorkflowEntity } from '../entities/workflow';
+import { getModels } from '../lib/context';
 
 export class WorkflowModel extends Model {
   static singleton: WorkflowModel;
@@ -119,28 +119,30 @@ export class WorkflowModel extends Model {
       });
     }
 
+    const andFilters: any[] = [];
+
     if (filters.task_template_id) {
-      sequelizeOptions.filters[Sequelize.Op.and] = [
+      andFilters.push(
         Sequelize.literal(
           `exists (select id from tasks t where t.workflow_id = workflow.id and t.task_template_id = ${parseInt(filters.task_template_id)})`,
         ),
-      ];
+      );
     }
 
     if (filters.event_template_id) {
-      sequelizeOptions.filters[Sequelize.Op.and] = [
+      andFilters.push(
         Sequelize.literal(
           `exists (select id from events e where e.workflow_id = workflow.id and e.event_template_id = ${parseInt(filters.event_template_id)})`,
         ),
-      ];
+      );
     }
 
     if (filters.gateway_template_id) {
-      sequelizeOptions.filters[Sequelize.Op.and] = [
+      andFilters.push(
         Sequelize.literal(
           `exists (select id from gateways g where g.workflow_id = workflow.id and g.gateway_template_id = ${parseInt(filters.gateway_template_id)})`,
         ),
-      ];
+      );
     }
 
     if (typeof filters.name !== 'undefined') {
@@ -155,21 +157,26 @@ export class WorkflowModel extends Model {
     }
 
     if (typeof filters.is_draft !== 'undefined') {
-      sequelizeOptions.filters[Sequelize.Op.and] = [Sequelize.literal("workflow.data -> 'messages' is null")];
+      andFilters.push(Sequelize.literal("workflow.data -> 'messages' is null"));
       delete sequelizeOptions.filters['is_draft'];
     }
 
     if (typeof filters.is_not_draft !== 'undefined') {
-      sequelizeOptions.filters[Sequelize.Op.and] = [Sequelize.literal("workflow.data -> 'messages' is not null")];
+      andFilters.push(Sequelize.literal("workflow.data -> 'messages' is not null"));
       delete sequelizeOptions.filters['is_not_draft'];
     }
 
     if (filters.user_data) {
-      sequelizeOptions.filters[Sequelize.Op.and] = [Sequelize.literal(`workflow.user_data#>>'{userId}' = ${SqlString.escape(filters.user_data)}`)];
+      // Bind the value (never interpolate request data into SQL text).
+      andFilters.push(Sequelize.where(Sequelize.literal("workflow.user_data#>>'{userId}'"), String(filters.user_data)));
+    }
+
+    if (andFilters.length > 0) {
+      sequelizeOptions.filters[Sequelize.Op.and] = andFilters;
     }
 
     sequelizeOptions.include = [
-      { model: global.models.workflowTemplate.model, required: true, include: [{ model: global.models.workflowTemplateCategory.model }] },
+      { model: getModels().workflowTemplate.model, required: true, include: [{ model: getModels().workflowTemplateCategory.model }] },
     ];
 
     if (extended) {
@@ -187,7 +194,7 @@ export class WorkflowModel extends Model {
 
       sequelizeOptions.include.push({
         attributes: ['service_name', 'created_at'],
-        model: global.models.workflowError.model,
+        model: getModels().workflowError.model,
         required: requiredJoinWorkflowError,
         duplicating: filters['has_errors'] === false ? false : true,
         where: whereWorkflowError,
@@ -226,7 +233,7 @@ export class WorkflowModel extends Model {
 
       if (item.workflowTemplate && item.workflowTemplate.workflowTemplateCategory) {
         const workflowTemplateCategory = item.workflowTemplate.workflowTemplateCategory;
-        const workflowTemplateCategoryEntity = global.models.workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
+        const workflowTemplateCategoryEntity = getModels().workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
 
         workflowEntity.workflowTemplate.workflowTemplateCategory = Entity.filterResponse(workflowTemplateCategoryEntity, true);
       }
@@ -247,7 +254,7 @@ export class WorkflowModel extends Model {
    */
   async findById(id, options: any = {}) {
     const workflow: any = await this.model.findByPk(id, {
-      include: [{ model: global.models.workflowTemplate.model, required: true }],
+      include: [{ model: getModels().workflowTemplate.model, required: true }],
     });
 
     if (!workflow) {
@@ -385,12 +392,12 @@ export class WorkflowModel extends Model {
 
     sequelizeOptions.include = [
       {
-        model: global.models.workflowTemplate.model,
-        include: [{ model: global.models.workflowTemplateCategory.model }],
+        model: getModels().workflowTemplate.model,
+        include: [{ model: getModels().workflowTemplateCategory.model }],
         required: true,
       },
       {
-        model: global.models.workflowError.model,
+        model: getModels().workflowError.model,
         attributes: ['service_name', 'created_at'],
         required: false,
       },
@@ -411,7 +418,7 @@ export class WorkflowModel extends Model {
       workflowEntity.workflowTemplate = workflowTemplateEntity && Entity.filterResponse(workflowTemplateEntity, true);
       if (item.workflowTemplate && item.workflowTemplate.workflowTemplateCategory) {
         const workflowTemplateCategory = item.workflowTemplate.workflowTemplateCategory;
-        const workflowTemplateCategoryEntity = global.models.workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
+        const workflowTemplateCategoryEntity = getModels().workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
         workflowEntity.workflowTemplate.workflowTemplateCategory = Entity.filterResponse(workflowTemplateCategoryEntity, true);
       }
 

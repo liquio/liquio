@@ -1,12 +1,13 @@
+import { AppInfo, getIdApiClient, IdApiClient } from '@liquio/back-core';
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
+
 import { Controller } from './controller';
-import { AuthService as Auth } from '../services/auth';
 import { NotifierService } from '../services/notifier';
-import { RegisterService } from '../services/register';
 import { Eds } from '../lib/eds';
-import { AppInfo } from '@liquio/back-core';
 import { FileStorage } from '../lib/filestorage';
 import { HttpRequest } from '../lib/http_request';
 import { PaymentService } from '../services/payment';
+import { getConfig, getDb, getLog, getModels } from '../lib/context';
 
 // Constants.
 const MESSAGE_PONG = 'pong';
@@ -26,10 +27,10 @@ const DEFAULT_ENVIRONMENT = '0';
 export class PingController extends Controller {
   private static singleton: PingController;
 
-  auth: any;
+  idApiClient: IdApiClient;
   eds: any;
   notifierService: any;
-  registerService: any;
+  private readonly registerService: RegisterApiClient;
   fileStorage: any;
   PaymentService: any;
   token: any;
@@ -42,10 +43,10 @@ export class PingController extends Controller {
     // Define singleton.
     if (!PingController.singleton) {
       super(config);
-      this.auth = new Auth().provider;
+      this.idApiClient = getIdApiClient();
       this.eds = new Eds(config.eds);
       this.notifierService = new NotifierService();
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       this.fileStorage = new FileStorage(config.fileStorage);
       this.PaymentService = new PaymentService(config.payment);
       PingController.singleton = this;
@@ -54,10 +55,17 @@ export class PingController extends Controller {
   }
 
   /**
-   * Ping.
+   * Public liveness ping. Reveals nothing but the pong message.
+   */
+  async ping() {
+    return { message: MESSAGE_PONG };
+  }
+
+  /**
+   * Authenticated ping with optional downstream health check.
    * @param {query} query HTTP query.
    */
-  async ping({ query }) {
+  async pingWithAuth({ query }) {
     const { health_check: healthCheck, payment, sign } = query || {};
     return this.selfPing(healthCheck, payment, sign);
   }
@@ -68,7 +76,7 @@ export class PingController extends Controller {
    * @param {object} res HTTP response.
    */
   async pingServices(req, res) {
-    const cfg = global.config.ping || {};
+    const cfg = getConfig().ping || {};
 
     const responseData: any = {};
 
@@ -83,7 +91,7 @@ export class PingController extends Controller {
       }
 
       promises.push(
-        this.sendPingRequest(cfg[key].url)
+        this.sendPingRequest(cfg[key].url, cfg[key].monitoringToken)
           .then((data) => ({ [key]: { data } }))
           .catch((error) => ({ [key]: { error } })),
       );
@@ -93,7 +101,7 @@ export class PingController extends Controller {
     try {
       [taskResponse, ...results] = await Promise.all(promises);
     } catch (error) {
-      global.log.save('test-ping-services-error|ping-services', { error: error && error.message, stack: error.stack }, 'error');
+      getLog().save('test-ping-services-error|ping-services', { error: error && error.message, stack: error.stack }, 'error');
     }
 
     const appInfo = new AppInfo();
@@ -140,10 +148,13 @@ export class PingController extends Controller {
     const { workflow_template_id: workflowTemplateId, type } = req.query;
 
     // Available document templates to ping count.
-    const { committedDocumentsTemplateIdsToHoursMap } = global.config.ping_documents;
+    const committedDocumentsTemplateIdsToHoursMap = getConfig().ping_documents?.committedDocumentsTemplateIdsToHoursMap;
+    if (!committedDocumentsTemplateIdsToHoursMap) {
+      return this.responseText(res, 'not-configured', 404);
+    }
     const hours = committedDocumentsTemplateIdsToHoursMap[documentTemplateId];
     if (!hours) {
-      global.log.save('ping-committed-document-not-available', { documentTemplateId, committedDocumentsTemplateIdsToHoursMap });
+      getLog().save('ping-committed-document-not-available', { documentTemplateId });
       return this.responseText(res, 'not-available', 400);
     }
 
@@ -155,22 +166,22 @@ export class PingController extends Controller {
     // Check is exists.
     try {
       if (workflowTemplateId && type === 'event') {
-        const workflowIds = await global.models.workflow.getIdsByTemplateId(workflowTemplateId);
-        const isExists = await global.models.event.checkExistDocumentsByWorkflowIds(workflowIds, true, updatedAtFrom);
+        const workflowIds = await getModels().workflow.getIdsByTemplateId(workflowTemplateId);
+        const isExists = await getModels().event.checkExistDocumentsByWorkflowIds(workflowIds, true, updatedAtFrom);
 
         // Response result.
         return this.responseText(res, isExists);
       }
 
       if (documentTemplateId) {
-        const isExists = await global.models.document.checkExists(documentTemplateId, true, updatedAtFrom);
+        const isExists = await getModels().document.checkExists(documentTemplateId, true, updatedAtFrom);
 
         // Response result.
         return this.responseText(res, isExists);
       }
     } catch (error) {
-      global.log.save('test-ping-services-error|ping-committed-documents-count', { error: error && error.message }, 'error');
-      return this.responseError(res, error && error.message);
+      getLog().save('test-ping-services-error|ping-committed-documents-count', { error: error && error.message }, 'error');
+      return this.responseError(res, error);
     }
   }
 
@@ -178,18 +189,23 @@ export class PingController extends Controller {
    * Send ping request.
    * @private
    * @param {string} url URL.
+   * @param {string} [monitoringToken] Token for target's guarded diagnostic routes (x-monitoring-token header). Sent only if set.
    * @returns {Promise<{object}>}
    */
-  async sendPingRequest(url) {
+  async sendPingRequest(url, monitoringToken?: string) {
     try {
+      const headers: any = {
+        'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
+        token: this.token,
+      };
+      if (monitoringToken) {
+        headers['x-monitoring-token'] = monitoringToken;
+      }
       const { response, body } = await HttpRequest.send(
         {
           url: url,
           method: HttpRequest.Methods.GET,
-          headers: {
-            'Content-Type': HttpRequest.ContentTypes.CONTENT_TYPE_JSON,
-            token: this.token,
-          },
+          headers,
           timeout: 10000,
         },
         true,
@@ -199,7 +215,7 @@ export class PingController extends Controller {
 
       return preparedData;
     } catch (error) {
-      global.log.save('test-ping-services-error', { error: error && error.message, url }, 'error');
+      getLog().save('test-ping-services-error', { error: error && error.message, url }, 'error');
       return false;
     }
   }
@@ -225,9 +241,9 @@ export class PingController extends Controller {
       // Check auth service.
       let authServiceResponse;
       try {
-        authServiceResponse = await this.auth.sendPingRequest();
+        authServiceResponse = await this.idApiClient.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-auth-service-error', { error: error && error.message }, 'warn');
+        getLog().save('test-ping-auth-service-error', { error: error && error.message }, 'warn');
       }
       const authPongMsg = authServiceResponse && authServiceResponse.body && authServiceResponse.body.message === MESSAGE_PONG;
       const authWideCheckRes = this.wideCheck(authServiceResponse, AUTH_SERVICE_NAME, authPongMsg);
@@ -242,7 +258,7 @@ export class PingController extends Controller {
       try {
         notifyServiceResponse = await this.notifierService.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-notifier-service-error', { error: error && error.message }, 'warn');
+        getLog().save('test-ping-notifier-service-error', { error: error && error.message }, 'warn');
       }
       const notifyPongMsg = notifyServiceResponse && notifyServiceResponse.body && notifyServiceResponse.body.message === MESSAGE_PONG;
       const notifyWideCheckRes = this.wideCheck(notifyServiceResponse, NOTIFY_SERVICE_NAME, notifyPongMsg);
@@ -257,7 +273,7 @@ export class PingController extends Controller {
       try {
         edsServiceResponse = await this.eds.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-eds-service-error', { error: error && error.message }, 'warn');
+        getLog().save('test-ping-eds-service-error', { error: error && error.message }, 'warn');
       }
       const edsPongMsg =
         edsServiceResponse && edsServiceResponse.body && edsServiceResponse.body.data && edsServiceResponse.body.data.message === MESSAGE_PONG;
@@ -273,7 +289,7 @@ export class PingController extends Controller {
       try {
         registerServiceResponse = await this.registerService.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-register-service-error', { error: error && error.message }, 'warn');
+        getLog().save('test-ping-register-service-error', { error: error && error.message }, 'warn');
       }
       const registerPongMsg =
         registerServiceResponse &&
@@ -294,7 +310,7 @@ export class PingController extends Controller {
       try {
         fileStorageServiceResponse = await this.fileStorage.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-filestorage-service-error', { error: error && error.message }, 'warn');
+        getLog().save('test-ping-filestorage-service-error', { error: error && error.message }, 'warn');
       }
       const filestoragePongMsg =
         fileStorageServiceResponse &&
@@ -316,9 +332,12 @@ export class PingController extends Controller {
       // Check manager.
       let managerServiceResponse;
       try {
-        managerServiceResponse = await this.sendPingRequest(global.config.ping.manager.active === false ? undefined : global.config.ping.manager.url);
+        managerServiceResponse = await this.sendPingRequest(
+          getConfig().ping.manager.active === false ? undefined : getConfig().ping.manager.url,
+          getConfig().ping.manager.monitoringToken,
+        );
       } catch (error) {
-        global.log.save('test-ping-manager-service-error', { error: error && error.message }, 'warn');
+        getLog().save('test-ping-manager-service-error', { error: error && error.message }, 'warn');
       }
       const managerPongMsg = managerServiceResponse && managerServiceResponse.message === MESSAGE_PONG;
       const managerWideCheckRes = this.wideCheck(managerServiceResponse, MANAGER_SERVICE_NAME, managerPongMsg);
@@ -334,7 +353,7 @@ export class PingController extends Controller {
     // Check sign if need it.
     if (sign) {
       // Get test sign params.
-      const { signature } = global.config.ping_sign;
+      const { signature } = getConfig().ping_sign;
 
       // Try to verify sign.
       try {
@@ -390,10 +409,10 @@ export class PingController extends Controller {
    * @param {string} serviceVersion Service version.
    */
   checkServiceVersion(serviceName, serviceVersion) {
-    const serviceVersionInfo = global.config.versions && global.config.versions.services.find((v) => v.name === serviceName);
+    const serviceVersionInfo = getConfig().versions && getConfig().versions.services.find((v) => v.name === serviceName);
     const serviceMinVersion = (serviceVersionInfo && serviceVersionInfo.minVersion) || DEFAULT_VERSION;
     if (!serviceMinVersion || !serviceVersion) {
-      global.log.save('can-not-find-service-min-version');
+      getLog().save('can-not-find-service-min-version');
       return false;
     }
 
@@ -430,9 +449,9 @@ export class PingController extends Controller {
    * @param {string} partnerServiceCustomer Partner service customer.
    */
   checkCustomer(partnerServiceCustomer) {
-    const curentServiceCustomer = (global.config.server && global.config.server.customer) || DEFAULT_CUSTOMER;
+    const curentServiceCustomer = (getConfig().server && getConfig().server.customer) || DEFAULT_CUSTOMER;
     if (!partnerServiceCustomer || !curentServiceCustomer) {
-      global.log.save('ping-can-not-check-services-customer');
+      getLog().save('ping-can-not-check-services-customer');
       return false;
     }
     return curentServiceCustomer === partnerServiceCustomer;
@@ -444,9 +463,9 @@ export class PingController extends Controller {
    * @param {string} partnerServiceEnvironment Partner service environment.
    */
   checkEnvironment(partnerServiceEnvironment) {
-    const curentServiceEnvironment = (global.config.server && global.config.server.environment) || DEFAULT_ENVIRONMENT;
+    const curentServiceEnvironment = (getConfig().server && getConfig().server.environment) || DEFAULT_ENVIRONMENT;
     if (!partnerServiceEnvironment || !curentServiceEnvironment) {
-      global.log.save('ping-can-not-check-services-environment');
+      getLog().save('ping-can-not-check-services-environment');
       return false;
     }
     return curentServiceEnvironment === partnerServiceEnvironment;
@@ -495,7 +514,7 @@ export class PingController extends Controller {
 
       this.responseData(res, { status: 'ok' });
     } catch (e) {
-      this.responseError(res, { error: e.message });
+      this.responseError(res, e);
     }
   }
 
@@ -503,8 +522,7 @@ export class PingController extends Controller {
    * Check database connect
    */
   async checkDataBase() {
-    const result = await global.db.query('select true');
+    const result = await getDb().query('select true');
     return result;
   }
 }
-

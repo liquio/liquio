@@ -7,6 +7,7 @@ metadata:
     {{- include "liquio.labels" . | nindent 4 }}
 {{ $dbBase := include "liquio.postgresDbBase" (dict "ctx" . "database" "bpmn" "username" .Values.config.database.username) | fromJson -}}
 {{ $messageQueueBase := dict
+  "provider" "rabbitmq"
   "maxHandlingMessages" 2
   "readingQueueName" "bpmn-manager-incoming"
   "writingQueueTask" "bpmn-task-incoming"
@@ -20,6 +21,7 @@ metadata:
   "port" (default 8080 .Values.services.manager.containerPort)
   "customer" .Release.Name
   "environment" .Values.config.server.environment
+  "monitoring" (dict "isEnabled" false "token" "")
 -}}
 {{ $redisBase := dict
   "host" (include "liquio.redis.host" .)
@@ -44,7 +46,7 @@ metadata:
 {{ $systemNotifierBase := dict
   "adminUrl" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "admin")))
   "email" (dict
-    "server" (printf "http://%s-notification" (include "liquio.fullname" .))
+    "server" (printf "%s://%s-notification" (include "liquio.internalTls.scheme" .) (include "liquio.fullname" .))
     "port" 80
     "routes" (dict
       "sendEmail" "/message/emailsList"

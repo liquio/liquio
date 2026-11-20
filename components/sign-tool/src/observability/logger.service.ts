@@ -1,8 +1,9 @@
 import { randomBytes } from 'crypto';
-import { ConsoleLogger, Injectable, LogLevel, Scope } from '@nestjs/common';
 import { AsyncLocalStorage } from 'async_hooks';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+
+import { ConsoleLogger, Injectable, LogLevel, Scope } from '@nestjs/common';
 
 import { AsyncLocalStorageContext } from './observability.module';
 
@@ -10,20 +11,13 @@ import { AsyncLocalStorageContext } from './observability.module';
 export class LoggerService extends ConsoleLogger {
   private appInfo: { name: string; version: string };
 
-  constructor(
-    private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>,
-  ) {
-    super();
+  constructor(private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>) {
+    super({ structuredParams: false });
 
     this.prepareAppInfo();
   }
 
-  protected printMessages(
-    messages: unknown[],
-    context?: string,
-    level?: LogLevel,
-    writeStreamType?: 'stdout' | 'stderr',
-  ) {
+  protected printMessages(messages: unknown[], context?: string, level?: LogLevel, writeStreamType?: 'stdout' | 'stderr') {
     const [type, data] = messages;
 
     const logId = randomBytes(6).toString('hex');

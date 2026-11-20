@@ -9,24 +9,24 @@ import { sensitiveReplace } from './helpers';
 import { AsyncLocalStorageContext } from './observability.module';
 
 // Constants.
-const EXCLUDE_PARAMS = ['token', 'authorization', 'Authorization', 'oauth-token'];
+const EXCLUDE_PARAMS = ['token', 'authorization', 'Authorization', 'oauth-token', 'ipn', 'edrpou'];
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class LoggerService extends ConsoleLogger {
   private appInfo: { name: string; version: string };
 
   constructor(private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>) {
-    super();
+    super({ structuredParams: false });
+
+    // Debug logs are opt-in (LOG_LEVEL=debug) to keep request details out of default logs.
+    if (process.env.LOG_LEVEL !== 'debug') {
+      this.setLogLevels(['log', 'warn', 'error', 'fatal']);
+    }
 
     this.prepareAppInfo();
   }
 
-  protected printMessages(
-    messages: unknown[],
-    context?: string,
-    level?: LogLevel,
-    writeStreamType?: 'stdout' | 'stderr',
-  ) {
+  protected printMessages(messages: unknown[], context?: string, level?: LogLevel, writeStreamType?: 'stdout' | 'stderr') {
     const [type, data] = messages;
 
     const logId = randomBytes(6).toString('hex');
@@ -48,7 +48,7 @@ export class LoggerService extends ConsoleLogger {
       createdAt: new Date().toISOString(),
     });
 
-    const dataToSave = sensitiveReplace(output, EXCLUDE_PARAMS);
+    const dataToSave = sensitiveReplace(output, EXCLUDE_PARAMS, undefined, { disableDefaults: process.env.LOG_DISABLE_DEFAULT_REDACTION === 'true' });
 
     if (writeStreamType === 'stderr') {
       process.stderr.write(dataToSave + '\n');

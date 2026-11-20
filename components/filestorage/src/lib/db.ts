@@ -1,5 +1,7 @@
 import { Sequelize } from 'sequelize';
 
+import { getLog } from './context';
+
 /**
  * DB.
  */
@@ -23,10 +25,10 @@ export class Db {
         const { database, username, password } = config;
         const sequelize = new Sequelize(database, username, password, config);
         await sequelize.authenticate();
-        global.log.save('db-connection-ok', { host: config.host, port: config.port });
+        getLog().save('db-connection-ok', { host: config.host, port: config.port });
         Db.singleton = sequelize;
       } catch (error) {
-        global.log.save('db-connection-error', 'Unable to connect to the DB.', error);
+        getLog().save('db-connection-error', 'Unable to connect to the DB.', error);
         throw error;
       }
     }

@@ -1,4 +1,6 @@
+import { maskPhone, maskPhones, redactMessage, summarizeError } from '../../lib/mask';
 import { AbstractGate } from './abstractSmsGate';
+import { getExtensions, getLog } from '../../lib/context';
 
 /**
  * Custom gate.
@@ -24,19 +26,19 @@ export class CustomGate extends AbstractGate {
 
     if (!this.isEnabled) {
       const result = (phones || []).map((phone) => this.getDisabledResult(phone));
-      global.log.save('send-sms-skipped', { phones, text, reason: 'SMS is disabled in config.' }, 'info');
+      getLog().save('send-sms-skipped', { phones: maskPhones(phones), text: redactMessage(text), reason: 'SMS is disabled in config.' }, 'info');
       return result;
     }
 
     // Define adapter method.
-    this.adapter = global.extensions.adapters.sms;
+    this.adapter = getExtensions().adapters.sms;
     if (this.adapter) {
       console.log('Custom gate initialized.');
     }
     const adapterMethod = this.adapter && this.adapter.sendSms;
     if (typeof adapterMethod !== 'function') {
       console.log('adapterMethod not a function!');
-      console.log({ extensions: global.extensions });
+      console.log({ extensions: getExtensions() });
       return;
     }
 
@@ -47,7 +49,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext(phones, text, msgid);
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.
@@ -66,19 +68,19 @@ export class CustomGate extends AbstractGate {
 
     if (!this.isEnabled) {
       const result = this.getDisabledResult(phone);
-      global.log.save('send-one-sms-skipped', { phone, text, reason: result.reason }, 'info');
+      getLog().save('send-one-sms-skipped', { phone: maskPhone(phone), text: redactMessage(text), reason: result.reason }, 'info');
       return result;
     }
 
     // Define adapter method.
-    this.adapter = global.extensions.adapters.sms;
+    this.adapter = getExtensions().adapters.sms;
     if (this.adapter) {
       console.log('Custom gate initialized.');
     }
     const adapterMethod = this.adapter && this.adapter.sendOneSms;
     if (typeof adapterMethod !== 'function') {
       console.log('adapterMethod not a function!');
-      console.log({ extensions: global.extensions });
+      console.log({ extensions: getExtensions() });
       return;
     }
 
@@ -89,7 +91,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext(phone, text, msgid);
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.
@@ -105,14 +107,14 @@ export class CustomGate extends AbstractGate {
     console.log('CustomGate - getSMSQueue');
 
     // Define adapter method.
-    this.adapter = global.extensions.adapters.sms;
+    this.adapter = getExtensions().adapters.sms;
     if (this.adapter) {
       console.log('Custom gate initialized.');
     }
     const adapterMethod = this.adapter && this.adapter.getSMSQueue;
     if (typeof adapterMethod !== 'function') {
       console.log('adapterMethod not a function!');
-      console.log({ extensions: global.extensions });
+      console.log({ extensions: getExtensions() });
       return;
     }
 
@@ -123,7 +125,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext(clear);
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.
@@ -138,14 +140,14 @@ export class CustomGate extends AbstractGate {
     console.log('CustomGate - getSMSQueueCounter');
 
     // Define adapter method.
-    this.adapter = global.extensions.adapters.sms;
+    this.adapter = getExtensions().adapters.sms;
     if (this.adapter) {
       console.log('Custom gate initialized.');
     }
     const adapterMethod = this.adapter && this.adapter.getSMSQueueCounter;
     if (typeof adapterMethod !== 'function') {
       console.log('adapterMethod not a function!');
-      console.log({ extensions: global.extensions });
+      console.log({ extensions: getExtensions() });
       return;
     }
 
@@ -155,7 +157,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext();
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.
@@ -171,14 +173,14 @@ export class CustomGate extends AbstractGate {
     console.log('CustomGate - getSMSLog');
 
     // Define adapter method.
-    this.adapter = global.extensions.adapters.sms;
+    this.adapter = getExtensions().adapters.sms;
     if (this.adapter) {
       console.log('Custom gate initialized.');
     }
     const adapterMethod = this.adapter && this.adapter.getSMSLog;
     if (typeof adapterMethod !== 'function') {
       console.log('adapterMethod not a function!');
-      console.log({ extensions: global.extensions });
+      console.log({ extensions: getExtensions() });
       return;
     }
 
@@ -188,7 +190,7 @@ export class CustomGate extends AbstractGate {
     try {
       adapterResult = await adapterMethodWithThisContext(phone);
     } catch (error) {
-      console.error(error);
+      console.error('SMS gateway error:', summarizeError(error));
     }
 
     // Return adapters result.

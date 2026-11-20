@@ -13,13 +13,6 @@
   "registers": {
     "provider": "liquio",
     "url": "https://register-dev-oe.liquio.local",
-    "apiMethods": {
-      "getRecord": "/records",
-      "createRecord": "/records",
-      "updateRecord": "/records",
-      "deleteRecord": "/records",
-      "ping": "/test/ping"
-    },
     "token": "<removed>"
   },
   "externalService": {},

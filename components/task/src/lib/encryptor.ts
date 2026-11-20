@@ -41,11 +41,7 @@ export class Encryptor {
       // Generate a random initialization vector.
       const iv = crypto.randomBytes(this.ivSize);
 
-      const cipher = crypto.createCipheriv(
-        this.algorithm,
-        Buffer.from(this.key, 'base64'),
-        iv
-      );
+      const cipher = crypto.createCipheriv(this.algorithm, Buffer.from(this.key, 'base64'), iv);
 
       // Encrypt the data.
       let encrypted = cipher.update(data, 'utf8', 'base64');
@@ -78,21 +74,13 @@ export class Encryptor {
       }
 
       // Using AES-256-GCM decryption algorithm.
-      const decipher = crypto.createDecipheriv(
-        'aes-256-gcm',
-        Buffer.from(this.key, 'base64'),
-        iv
-      );
+      const decipher = crypto.createDecipheriv('aes-256-gcm', Buffer.from(this.key, 'base64'), iv);
 
       // Set the authentication tag.
       decipher.setAuthTag(authTag);
 
       // Decrypt the data.
-      let decrypted = decipher.update(
-        encryptedData.toString('base64'),
-        'base64',
-        'utf8'
-      );
+      let decrypted = decipher.update(encryptedData.toString('base64'), 'base64', 'utf8');
       decrypted += decipher.final('utf8');
 
       return decrypted;
@@ -111,13 +99,7 @@ export class Encryptor {
    * @returns {string}
    */
   pack(encryptedData, iv, authTag) {
-    return (
-      iv.toString('base64') +
-      ':' +
-      authTag.toString('base64') +
-      ':' +
-      encryptedData
-    );
+    return iv.toString('base64') + ':' + authTag.toString('base64') + ':' + encryptedData;
   }
 
   /**
@@ -139,4 +121,3 @@ export class Encryptor {
     }
   }
 }
-

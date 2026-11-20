@@ -2,6 +2,7 @@ const DEFAULT_MESSAGE = 'Workflow.';
 
 export class WorkflowError extends Error {
   httpStatusCode: number;
+  isPublic = true;
   details?: any;
 
   constructor(message?: string, details?: any) {

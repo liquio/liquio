@@ -1,11 +1,13 @@
 // Import.
 import express from 'express';
-
 import { asyncLocalStorageMiddleware } from '@liquio/back-core';
+
 import { getLog } from './lib/context';
+import { redactUrl } from './lib/log_redact';
 import AppIdentHeaders from './lib/app_ident_headers';
 import Controllers from './controllers';
 import Cors from './lib/cors';
+import { errorHandler } from './lib/error_handler';
 import HttpRequest from './lib/http_request';
 
 /**
@@ -39,7 +41,16 @@ class Router {
     app.use(asyncLocalStorageMiddleware);
 
     // Save request info to log.
-    app.use(logger.logRouter.bind(logger));
+    // Link hashes are bearer secrets, so the logger gets a request view with a redacted URL.
+    app.use((req, res, next) => {
+      const logReq = Object.create(req, { url: { value: redactUrl(req.url), writable: true } });
+      return logger.logRouter(logReq, res, () => {
+        req.requestMeta = logReq.requestMeta;
+        req.traceId = logReq.traceId;
+        req.traceMeta = logReq.traceMeta;
+        next();
+      });
+    });
 
     // App info in headers.
     AppIdentHeaders.add(app, this.config);
@@ -53,6 +64,9 @@ class Router {
 
     // Init routes.
     this.initRoutes(app);
+
+    // Error handler: generic body for clients, details in the log only.
+    app.use(errorHandler);
 
     // Start listening.
     await this.listen(app);
@@ -71,14 +85,15 @@ class Router {
     app.get('/test/ping', this.controllers.getHandler('test', 'ping'));
     app.get('/test/ping_with_auth', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('test', 'ping'));
 
-    // Monitoring controller.
-    app.get('/monitoring/system', this.controllers.getHandler('monitoring', 'system'));
-
     app.get('/templates', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'getTemplates'));
     app.get('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'findTemplateById'));
-    app.post('/templates', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'createTemplate'));
-    app.put('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'updateTemplate'));
-    app.delete('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'deleteTemplate'));
+
+    // Template write routes exist only when the external provider (the only template consumer) is configured.
+    if (this.config.link_providers?.external) {
+      app.post('/templates', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'createTemplate'));
+      app.put('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'updateTemplate'));
+      app.delete('/templates/:id', this.controllers.getHandler('auth', 'basicAuth'), this.controllers.getHandler('link', 'deleteTemplate'));
+    }
 
     // Link controller.
     app.get('/:hash', this.controllers.getHandler('link', 'open'));
@@ -93,11 +108,15 @@ class Router {
    * @param {object} app Express app.
    */
   async listen(app) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       // Start server listening.
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
-      this.server = app.listen(port, hostname, () => {
+      this.server = app.listen(port, hostname, (error?: Error) => {
+        // Express 5 passes listen errors (e.g. EADDRINUSE) to the callback instead of throwing.
+        if (error) {
+          return reject(error);
+        }
         getLog().save('server-listening-started', `Server listening started at "http://${hostname}:${port}".`);
         resolve();
       });

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import { ConfigsModel } from '../models/configs';
 import { checkConfigAuth } from './auth';
 

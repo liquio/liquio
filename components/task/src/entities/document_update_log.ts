@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -63,4 +62,3 @@ export class DocumentUpdateLogEntity extends Entity {
     return `d.${documentId}.*`;
   }
 }
-

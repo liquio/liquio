@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { UnitRulesEntity } from '../entities/unit_rules';
+import { PublicError } from '../lib/public_error';
 
 export class UnitRulesModel extends Model {
   static singleton: UnitRulesModel;
@@ -70,7 +71,7 @@ export class UnitRulesModel extends Model {
     // Check if no record with this type.
     const rulesWithCurrentType = await this.model.findOne({ where: { unit_rule_type: type } });
     if (rulesWithCurrentType) {
-      throw new Error('Unit rules with this type already exist!');
+      throw new PublicError('Unit rules with this type already exist!');
     }
 
     // Prepare record.

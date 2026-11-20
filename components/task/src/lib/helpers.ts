@@ -2,14 +2,15 @@ import _ from 'lodash';
 import { AxiosError } from 'axios';
 
 import typeOf from './type_of';
+import { getConfig, getModels } from './context';
 
 const MIME_TYPES = {
-  'PDF': [0x25, 0x50, 0x44, 0x46],
+  PDF: [0x25, 0x50, 0x44, 0x46],
   'APPLICATION/PDF': [0x25, 0x50, 0x44, 0x46],
-  'JPEG': [0xFF, 0xD8, 0xFF],
-  'IMAGE/JPEG': [0xFF, 0xD8, 0xFF],
-  'JPG': [0xFF, 0xD8, 0xFF],
-  'IMAGE/JPG': [0xFF, 0xD8, 0xFF]
+  JPEG: [0xff, 0xd8, 0xff],
+  'IMAGE/JPEG': [0xff, 0xd8, 0xff],
+  JPG: [0xff, 0xd8, 0xff],
+  'IMAGE/JPG': [0xff, 0xd8, 0xff],
 };
 
 export class Helpers {
@@ -18,10 +19,10 @@ export class Helpers {
    * @return {Promise<{head: Array<number>, all: Array<number>, member: Array<number>}>}
    */
   static async getUserUnits(userId) {
-    const units = await global.models.unit.getAll();
-    const defaultUnits = global.config.auth.defaultUnits || [];
-    const head = units.filter(v => v.heads.includes(userId)).map(v => v.id);
-    const member = units.filter(v => v.members.includes(userId) || defaultUnits.includes(v.id)).map(v => v.id);
+    const units = await getModels().unit.getAll();
+    const defaultUnits = getConfig().auth.defaultUnits || [];
+    const head = units.filter((v) => v.heads.includes(userId)).map((v) => v.id);
+    const member = units.filter((v) => v.members.includes(userId) || defaultUnits.includes(v.id)).map((v) => v.id);
     return { head, member, all: [...new Set([...head, ...member])] };
   }
 
@@ -30,10 +31,10 @@ export class Helpers {
    * @return {Promise<{userId: string, userUnits: {head: Array<number>, all: Array<number>, member: Array<number>}}>}
    */
   static async appendUnitIdsToUser(userId) {
-    const units = await global.models.unit.getAll();
-    const defaultUnits = global.config.auth.defaultUnits || [];
-    const head = units.filter(v => v.heads.includes(userId)).map(v => v.id);
-    const member = units.filter(v => v.members.includes(userId) || defaultUnits.includes(v.id)).map(v => v.id);
+    const units = await getModels().unit.getAll();
+    const defaultUnits = getConfig().auth.defaultUnits || [];
+    const head = units.filter((v) => v.heads.includes(userId)).map((v) => v.id);
+    const member = units.filter((v) => v.members.includes(userId) || defaultUnits.includes(v.id)).map((v) => v.id);
     return { userId, userUnits: { head, member, all: [...new Set([...head, ...member])] } };
   }
 
@@ -42,11 +43,11 @@ export class Helpers {
    * @return {Promise<Array<{userId: string, userUnits: {head: Array<number>, all: Array<number>, member: Array<number>}}>>}
    */
   static async appendUnitIdsToUsers(userIds) {
-    const units = await global.models.unit.getAll();
-    const defaultUnits = global.config.auth.defaultUnits || [];
+    const units = await getModels().unit.getAll();
+    const defaultUnits = getConfig().auth.defaultUnits || [];
     return userIds.map((userId) => {
-      const head = units.filter(v => v.heads.includes(userId)).map(v => v.id);
-      const member = units.filter(v => v.members.includes(userId) || defaultUnits.includes(v.id)).map(v => v.id);
+      const head = units.filter((v) => v.heads.includes(userId)).map((v) => v.id);
+      const member = units.filter((v) => v.members.includes(userId) || defaultUnits.includes(v.id)).map((v) => v.id);
       return { userId, userUnits: { head, member, all: [...new Set([...head, ...member])] } };
     });
   }
@@ -68,11 +69,11 @@ export class Helpers {
   }
 
   /**
- * Substring long strings in object. {str1: '12345', str2: '123456789'} => {str1: '12345', str2: '12345...'}
- * @param {Object|String} strOrObj
- * @param {number} [limit=80]
- * @return {Object|String}
- */
+   * Substring long strings in object. {str1: '12345', str2: '123456789'} => {str1: '12345', str2: '12345...'}
+   * @param {Object|String} strOrObj
+   * @param {number} [limit=80]
+   * @return {Object|String}
+   */
   static cutLongStrings(strOrObj, limit = 80) {
     let strOrObjPrepared;
     if (typeOf(strOrObj) === 'string') {
@@ -99,7 +100,7 @@ export class Helpers {
       return strOrObjPrepared;
     }
 
-    const limitForObjValues = limit > 1000 ? (limit / 100) : 10;
+    const limitForObjValues = limit > 1000 ? limit / 100 : 10;
     let replacedObj = this.replaceObjValues(_.cloneDeep(strOrObjPrepared), (value) => {
       if (typeOf(value) === 'string') {
         return value.length > limitForObjValues ? `${value.substring(0, limitForObjValues - ending.length)}${ending}` : value;
@@ -120,9 +121,9 @@ export class Helpers {
       });
       if (JSON.stringify(replacedObj).length <= limit) return replacedObj;
       newLimitForObjValues = newLimitForObjValues / 10;
-    };
+    }
     return JSON.stringify(replacedObj).substring(0, limit);
-  };
+  }
 
   /**
    * @private
@@ -132,7 +133,7 @@ export class Helpers {
    */
   static replaceObjValues(obj, handler = (value) => value) {
     if (typeOf(obj) === 'array') {
-      return obj.map(v => this.replaceObjValues(v, handler));
+      return obj.map((v) => this.replaceObjValues(v, handler));
     } else if (typeOf(obj) === 'object') {
       for (const [key, value] of Object.entries(obj)) {
         obj[key] = this.replaceObjValues(value, handler);
@@ -142,7 +143,6 @@ export class Helpers {
 
     return handler(obj);
   }
-
 
   /**
    * @static
@@ -193,10 +193,10 @@ export class Helpers {
    * @param {array} [allowedAsyncFunctions] Allowed async functions.
    * @returns {string} Async function string.
    */
-  static transformFunctionToAsync (functionString, allowedAsyncFunctions = []) {
+  static transformFunctionToAsync(functionString, allowedAsyncFunctions = []) {
     // Define params.
     const isFunctionStringContainsAsyncFunction = allowedAsyncFunctions.some(
-      (v) => functionString.includes(v) && !functionString.includes(`await ${v}`)
+      (v) => functionString.includes(v) && !functionString.includes(`await ${v}`),
     );
 
     // Return as is if async function not used.
@@ -210,10 +210,7 @@ export class Helpers {
       asyncFunctionString = `async ${asyncFunctionString}`;
     }
     for (const asyncFunctionInside of allowedAsyncFunctions) {
-      asyncFunctionString = asyncFunctionString.replace(
-        new RegExp(asyncFunctionInside, 'g'),
-        `await ${asyncFunctionInside}`
-      );
+      asyncFunctionString = asyncFunctionString.replace(new RegExp(asyncFunctionInside, 'g'), `await ${asyncFunctionInside}`);
     }
 
     // Return transformed function.
@@ -258,4 +255,3 @@ export class Helpers {
   //   });
   // }
 }
-

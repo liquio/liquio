@@ -1,5 +1,5 @@
-
 import { validationResult } from 'express-validator';
+
 import { TestValidator } from './test';
 import { WorkflowValidator } from './workflow';
 import { WorkflowLogValidator } from './workflow_log';
@@ -64,12 +64,12 @@ export class Validators {
       localizationText: LocalizationTextValidator,
       protectedFile: ProtectedFileValidator,
       kyc: KycValidator,
-      ...customValidators
+      ...customValidators,
     };
 
     // Init validators.
     this.validators = Object.entries(validatorsClasses)
-      .map(v => [v[0], new v[1](this.config)])
+      .map((v) => [v[0], new v[1](this.config)])
       .reduce(
         (t, v) => ({
           ...t,
@@ -77,9 +77,9 @@ export class Validators {
             const n: Record<string, any> = {};
             n[v[0] as string] = v[1];
             return n;
-          })()
+          })(),
         }),
-        {}
+        {},
       );
   }
 

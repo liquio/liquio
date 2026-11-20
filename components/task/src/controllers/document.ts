@@ -1,11 +1,16 @@
 import crypto from 'node:crypto';
+
 const { randomUUID } = crypto;
 import axios from 'axios';
 import _ from 'lodash';
 import jcopy from 'jcopy';
+import { Sandbox } from '@liquio/back-core';
 
 import { JSONPath } from '../lib/jsonpath';
+import { isValidDocumentPath, findUnsafeDataKeys } from '../lib/document_data_keys';
 import { Controller } from './controller';
+import { getBusinesses, getConfig, getLog, getModels, getRedisClient } from '../lib/context';
+import { publishOrLog, DESTINATION_MANAGER } from '../lib/message_bus';
 import { DocumentAttachmentEntity } from '../entities/document_attachment';
 import { DocumentModel } from '../models/document';
 import { DocumentAttachmentModel } from '../models/document_attachment';
@@ -23,9 +28,8 @@ import { DownloadToken } from '../lib/download_token';
 import { PersistLink } from '../lib/persist_link';
 import { NotifierService as Notifier } from '../services/notifier';
 import { CustomLogs } from '../services/custom_logs';
-import { Sandbox } from '../lib/sandbox';
 import { InvalidParamsError, BadRequestError, NotFoundError } from '../lib/errors';
-import { ERROR_DOCUMENT_ALREADY_COMMITTED, ERROR_DRAFT_EXPIRED, ERROR_CAN_NOT_DELETE, ERROR_DOCUMENT_NOT_FOUND } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 
 // Constants.
 const QUERY_INDICATOR_TRUE = 'true';
@@ -80,7 +84,7 @@ export class DocumentController extends Controller {
       this.persistLink = new PersistLink(config.persist_link);
       this.notifier = new Notifier();
       this.customLogs = new CustomLogs();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       DocumentController.singleton = this;
     }
     return DocumentController.singleton;
@@ -98,7 +102,7 @@ export class DocumentController extends Controller {
     // Get list.
     let documents;
     try {
-      documents = await global.businesses.document.getForSignByUser(userId);
+      documents = await getBusinesses().document.signing.getForSignByUser(userId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -122,7 +126,7 @@ export class DocumentController extends Controller {
     try {
       const [document] = await this.documentModel.getByIds(documentId);
       if (!document) {
-        return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_NOT_FOUND));
+        return this.responseError(res, new NotFoundError(ErrorMessage.DocumentNotFound));
       }
 
       const {
@@ -152,32 +156,35 @@ export class DocumentController extends Controller {
         return this.responseData(res, { check: true, message: 'disabled by excludeOwner parameter' });
       }
 
-      const context = await checkContext.reduce(async (accPromise, { name, provider, options }) => {
-        const acc = await accPromise;
-        const [providerType, service, method] = provider.split('.');
+      const context = await checkContext.reduce(
+        async (accPromise, { name, provider, options }) => {
+          const acc = await accPromise;
+          const [providerType, service, method] = provider.split('.');
 
-        let providerData;
-        switch (providerType) {
-          case 'external-reader': {
-            const nonUserFilter = this.sandbox.evalWithArgs(options, [document.data], {
-              meta: { fn: 'multisignCheck.nonUserFilter', documentId, name },
-            });
-            const dataByUser = await this.externalReader.getDataByUser(
-              service,
-              method,
-              undefined,
-              oauthToken,
-              userInfo,
-              nonUserFilter,
-              undefined,
-              userUnitIds,
-            );
-            providerData = dataByUser.data;
+          let providerData;
+          switch (providerType) {
+            case 'external-reader': {
+              const nonUserFilter = this.sandbox.evalWithArgs(options, [document.data], {
+                meta: { fn: 'multisignCheck.nonUserFilter', documentId, name },
+              });
+              const dataByUser = await this.externalReader.getDataByUser(
+                service,
+                method,
+                undefined,
+                oauthToken,
+                userInfo,
+                nonUserFilter,
+                undefined,
+                userUnitIds,
+              );
+              providerData = dataByUser.data;
+            }
           }
-        }
 
-        return { ...acc, [name]: providerData };
-      }, Promise.resolve({ user: userInfo }));
+          return { ...acc, [name]: providerData };
+        },
+        Promise.resolve({ user: userInfo }),
+      );
 
       const errors = checkErrors.filter(({ check }) =>
         this.sandbox.evalWithArgs(check, [document.data, context], { meta: { fn: 'multisignCheck.check', documentId } }),
@@ -189,7 +196,8 @@ export class DocumentController extends Controller {
       const [firstError] = errors;
       return this.responseError(res, 'Multisign check failed', undefined, [firstError.title, firstError.text].filter(Boolean).join(': '));
     } catch (error) {
-      return this.responseError(res, 'Multisign check error', undefined, error.message);
+      getLog().save('multisign-check-error', { error: error && error.message, stack: error && error.stack }, 'error');
+      return this.responseError(res, 'Multisign check error');
     }
   }
 
@@ -207,7 +215,7 @@ export class DocumentController extends Controller {
     // Get document.
     let document;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -243,11 +251,11 @@ export class DocumentController extends Controller {
       return this.responseError(res, error);
     }
     if (!document) {
-      return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_NOT_FOUND));
+      return this.responseError(res, new NotFoundError(ErrorMessage.DocumentNotFound));
     }
 
     // Check access for Basic auth.
-    const { getDocumentWithTemplateIdsByUser = {} } = global.config.external_services;
+    const { getDocumentWithTemplateIdsByUser = {} } = getConfig().external_services;
     const getDocumentWithTemplateIds = getDocumentWithTemplateIdsByUser[externalUser] || [];
     const { documentTemplateId } = document;
     if (!getDocumentWithTemplateIds.includes(documentTemplateId)) {
@@ -281,10 +289,12 @@ export class DocumentController extends Controller {
       const documentId = req.params.id;
       const lastUpdateLogId = req.query.last_update_log_id;
       const userId = this.getRequestUserId(req);
+      const userInfo = this.getRequestUserInfo(req);
       const path = req.body.path;
       const value = req.body.value;
       const previousValue = req.body.previousValue;
       const properties = req.body.properties || [];
+      const triggerPath = req.body.triggerPath || [];
       const userUnitIds = this.getRequestUserUnitIds(req);
       if (path) {
         properties.push({ path, value, previousValue });
@@ -296,23 +306,38 @@ export class DocumentController extends Controller {
       }
 
       // Check property path.
-      const invalidPathPart = (pathPart) => pathPart === '' || !pathPart.match(/^[a-zA-Zа-яА-ЯіІїЇ0-9_]+$/);
-      const invalidPath = (path) => typeof path !== 'string' || path.split('.').some(invalidPathPart);
-      if (properties.some((v) => invalidPath(v.path))) {
-        throw new InvalidParamsError('Invalid property path.', { cause: properties });
+      if (properties.some((v) => !isValidDocumentPath(v.path))) {
+        const invalidPaths = properties
+          .filter((v) => !isValidDocumentPath(v.path))
+          .map((v) => (typeof v.path === 'string' ? v.path.slice(0, 64) : typeof v.path));
+        throw new InvalidParamsError('Invalid property path.', { cause: invalidPaths });
+      }
+
+      // Check keys inside written values: no regex/HTML metacharacters, no prototype names.
+      const unsafeKeys = properties.flatMap((v) => findUnsafeDataKeys(v.value, v.path)).slice(0, 10);
+      if (unsafeKeys.length > 0) {
+        throw new InvalidParamsError('Invalid property key.', { cause: unsafeKeys });
+      }
+
+      // Check trigger path.
+      if (!Array.isArray(triggerPath) || triggerPath.some((p) => !isValidDocumentPath(p))) {
+        throw new InvalidParamsError('Invalid trigger path.', { cause: triggerPath });
       }
 
       // Check draft expired.
-      if (await global.models.task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
 
       // Update document.
-      const updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds);
+      const updatedDocument = await (getBusinesses().document.update as any)(documentId, properties, userId, userUnitIds, userInfo, {
+        triggerPath,
+        checkSchemaAllowList: true,
+      });
 
       // Check reassign trigger and handle document update log.
       const [checkReassignTriggerResult, documentUpdateLogEntities] = await Promise.all([
-        global.businesses.task.checkReassignTrigger(updatedDocument.documentTemplateId, documentId, properties, userId),
+        getBusinesses().task.checkReassignTrigger(updatedDocument.documentTemplateId, documentId, properties, userId),
         this.documentUpdateLog.handleDocumentUpdate(updatedDocument, properties, userId, lastUpdateLogId),
       ]);
 
@@ -338,7 +363,7 @@ export class DocumentController extends Controller {
         };
       }
 
-      updateLogsDataToReturn.updateLogs = global.businesses.document.addCalculatedDataToUpdateLogs(updateLogsDataToReturn);
+      updateLogsDataToReturn.updateLogs = getBusinesses().document.addCalculatedDataToUpdateLogs(updateLogsDataToReturn);
 
       this.responseData(res, documentUpdateLogEntities ? updateLogsDataToReturn : updatedDocumentToReturn);
 
@@ -352,10 +377,10 @@ export class DocumentController extends Controller {
 
       // Inform performer users.
       if (checkReassignTriggerResult) {
-        global.businesses.task.informNewPerformerUsers(checkReassignTriggerResult.task, checkReassignTriggerResult.newPerformerUserIds);
+        getBusinesses().task.informNewPerformerUsers(checkReassignTriggerResult.task, checkReassignTriggerResult.newPerformerUserIds);
       }
     } catch (error) {
-      global.log.save('update-document-error', { message: error.toString(), cause: error.cause, stack: error.stack });
+      getLog().save('update-document-error', { message: error.toString(), cause: error.cause, stack: error.stack });
       return this.responseError(res, error);
     }
   }
@@ -373,7 +398,7 @@ export class DocumentController extends Controller {
 
     // Prepare document.
     try {
-      await global.businesses.document.prepare(documentId, userId, userUnitIds);
+      await getBusinesses().document.prepare(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
@@ -381,7 +406,7 @@ export class DocumentController extends Controller {
     // Get document.
     let document;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -408,15 +433,15 @@ export class DocumentController extends Controller {
     let validDocument;
     try {
       const includesUnexpectedErrors = true;
-      validDocument = await global.businesses.document.validate(documentId, userInfo, userUnitIds, includesUnexpectedErrors);
+      validDocument = await getBusinesses().document.validate(documentId, userInfo, userUnitIds, includesUnexpectedErrors);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
 
     // Check draft expired.
     try {
-      if (await global.models.task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -428,9 +453,9 @@ export class DocumentController extends Controller {
         const userId = this.getRequestUserId(req);
         const userUnits = this.getRequestUserUnitEntities(req);
         const requestMeta = this.getRequestMeta(req);
-        const document = await global.models.document.findById(documentId, true);
+        const document = await getModels().document.findById(documentId, true);
         const { id: taskId } = (document as any).task;
-        const finishedTask = await global.businesses.task.setStatusFinished(
+        const finishedTask = await getBusinesses().task.setStatusFinished(
           taskId,
           userId,
           userUnitIds,
@@ -439,11 +464,11 @@ export class DocumentController extends Controller {
           requestMeta,
         );
 
-        // Send message to RabbitMQ.
+        // Notify manager.
         const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-        global.messageQueue.produce(message);
+        void publishOrLog(DESTINATION_MANAGER, message);
 
-        global.businesses.userInbox.sendToInboxesIfNeedIt(finishedTask);
+        getBusinesses().userInbox.sendToInboxesIfNeedIt(finishedTask);
       } catch (error) {
         return this.responseError(res, error, error.httpStatusCode, error.details);
       }
@@ -467,15 +492,15 @@ export class DocumentController extends Controller {
     // Check access to task as signer.
     let task;
     try {
-      task = await global.businesses.task.findByDocumentIdAsSigner(documentId, userId);
+      task = await getBusinesses().task.findByDocumentIdAsSigner(documentId, userId);
     } catch (error) {
       return this.responseError(res, error);
     }
 
     // Check draft expired.
     try {
-      if (global.businesses.task.checkDraftExpired(task)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      if (getBusinesses().task.checkDraftExpired(task)) {
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -495,14 +520,14 @@ export class DocumentController extends Controller {
     });
 
     try {
-      await global.businesses.document.declineMultisigns(filteredSigners, taskId, documentId, userId);
+      await getBusinesses().document.signing.declineMultisigns(filteredSigners, taskId, documentId, userId);
     } catch (error) {
       return this.responseError(res, error);
     }
 
     // Add multiSignInfo.
 
-    await global.businesses.document.addMultiSignInfo(task, { userInfo, type: 'reject' });
+    await getBusinesses().document.signing.addMultiSignInfo(task, { userInfo, type: 'reject' });
 
     this.responseData(res, this.filterResponse(documentSignatureRejection));
   }
@@ -523,7 +548,7 @@ export class DocumentController extends Controller {
     let document;
     let fileLink;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
       ({ fileId: fileLink } = document);
       if (fileLink === 'generating') {
         return this.responseThatAccepted(res);
@@ -570,20 +595,20 @@ export class DocumentController extends Controller {
       const userUnitIds = this.getRequestUserUnitIds(req);
 
       // Check access to document.
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
 
       // Check document already commited.
       const { isFinal } = document;
       if (isFinal) {
-        throw new BadRequestError(ERROR_DOCUMENT_ALREADY_COMMITTED);
+        throw new BadRequestError(ErrorMessage.DocumentAlreadyCommitted);
       }
 
       if (req.query.large_file) {
-        await global.businesses.document.addGeneratingPdfToQueue(document, userId);
+        await getBusinesses().document.files.addGeneratingPdfToQueue(document, userId);
 
         return this.responseThatAccepted(res);
       }
-      pdfBuffer = await global.businesses.document.createPdf({ document, userId });
+      pdfBuffer = await getBusinesses().document.files.createPdf({ document, userId });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -607,9 +632,9 @@ export class DocumentController extends Controller {
       const userId = this.getRequestUserId(req);
       const userUnitIds = this.getRequestUserUnitIds(req);
 
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
 
-      await global.businesses.document.addGeneratingPdfToQueue(document, userId);
+      await getBusinesses().document.files.addGeneratingPdfToQueue(document, userId);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -633,30 +658,40 @@ export class DocumentController extends Controller {
     const documentId = req.params.id;
     const originalFileName = normalizeFileName(req.query.file_name);
     const labels = (Array.isArray(req.query.labels) ? req.query.labels : [req.query.labels || '']).filter((v) => !!v);
-    const metaString = req.query.meta ? decodeURIComponent(req.query.meta) : '{}';
-    const meta = JSON.parse(metaString);
     const documentPath = req.query.document_path;
     const contentType = req.query.content_type || req.headers['content-type'];
     const contentLength = req.query.content_length || req.headers['content-length'];
     const userId = this.getRequestUserId(req);
     const userUnitIds = this.getRequestUserUnitIds(req);
 
+    // Check document path.
+    if (typeof documentPath !== 'undefined' && documentPath !== '' && !isValidDocumentPath(documentPath)) {
+      const cause = [typeof documentPath === 'string' ? documentPath.slice(0, 64) : typeof documentPath];
+      return this.responseError(res, new InvalidParamsError('Invalid document path.', { cause }));
+    }
+
     // Check file extensions.
     if (
-      !global.config.documents?.allowedFileExtensions?.some((allowedFileExtension) => originalFileName.toUpperCase().endsWith(allowedFileExtension))
+      !getConfig().documents?.allowedFileExtensions?.some((allowedFileExtension) => originalFileName.toUpperCase().endsWith(allowedFileExtension))
     ) {
       return this.responseError(res, 'Invalid file extensions', 400);
     }
 
     // Check meta.
-    if (typeof meta !== 'object') {
+    let meta;
+    try {
+      meta = JSON.parse(req.query.meta ? decodeURIComponent(req.query.meta) : '{}');
+    } catch {
+      return this.responseError(res, 'Invalid file meta', 400);
+    }
+    if (meta === null || typeof meta !== 'object' || findUnsafeDataKeys(meta, 'meta').length > 0) {
       return this.responseError(res, 'Invalid file meta', 400);
     }
 
     // Check access to document.
     let document;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -672,7 +707,7 @@ export class DocumentController extends Controller {
 
     // Save placeholder to document data if need it.
     const attachmentPlaceholder = DocumentAttachmentEntity.getPlaceholder(fileId, documentPath);
-    await global.businesses.document.saveAttachmentToDocumentData(attachmentPlaceholder, documentPath, document, userId, userUnitIds);
+    await getBusinesses().document.files.saveAttachmentToDocumentData(attachmentPlaceholder, documentPath, document, userId, userUnitIds);
 
     // Add to DB.
     let attachment;
@@ -691,7 +726,7 @@ export class DocumentController extends Controller {
     }
 
     // Save to document data if need it.
-    await global.businesses.document.saveAttachmentToDocumentData(attachment, documentPath, document, userId, userUnitIds);
+    await getBusinesses().document.files.saveAttachmentToDocumentData(attachment, documentPath, document, userId, userUnitIds);
 
     this.responseData(res, attachment);
 
@@ -718,7 +753,7 @@ export class DocumentController extends Controller {
 
     // Check access to document.
     try {
-      await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -726,7 +761,7 @@ export class DocumentController extends Controller {
     // Get readable stream.
     let downloadFileRequestOptions;
     try {
-      const { fileLink } = await (global.businesses.document.getAttachmentFileLink as any)(documentId, attachmentId, userId);
+      const { fileLink } = await (getBusinesses().document.files.getAttachmentFileLink as any)(documentId, attachmentId, userId);
       if (preview === QUERY_INDICATOR_TRUE) {
         downloadFileRequestOptions = await this.storageService.provider.downloadFilePreviewRequestOptions(fileLink);
       } else if (p7s === QUERY_INDICATOR_TRUE) {
@@ -763,14 +798,14 @@ export class DocumentController extends Controller {
     // Get document and check access to document.
     let document;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
 
     // Define files links.
     const { fileId: mainFileLink } = document || {};
-    const attachmentsLinks = await global.businesses.document.getAttachmentFilesLinks(documentId);
+    const attachmentsLinks = await getBusinesses().document.files.getAttachmentFilesLinks(documentId);
     const documentFilesLinks = [mainFileLink, ...attachmentsLinks].filter((v) => !!v);
     if (documentFilesLinks.length === 0) {
       return this.responseError(res, 'Document without files.', 404);
@@ -805,7 +840,7 @@ export class DocumentController extends Controller {
     // Get document and check access to document.
     let document;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -844,9 +879,9 @@ export class DocumentController extends Controller {
     // Check access to document.
     let document;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
       if (document.isFinal) {
-        throw new Error(ERROR_CAN_NOT_DELETE);
+        throw new Error(ErrorMessage.CanNotDelete);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -854,7 +889,7 @@ export class DocumentController extends Controller {
 
     // Delete attachment from DB.
     try {
-      await global.businesses.document.deleteAttachment(documentId, attachmentId, userId);
+      await getBusinesses().document.files.deleteAttachment(documentId, attachmentId, userId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -878,7 +913,7 @@ export class DocumentController extends Controller {
 
     // Check access to document.
     try {
-      await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -886,7 +921,7 @@ export class DocumentController extends Controller {
     // Get data for sign.
     let dataForSign;
     try {
-      const dataForSignWithFileIds: any = await global.businesses.document.getDataForSign(documentId);
+      const dataForSignWithFileIds: any = await getBusinesses().document.signing.getDataForSign(documentId);
       dataForSign = dataForSignWithFileIds.map((v: any) => v.dataForSign);
     } catch (error) {
       return this.responseError(res, error);
@@ -913,7 +948,7 @@ export class DocumentController extends Controller {
       const { token } = req.headers;
       const isUserPemCouldBeMock = this.isUserPemCouldBeMock(token);
       const isUserSignatureCouldBeMock = isSignTest && this.isUserSignatureCouldBeMock(token);
-      global.log.save('document-sign-started-by-user', userInfo);
+      getLog().save('document-sign-started-by-user', userInfo);
 
       // Check type.
       const allowedTypes = ['file', 'hardware'];
@@ -926,7 +961,7 @@ export class DocumentController extends Controller {
       try {
         const strict = false;
         const doNotCheckAccess = false;
-        document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, strict, doNotCheckAccess);
+        document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, strict, doNotCheckAccess);
       } catch (error) {
         return this.responseError(res, error);
       }
@@ -939,8 +974,8 @@ export class DocumentController extends Controller {
 
       // Check draft expired.
       try {
-        if (global.businesses.task.checkDraftExpired(task)) {
-          throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+        if (getBusinesses().task.checkDraftExpired(task)) {
+          throw new BadRequestError(ErrorMessage.DraftExpired);
         }
       } catch (error) {
         return this.responseError(res, error);
@@ -949,7 +984,7 @@ export class DocumentController extends Controller {
       // Check sign available.
       let isSignAvailable;
       try {
-        isSignAvailable = await global.businesses.document.isSignAvailable(document, userInfo, userUnits);
+        isSignAvailable = await getBusinesses().document.signing.isSignAvailable(document, userInfo, userUnits);
       } catch (error) {
         return this.responseError(res, error);
       }
@@ -962,7 +997,7 @@ export class DocumentController extends Controller {
 
       // Check strict sequential sign.
       if (signers.length) {
-        const nextSignerUserId = await global.businesses.document.checkSignersOrderAndGetNextSigner({ task, document });
+        const nextSignerUserId = await getBusinesses().document.signing.checkSignersOrderAndGetNextSigner({ task, document });
         if (nextSignerUserId && nextSignerUserId !== userId) {
           return this.responseError(res, 'User cannot sign according to strict sign order');
         }
@@ -971,7 +1006,7 @@ export class DocumentController extends Controller {
       // Get signed document.
       let signedDocument;
       try {
-        signedDocument = await global.businesses.document.sign(
+        signedDocument = await getBusinesses().document.signing.sign(
           documentId,
           signature,
           userId,
@@ -988,18 +1023,18 @@ export class DocumentController extends Controller {
       // Handle multi sign notification.
       if (signers.length) {
         try {
-          const nextSignerUserId = await global.businesses.document.checkSignersOrderAndGetNextSigner({ task, document });
+          const nextSignerUserId = await getBusinesses().document.signing.checkSignersOrderAndGetNextSigner({ task, document });
           if (nextSignerUserId) {
             // It`s strict sequential sign - inform only next signer.
-            await global.businesses.document.sendLetterToNextSigner({ task, document, nextSignerUserId });
+            await getBusinesses().document.signing.sendLetterToNextSigner({ task, document, nextSignerUserId });
           } else if (!signatures.length && performerUsers.includes(userId)) {
             // It`s regular sign and it`s initiator (first signer) request - inform all signers one time.
-            await (global.businesses.document.sendLetterToSigners as any)(document, task, signers, userId);
+            await (getBusinesses().document.signing.sendLetterToSigners as any)(document, task, signers, userId);
           }
         } catch (error) {
-          global.log.save('send-letter-to-signers-error', { error });
+          getLog().save('send-letter-to-signers-error', { error });
           // Reset signs from document.
-          await global.models.documentSignature.deleteByDocumentId(documentId);
+          await getModels().documentSignature.deleteByDocumentId(documentId);
           return this.responseError(res, error);
         }
       }
@@ -1008,15 +1043,15 @@ export class DocumentController extends Controller {
       if (commit === QUERY_INDICATOR_TRUE) {
         // Check that all users signed all files.
         try {
-          await global.businesses.document.checkP7SSignaturesCount(signedDocument);
+          await getBusinesses().document.signing.checkP7SSignaturesCount(signedDocument);
         } catch (error) {
-          return this.responseError(res, error.message, 500, error.details);
+          return this.responseError(res, error, 500, error.details);
         }
 
         try {
           const requestMeta = this.getRequestMeta(req);
           const { id: taskId } = task;
-          const finishedTask = await global.businesses.task.setStatusFinished(
+          const finishedTask = await getBusinesses().task.setStatusFinished(
             taskId,
             userId,
             userUnitIds,
@@ -1025,11 +1060,11 @@ export class DocumentController extends Controller {
             requestMeta,
           );
 
-          // Send message to RabbitMQ.
+          // Notify manager.
           const message = { workflowId: finishedTask.workflowId, taskId: taskId };
-          global.messageQueue.produce(message);
+          void publishOrLog(DESTINATION_MANAGER, message);
 
-          global.businesses.userInbox.sendToInboxesIfNeedIt(finishedTask);
+          getBusinesses().userInbox.sendToInboxesIfNeedIt(finishedTask);
         } catch (error) {
           return this.responseError(res, error, error.httpStatusCode, error.details);
         }
@@ -1040,7 +1075,7 @@ export class DocumentController extends Controller {
       // Save custom logs.
       this.customLogs.saveCustomLog({ operationType: 'sign', request: res.responseMeta, document: signedDocument });
     } catch (error) {
-      global.log.save('sign-document-error', { message: error.toString(), cause: error.cause, stack: error.stack });
+      getLog().save('sign-document-error', { message: error.toString(), cause: error.cause, stack: error.stack });
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
   }
@@ -1057,14 +1092,14 @@ export class DocumentController extends Controller {
     const userUnitIds = this.getRequestUserUnitIds(req);
     const userUnits = this.getRequestUserUnitEntities(req);
     const userInfo = this.getRequestUserInfo(req);
-    global.log.save('document-continue-sign-started-by-user', userInfo);
+    getLog().save('document-continue-sign-started-by-user', userInfo);
 
     // Check access to document.
     let document;
     try {
       const strict = false;
       const doNotCheckAccess = false;
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, strict, doNotCheckAccess);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, strict, doNotCheckAccess);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1075,8 +1110,8 @@ export class DocumentController extends Controller {
 
     // Check draft expired.
     try {
-      if (global.businesses.task.checkDraftExpired(task)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      if (getBusinesses().task.checkDraftExpired(task)) {
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1085,7 +1120,7 @@ export class DocumentController extends Controller {
     // Check continue sign available.
     let isSignAvailable;
     try {
-      isSignAvailable = await global.businesses.document.isContinueSignAvailable(document, userInfo, userUnits);
+      isSignAvailable = await getBusinesses().document.signing.isContinueSignAvailable(document, userInfo, userUnits);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1095,17 +1130,17 @@ export class DocumentController extends Controller {
 
     // Inform signers if need it.
     try {
-      await global.businesses.document.sendLetterToSigners(document, task, signers, userId, false, false, true);
+      await getBusinesses().document.signing.sendLetterToSigners(document, task, signers, userId, false, false, true);
     } catch (error) {
-      global.log.save('send-letter-to-signers-by-continue-sign-error');
+      getLog().save('send-letter-to-signers-by-continue-sign-error');
       return this.responseError(res, error);
     }
 
     // Set `signWithoutPerformerAvailable: true` in task data.
     try {
-      await global.models.task.setSignWithoutPerformerAvailable(task.id, userId, true);
+      await getModels().task.setSignWithoutPerformerAvailable(task.id, userId, true);
     } catch (error) {
-      global.log.save('set-sign-without-performer-available-error');
+      getLog().save('set-sign-without-performer-available-error');
       return this.responseError(res, error);
     }
 
@@ -1126,7 +1161,7 @@ export class DocumentController extends Controller {
 
     // Check access to document.
     try {
-      await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1135,7 +1170,7 @@ export class DocumentController extends Controller {
     let dataForSign;
     let fileName;
     try {
-      const dataForSignP7s = await global.businesses.document.getDataForSignP7s(documentId, attachmentId, userId);
+      const dataForSignP7s = await getBusinesses().document.signing.getDataForSignP7s(documentId, attachmentId, userId);
       dataForSign = dataForSignP7s.p7s;
       fileName = dataForSignP7s.fileName;
     } catch (error) {
@@ -1171,20 +1206,20 @@ export class DocumentController extends Controller {
     const userInfo = this.getRequestUserInfo(req);
     const { token } = req.headers;
     const isUserSignatureCouldBeMock = isSignTest && this.isUserSignatureCouldBeMock(token);
-    global.log.save('document-sign-p7s-started-by-user', userInfo);
+    getLog().save('document-sign-p7s-started-by-user', userInfo);
 
     // Check access to document first.
     let document;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
 
     // Check draft expired.
     try {
-      if (await global.models.task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1194,14 +1229,14 @@ export class DocumentController extends Controller {
 
     // Check document template.
     try {
-      documentTemplate = await global.models.documentTemplate.findById(document.documentTemplateId);
+      documentTemplate = await getModels().documentTemplate.findById(document.documentTemplateId);
     } catch (error) {
       return this.responseError(res, error);
     }
 
     // Check strict sequential sign.
     if (document.task.signerUsers?.length) {
-      const nextSignerUserId = await global.businesses.document.checkSignersOrderAndGetNextSigner({ task: document.task, document });
+      const nextSignerUserId = await getBusinesses().document.signing.checkSignersOrderAndGetNextSigner({ task: document.task, document });
       if (nextSignerUserId && nextSignerUserId !== userId) {
         return this.responseError(res, 'User cannot sign (P7S) according to strict sign order');
       }
@@ -1212,7 +1247,7 @@ export class DocumentController extends Controller {
     // P7S sign.
     let p7sSignatureResult;
     try {
-      p7sSignatureResult = await global.businesses.document.signP7s(
+      p7sSignatureResult = await getBusinesses().document.signing.signP7s(
         documentId,
         attachmentId,
         p7sSignature,
@@ -1241,7 +1276,7 @@ export class DocumentController extends Controller {
 
     // Check access to document.
     try {
-      await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1249,7 +1284,7 @@ export class DocumentController extends Controller {
     // Get additional data for sign.
     let additionalDataForSignP7s;
     try {
-      additionalDataForSignP7s = await global.businesses.document.getAdditionalDataForSignP7s(documentId, false, userInfo);
+      additionalDataForSignP7s = await getBusinesses().document.signing.getAdditionalDataForSignP7s(documentId, false, userInfo);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1273,19 +1308,19 @@ export class DocumentController extends Controller {
     const userInfo = this.getRequestUserInfo(req);
     const { token } = req.headers;
     const isUserSignatureCouldBeMock = isSignTest && this.isUserSignatureCouldBeMock(token);
-    global.log.save('document-sign-additional-p7s-started-by-user', userInfo);
+    getLog().save('document-sign-additional-p7s-started-by-user', userInfo);
 
     // Check access to document.
     let document;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
 
     // Check strict sequential sign.
     if (document.task.signerUsers?.length) {
-      const nextSignerUserId = await global.businesses.document.checkSignersOrderAndGetNextSigner({ task: document.task, document });
+      const nextSignerUserId = await getBusinesses().document.signing.checkSignersOrderAndGetNextSigner({ task: document.task, document });
       if (nextSignerUserId && nextSignerUserId !== userId) {
         return this.responseError(res, 'User cannot sign (additional P7S) according to strict sign order');
       }
@@ -1294,7 +1329,7 @@ export class DocumentController extends Controller {
     // P7S additional sign.
     let p7sSignatureResult;
     try {
-      p7sSignatureResult = await global.businesses.document.signAdditionalP7s(
+      p7sSignatureResult = await getBusinesses().document.signing.signAdditionalP7s(
         documentId,
         p7sSignature,
         isUserSignatureCouldBeMock,
@@ -1325,7 +1360,7 @@ export class DocumentController extends Controller {
 
     // Check access to document.
     try {
-      await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1333,11 +1368,11 @@ export class DocumentController extends Controller {
     // Get data to encrypt and certificate.
     let toEncrypt;
     try {
-      toEncrypt = await global.businesses.document.getDataToEncrypt(documentId);
+      toEncrypt = await getBusinesses().document.signing.getDataToEncrypt(documentId);
     } catch (error) {
       this.responseError(res, error);
     }
-    const { encryptCert } = global.config.encrypt;
+    const { encryptCert } = getConfig().encrypt;
 
     // Response data to encrypt and certificate.
     this.responseData(res, { toEncrypt, encryptCert });
@@ -1360,15 +1395,15 @@ export class DocumentController extends Controller {
 
     // Check access to document.
     try {
-      await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
+      await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
 
     // Save encrypted data.
-    const { encryptCert } = global.config.encrypt;
+    const { encryptCert } = getConfig().encrypt;
     try {
-      await global.businesses.document.saveEncryptedData(documentId, encryptedItems, encryptCert);
+      await getBusinesses().document.signing.saveEncryptedData(documentId, encryptedItems, encryptCert);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1397,7 +1432,7 @@ export class DocumentController extends Controller {
     // Get files to preview.
     let filesToPreview;
     try {
-      filesToPreview = await global.businesses.document.getFilesToPreviewAndCheckAccess(documentId, step, userId, userUnitIds);
+      filesToPreview = await getBusinesses().document.files.getFilesToPreviewAndCheckAccess(documentId, step, userId, userUnitIds);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1427,7 +1462,7 @@ export class DocumentController extends Controller {
     let directFilesToPreview;
     try {
       const isDirect = true;
-      directFilesToPreview = await global.businesses.document.getFilesToPreviewAndCheckAccess(documentId, path, userId, userUnitIds, isDirect);
+      directFilesToPreview = await getBusinesses().document.files.getFilesToPreviewAndCheckAccess(documentId, path, userId, userUnitIds, isDirect);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -1447,10 +1482,12 @@ export class DocumentController extends Controller {
     const { preview, asics, p7s } = req.query;
 
     // Define file link.
+    const userId = this.getRequestUserId(req);
     let fileLink;
     try {
-      fileLink = this.downloadToken.decrypt(downloadToken);
+      fileLink = this.downloadToken.decrypt(downloadToken, userId);
     } catch (error) {
+      getLog().save('download-token-rejected', { userId }, 'warn');
       return this.responseError(res, error);
     }
 
@@ -1523,10 +1560,11 @@ export class DocumentController extends Controller {
     const propertyPath = req.body.path;
     const userId = this.getRequestUserId(req);
     const userUnitIds = this.getRequestUserUnitIds(req);
+    const userInfo = this.getRequestUserInfo(req);
     const properties = [];
 
     if (!propertyPath) {
-      global.log.save('document-calc-back-triggered-empty-path-error', { propertyPath }, 'error');
+      getLog().save('document-calc-back-triggered-empty-path-error', { propertyPath }, 'error');
       return this.responseError(res, 'Empty path.', 400);
     }
 
@@ -1536,16 +1574,16 @@ export class DocumentController extends Controller {
     let workflow;
     let jsonSchema;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
       workflow = await this.workflowModel.findById(document.task.workflowId);
-      const task = await global.businesses.task.findByIdAndCheckAccess(document.task.id, userId, userUnitIds);
+      const task = await getBusinesses().task.findByIdAndCheckAccess(document.task.id, userId, userUnitIds);
       task.setIsMeSignerAndPerformer(userId, userUnitIds.all);
       workflowDocuments = await this.taskModel.getDocumentsByWorkflowId(workflow.id);
       const taskTemplate = await this.taskTemplateModel.findById(task.taskTemplateId);
       const documentTemplate = await this.documentTemplateModel.findById(taskTemplate.documentTemplateId);
       jsonSchema = documentTemplate.jsonSchema;
     } catch (error) {
-      global.log.save('document-calc-back-triggered-retrieving-data-error', error, 'error');
+      getLog().save('document-calc-back-triggered-retrieving-data-error', error, 'error');
       return this.responseError(res, 'Fetching data error.');
     }
 
@@ -1554,7 +1592,7 @@ export class DocumentController extends Controller {
     let valueToSet;
     const itemSchema = _.get(jsonSchema, schemaPropertyPath);
     if (!itemSchema || !itemSchema.calcBackTriggered || typeof itemSchema.calcBackTriggered !== 'string') {
-      global.log.save('document-calc-back-triggered-schema-error', { itemSchema }, 'error');
+      getLog().save('document-calc-back-triggered-schema-error', { itemSchema }, 'error');
       return this.responseError(res, 'Schema error.', 400);
     }
     try {
@@ -1562,7 +1600,7 @@ export class DocumentController extends Controller {
         meta: { fn: 'calcBackTriggered', documentId, propertyPath },
       });
     } catch (error) {
-      global.log.save('document-calc-back-triggered-calculating-error', error, 'error');
+      getLog().save('document-calc-back-triggered-calculating-error', error, 'error');
       return this.responseError(res, 'Calculation error.');
     }
     if (propertyPath) {
@@ -1572,9 +1610,9 @@ export class DocumentController extends Controller {
     // Update document.
     let updatedDocument;
     try {
-      updatedDocument = await (global.businesses.document.update as any)(documentId, properties, userId, userUnitIds);
+      updatedDocument = await (getBusinesses().document.update as any)(documentId, properties, userId, userUnitIds, userInfo);
     } catch (error) {
-      global.log.save('document-calc-back-triggered-update-error', error, 'error');
+      getLog().save('document-calc-back-triggered-update-error', error, 'error');
       return this.responseError(res, 'Document updating error.');
     }
 
@@ -1596,19 +1634,19 @@ export class DocumentController extends Controller {
     // Check access to document.
     let document;
     try {
-      document = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+      document = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
       if (document.isFinal) {
         throw new Error('Document is final. Can not delete signs.');
       }
     } catch (error) {
-      global.log.save('delete-signs-document-access-error', error, 'error');
+      getLog().save('delete-signs-document-access-error', error, 'error');
       return this.responseError(res, error);
     }
 
     // Check draft expired.
     try {
-      if (await global.models.task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1616,9 +1654,9 @@ export class DocumentController extends Controller {
 
     // Delete signs from document.
     try {
-      await global.models.documentSignature.deleteByDocumentId(documentId);
+      await getModels().documentSignature.deleteByDocumentId(documentId);
     } catch (error) {
-      global.log.save('delete-document-signs-error', error, 'error');
+      getLog().save('delete-document-signs-error', error, 'error');
       return this.responseError(res, error);
     }
 
@@ -1626,31 +1664,31 @@ export class DocumentController extends Controller {
     try {
       await this.documentSignatureRejectionModel.deleteByDocumentId(documentId);
     } catch (error) {
-      global.log.save('delete-document-signs-rejection-error', error, 'error');
+      getLog().save('delete-document-signs-rejection-error', error, 'error');
       return this.responseError(res, error);
     }
 
     // Delete the signatures of additional data.
     try {
-      await global.models.additionalDataSignature.deleteByDocumentId(documentId);
+      await getModels().additionalDataSignature.deleteByDocumentId(documentId);
     } catch (error) {
-      global.log.save('delete-additional-data-signature-error', error, 'error');
+      getLog().save('delete-additional-data-signature-error', error, 'error');
       return this.responseError(res, error);
     }
 
     // Set `signWithoutPerformerAvailable: true` in task data.
     try {
-      await global.models.task.setSignWithoutPerformerAvailableByDocumentId(documentId, userId, false);
+      await getModels().task.setSignWithoutPerformerAvailableByDocumentId(documentId, userId, false);
     } catch (error) {
-      global.log.save('set-sign-without-performer-available-error');
+      getLog().save('set-sign-without-performer-available-error');
       return this.responseError(res, error);
     }
 
     let updatedDocument;
     try {
-      updatedDocument = await global.businesses.document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
+      updatedDocument = await getBusinesses().document.findByIdAndCheckAccess(documentId, userId, userUnitIds, true);
     } catch (error) {
-      global.log.save('delete-signs-get-document-error', error, 'error');
+      getLog().save('delete-signs-get-document-error', error, 'error');
       return this.responseError(res, error);
     }
 
@@ -1659,13 +1697,13 @@ export class DocumentController extends Controller {
     const { task } = updatedDocument;
     const signerIds = task && task.signerUsers;
     try {
-      await (global.businesses.document.sendLetterToSigners as any)(updatedDocument, task, signerIds, userId, isCancelSignsLetter);
+      await (getBusinesses().document.signing.sendLetterToSigners as any)(updatedDocument, task, signerIds, userId, isCancelSignsLetter);
     } catch {
-      global.log.save('send-letter-to-signers-error');
+      getLog().save('send-letter-to-signers-error');
     }
 
     // Add multiSignInfo.
-    await global.businesses.document.addMultiSignInfo(updatedDocument.task, { userInfo, type: 'delete_sign' });
+    await getBusinesses().document.signing.addMultiSignInfo(updatedDocument.task, { userInfo, type: 'delete_sign' });
 
     this.responseData(res, { document: updatedDocument });
   }
@@ -1686,8 +1724,8 @@ export class DocumentController extends Controller {
 
     // Check draft expired.
     try {
-      if (await global.models.task.checkDraftExpirationByDocumentId(documentId)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      if (await getModels().task.checkDraftExpirationByDocumentId(documentId)) {
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1695,7 +1733,7 @@ export class DocumentController extends Controller {
 
     let updatedDocument;
     try {
-      updatedDocument = await (global.businesses.document.checkAndSaveDataFromExternalReader as any)({
+      updatedDocument = await (getBusinesses().document.checkAndSaveDataFromExternalReader as any)({
         oauthToken,
         service,
         method,
@@ -1709,7 +1747,7 @@ export class DocumentController extends Controller {
         enabledMocksHeader,
       });
     } catch (error) {
-      global.log.save('check-and-save-data-from-external-reader', { error: error && error.message, cause: error.cause }, 'error');
+      getLog().save('check-and-save-data-from-external-reader', { error: error && error.message, cause: error.cause }, 'error');
       return this.responseError(res, error);
     }
 
@@ -1731,14 +1769,14 @@ export class DocumentController extends Controller {
     let { requestId } = req.body;
     const enabledMocksHeader = req.get('enabled-mocks');
 
-    if (!global.redisClient) {
-      global.log.save('external-reader-redis-error', { error: 'Redis client is not initialized' }, 'error');
+    if (!getRedisClient()) {
+      getLog().save('external-reader-redis-error', { error: 'Redis client is not initialized' }, 'error');
       return this.responseError(res, 'Redis client is not initialized', 500);
     }
 
     if (requestId) {
-      global.log.save('external-reader-request-id', { requestId }, 'info');
-      let requestData = await global.redisClient.get(`external-reader-request-id:${requestId}`);
+      getLog().save('external-reader-request-id', { requestId }, 'info');
+      let requestData = await getRedisClient().get(`external-reader-request-id:${requestId}`);
 
       if (!requestData) {
         return this.responseError(res, 'Request not found', 404);
@@ -1751,7 +1789,7 @@ export class DocumentController extends Controller {
       }
 
       if (requestData.status === 'done' && requestData.documentId) {
-        const updatedDocument = await global.businesses.document.findByIdAndCheckAccess(requestData.documentId, userId, userUnitIds, true);
+        const updatedDocument = await getBusinesses().document.findByIdAndCheckAccess(requestData.documentId, userId, userUnitIds, true);
         return this.responseData(res, updatedDocument);
       }
 
@@ -1760,7 +1798,7 @@ export class DocumentController extends Controller {
 
     requestId = randomUUID();
 
-    await global.redisClient.set(
+    await getRedisClient().set(
       `external-reader-request-id:${requestId}`,
       {
         status: 'processing',
@@ -1772,9 +1810,9 @@ export class DocumentController extends Controller {
 
     let taskToCheck;
     try {
-      taskToCheck = await global.models.task.findByDocumentId(documentId);
-      if (global.businesses.task.checkDraftExpired(taskToCheck)) {
-        throw new BadRequestError(ERROR_DRAFT_EXPIRED);
+      taskToCheck = await getModels().task.findByDocumentId(documentId);
+      if (getBusinesses().task.checkDraftExpired(taskToCheck)) {
+        throw new BadRequestError(ErrorMessage.DraftExpired);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -1782,7 +1820,7 @@ export class DocumentController extends Controller {
 
     (async () => {
       try {
-        await (global.businesses.document.checkAndSaveDataFromExternalReader as any)({
+        await (getBusinesses().document.checkAndSaveDataFromExternalReader as any)({
           oauthToken,
           service,
           method,
@@ -1796,7 +1834,7 @@ export class DocumentController extends Controller {
           enabledMocksHeader,
         });
 
-        await global.redisClient.set(
+        await getRedisClient().set(
           `external-reader-request-id:${requestId}`,
           {
             status: 'done',
@@ -1805,14 +1843,14 @@ export class DocumentController extends Controller {
           60 * 60,
         );
       } catch (error) {
-        global.log.save('check-and-save-data-from-external-reader', { error: error && error.message, cause: error.cause }, 'error');
+        getLog().save('check-and-save-data-from-external-reader', { error: error && error.message, cause: error.cause }, 'error');
 
         let code = 500;
         if (error.message.includes('Authentication error')) {
           code = 401;
         }
 
-        await global.redisClient.set(
+        await getRedisClient().set(
           `external-reader-request-id:${requestId}`,
           {
             errorCode: code,
@@ -1821,7 +1859,7 @@ export class DocumentController extends Controller {
           60 * 60,
         );
 
-        global.models.workflowError.create({
+        getModels().workflowError.create({
           error: error.message,
           details: error.details || error.cause || error.stack,
           code,
@@ -1854,7 +1892,7 @@ export class DocumentController extends Controller {
 
     let updatedDocument;
     try {
-      updatedDocument = await (global.businesses.document.updateVerifiedUserInfo as any)(documentId, {
+      updatedDocument = await (getBusinesses().document.updateVerifiedUserInfo as any)(documentId, {
         userId,
         oauthToken,
         userUnitIds,
@@ -1862,7 +1900,7 @@ export class DocumentController extends Controller {
         enabledMocksHeader,
       });
     } catch (error) {
-      global.log.save('update-verified-user-info', { error: error && error.message, cause: error.cause }, 'error');
+      getLog().save('update-verified-user-info', { error: error && error.message, cause: error.cause }, 'error');
       return this.responseError(res, error);
     }
 
@@ -1885,7 +1923,7 @@ export class DocumentController extends Controller {
     try {
       const [document] = await this.documentModel.getByIds(documentId);
       if (!document) {
-        return this.responseError(res, new NotFoundError(ERROR_DOCUMENT_NOT_FOUND));
+        return this.responseError(res, new NotFoundError(ErrorMessage.DocumentNotFound));
       }
 
       const {
@@ -1911,32 +1949,35 @@ export class DocumentController extends Controller {
         });
       }
 
-      const context = await checkContext.reduce(async (accPromise, { name, provider, options }) => {
-        const acc = await accPromise;
-        const [providerType, service, method] = provider.split('.');
+      const context = await checkContext.reduce(
+        async (accPromise, { name, provider, options }) => {
+          const acc = await accPromise;
+          const [providerType, service, method] = provider.split('.');
 
-        let providerData;
-        switch (providerType) {
-          case 'external-reader': {
-            const nonUserFilter = this.sandbox.evalWithArgs(options, [document.data], {
-              meta: { fn: 'singlesignCheck.nonUserFilter', documentId, name },
-            });
-            const dataByUser = await this.externalReader.getDataByUser(
-              service,
-              method,
-              undefined,
-              oauthToken,
-              userInfo,
-              nonUserFilter,
-              undefined,
-              userUnitIds,
-            );
-            providerData = dataByUser.data;
+          let providerData;
+          switch (providerType) {
+            case 'external-reader': {
+              const nonUserFilter = this.sandbox.evalWithArgs(options, [document.data], {
+                meta: { fn: 'singlesignCheck.nonUserFilter', documentId, name },
+              });
+              const dataByUser = await this.externalReader.getDataByUser(
+                service,
+                method,
+                undefined,
+                oauthToken,
+                userInfo,
+                nonUserFilter,
+                undefined,
+                userUnitIds,
+              );
+              providerData = dataByUser.data;
+            }
           }
-        }
 
-        return { ...acc, [name]: providerData };
-      }, Promise.resolve({ user: userInfo }));
+          return { ...acc, [name]: providerData };
+        },
+        Promise.resolve({ user: userInfo }),
+      );
 
       const errors = checkErrors.filter(({ check }) =>
         this.sandbox.evalWithArgs(check, [document.data, context], { meta: { fn: 'singlesignCheck.check', documentId, check } }),
@@ -1948,8 +1989,8 @@ export class DocumentController extends Controller {
       const [firstError] = errors;
       return this.responseError(res, 'Singlesign check failed', undefined, [firstError.title, firstError.text].filter(Boolean).join(': '));
     } catch (error) {
-      return this.responseError(res, 'Singlesign check error', undefined, error.message);
+      getLog().save('singlesign-check-error', { error: error && error.message, stack: error && error.stack }, 'error');
+      return this.responseError(res, 'Singlesign check error');
     }
   }
 }
-

@@ -2,6 +2,7 @@ import { matchedData } from 'express-validator';
 
 import { Controller } from './controller';
 import { LoginHistoryBusiness } from '../businesses/login_history';
+import { getConfig } from '../lib/context';
 
 /**
  * Login history controller.
@@ -50,7 +51,7 @@ export class LoginHistoryController extends Controller {
     }
 
     // Handle client IDs.
-    const { allowedClientIds = [] } = global.config.auth;
+    const { allowedClientIds = [] } = getConfig().auth;
     if (allowedClientIds.length > 0) {
       if (filter.client_id) {
         // Check client IDs filter accordance to allowed list.

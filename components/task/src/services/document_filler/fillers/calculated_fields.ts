@@ -1,6 +1,7 @@
-
 import jcopy from 'jcopy';
+
 import { Filler } from './filler';
+import { getLog } from '../../../lib/context';
 
 /**
  * Calculated fields filler.
@@ -19,12 +20,16 @@ export class CalculatedFieldsFiller extends Filler {
     const { workflowId } = options;
 
     // Check options.
-    if (!workflowId) { return objectToFill; }
+    if (!workflowId) {
+      return objectToFill;
+    }
 
     // Handle all schema object pages.
     await this.handleAllElements(schemaObject, objectToFill, async (item, itemSchema) => {
       // Check current element shoudn't be calculated.
-      if (!itemSchema || typeof itemSchema.calcBack !== 'string') { return; }
+      if (!itemSchema || typeof itemSchema.calcBack !== 'string') {
+        return;
+      }
 
       // Define current calculation.
       // Sample: `(documentData) => { return !!documentData.someStep.someValue ? 10 : 20; }`.
@@ -35,13 +40,11 @@ export class CalculatedFieldsFiller extends Filler {
       try {
         // Define value to set.
         // Sample: `10`.
-        valueToSet = this.sandbox.evalWithArgs(
-          currentCalcBack,
-          [jcopy(objectToFill)],
-          { meta: { fn: 'CalculatedFieldsFiller.fill.calcBack', workflowId } },
-        );
+        valueToSet = this.sandbox.evalWithArgs(currentCalcBack, [jcopy(objectToFill)], {
+          meta: { fn: 'CalculatedFieldsFiller.fill.calcBack', workflowId },
+        });
       } catch (error) {
-        global.log.save('calculated-field-filling-error', error, 'warn');
+        getLog().save('calculated-field-filling-error', error, 'warn');
       }
 
       // Return value to set.
@@ -52,4 +55,3 @@ export class CalculatedFieldsFiller extends Filler {
     return objectToFill;
   }
 }
-

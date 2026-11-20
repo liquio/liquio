@@ -1,3 +1,37 @@
+import type {
+  TaskCalculatedPaymentData,
+  TaskPaymentData,
+  TaskPaymentStatusInfo,
+} from "@liquio/plugin-sdk";
+
+/**
+ * `GetHostedCheckoutResponse.status` values (PAYONE Commerce Platform hosted-checkout-level
+ * status - NOT the outcome of the payment itself, see {@link PayonePaymentStatusCategory}).
+ * `onlinepayments-sdk-nodejs` types this field as a bare `string | null` (it ships no enums at
+ * all), so these are declared here from PAYONE's own status reference
+ * (https://developer.payone.com/en/integration/api-developer-guide/statuses).
+ */
+export enum PayoneCheckoutStatus {
+  Created = "CREATED",
+  InProgress = "IN_PROGRESS",
+  Redirected = "REDIRECTED",
+  /** Reached once a payment object exists for the checkout - for both approved *and declined*
+   * payments alike. Never sufficient on its own to determine success. */
+  PaymentCreated = "PAYMENT_CREATED",
+  CancelledByConsumer = "CANCELLED_BY_CONSUMER",
+}
+
+/**
+ * `CreatedPaymentOutput.paymentStatusCategory` values. This broad checkout category
+ * can include pending authorization/capture; inspect the nested payment status/code
+ * before treating funds as captured or permitting another payment.
+ */
+export enum PayonePaymentStatusCategory {
+  Successful = "SUCCESSFUL",
+  Rejected = "REJECTED",
+  StatusUnknown = "STATUS_UNKNOWN",
+}
+
 /**
  * Configuration options for {@link PayoneProvider}.
  * These come from the per-customer plugin config (`plugins.json`), not from code constants.
@@ -11,12 +45,6 @@ export interface PayoneOptions {
   baseUrl: string;
   /** PAYONE merchant ID the commerce case/checkout is created under. */
   merchantId: string;
-  /**
-   * ID of the specific redirect payment product to use (e.g. a specific bank/wallet product
-   * from PAYONE's product catalog). Not enumerated by the SDK - it's merchant/config-specific,
-   * so it must be configurable per deployment rather than hardcoded.
-   */
-  paymentProductId: number;
   /**
    * Fallback return URL PAYONE redirects the customer back to after completing (or abandoning)
    * the hosted payment page, used when the resolved payment data passed to `calculatePayment`
@@ -50,7 +78,7 @@ export interface PayoneOptions {
  * established convention for these resolved amounts elsewhere in `components/task`. The
  * provider is responsible for converting to integer cents before calling the PAYONE SDK.
  */
-export interface PayoneResolvedPaymentData {
+export interface PayoneResolvedPaymentData extends TaskPaymentData {
   /** Resolved decimal currency amount (not cents). */
   amount: number;
   /** ISO currency code, e.g. `UAH`/`EUR`. Falls back to a provider-level default if absent. */
@@ -61,10 +89,6 @@ export interface PayoneResolvedPaymentData {
   orderId: string;
   /** Return URL to send the customer back to after completing payment on PAYONE's hosted page. */
   returnUrl?: string;
-  documentId?: string;
-  workflowId?: string;
-  paymentControlPath?: string;
-  [key: string]: unknown;
 }
 
 /**
@@ -74,22 +98,39 @@ export interface PayoneResolvedPaymentData {
  * `statusInfo.status.isSuccess` and pushes `statusInfo` verbatim into the document's
  * processed-payment-history array.
  */
-export interface PayoneStatusInfo {
-  /** Which document this payment belongs to. */
-  documentId: string;
-  paymentControlPath: string;
-  transactionId: string;
+export interface PayoneStatusInfo extends TaskPaymentStatusInfo {
   status: {
     isSuccess: boolean;
+    /** True while checkout, authorization, or capture is pending. */
+    isPending: boolean;
+    /** Only set after a fresh provider response confirms a closed, unpaid attempt. */
+    canRetry?: true;
+    [key: string]: unknown;
   };
   extraData: {
     order_id?: string;
+    /** Detailed monetary state, separate from the broad paymentStatus category. */
+    paymentState?: string | null;
+    paymentStatusCode?: number | null;
+    /** Authentication and risk metadata do not override the monetary state. */
+    authenticationStatus?: string | null;
+    eci?: string | null;
+    liability?: string | null;
     [key: string]: unknown;
   };
 }
 
-/** Shape returned by {@link PayoneProvider#calculatePayment}. */
-export interface PayoneCalculatedPaymentData {
+/**
+ * Shape returned by {@link PayoneProvider#calculatePayment}.
+ *
+ * Extends the base {@link TaskCalculatedPaymentData} contract: `transactionId`, `extraData`, and
+ * `paymentRequestData` are required by `document.ts`/`components/task`'s two frontend payment
+ * controls (see that interface's JSDoc for exactly which control reads which field). For PAYONE's
+ * hosted-checkout flow, completing payment always requires sending the customer to PAYONE's own
+ * page, so both redirect-shaped fields are always populated from the same hosted checkout
+ * `redirectUrl`.
+ */
+export interface PayoneCalculatedPaymentData extends TaskCalculatedPaymentData {
   /** URL to redirect the customer to in order to complete payment on PAYONE's hosted page. */
   redirectUrl: string;
   /** PAYONE's commerce case ID - needed to look up/reconcile this payment later. */
@@ -104,4 +145,22 @@ export interface PayoneCalculatedPaymentData {
   amount: number;
   /** Currency code used for the payment. */
   currency: string;
+  /**
+   * Echoed back from the resolved payment data so `handleStatus` can identify the callback when
+   * this object itself is fed back in as the "callback payload" - see
+   * `document.ts#calculatePayment`'s `checkPrevTransaction` re-entry, which has no returnUrl
+   * query string to read these from otherwise.
+   */
+  documentId?: string;
+  paymentControlPath?: string;
+  taskId?: string;
+  extraData: {
+    user_action_required: true;
+    user_action_url: string;
+    [key: string]: unknown;
+  };
+  paymentRequestData: {
+    url: string;
+    method: "GET";
+  };
 }

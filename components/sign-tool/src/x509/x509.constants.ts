@@ -40,3 +40,4 @@ export const OID_SIGNING_TIME = '1.2.840.113549.1.9.5'; // signingTime
 
 // Extension OIDs
 export const OID_BASIC_CONSTRAINTS = '2.5.29.19'; // basicConstraints
+export const OID_KEY_USAGE = '2.5.29.15'; // keyUsage

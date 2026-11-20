@@ -1,8 +1,8 @@
-
 import _ from 'lodash';
+import { Sandbox } from '@liquio/back-core';
 
 import { JSONPath } from '../../lib/jsonpath';
-import { Sandbox } from '../../lib/sandbox';
+import { getLog, getModels } from '../../lib/context';
 
 // Constants.
 const KEYWORD_CHECK_VALID = 'checkValid';
@@ -16,7 +16,14 @@ const MASK_VALUE_ERROR = 'Value is not matching to mask';
  * Keywords.
  */
 export class Keywords {
-  static sandbox = new Sandbox();
+  static sandbox: Sandbox;
+
+  /**
+   * Bind the shared sandbox instance. Called at startup, once the sandbox is constructed.
+   */
+  static init() {
+    Keywords.sandbox = Sandbox.getInstance();
+  }
 
   /**
    * Check.
@@ -26,26 +33,13 @@ export class Keywords {
    * @param {object} documentDataObject Document data object.
    * @param {object} externalFunctions External functions.
    */
-  static async check(
-    propertyData,
-    propertySchema,
-    pageObject,
-    documentDataObject,
-    externalFunctions
-  ) {
+  static async check(propertyData, propertySchema, pageObject, documentDataObject, externalFunctions) {
     // Define errors list.
-    const errors = (await Promise.all(
-      Keywords.checkers.map(
-        async checker =>
-          await checker(
-            propertyData,
-            propertySchema,
-            pageObject,
-            documentDataObject,
-            externalFunctions
-          )
+    const errors = (
+      await Promise.all(
+        Keywords.checkers.map(async (checker) => await checker(propertyData, propertySchema, pageObject, documentDataObject, externalFunctions)),
       )
-    )).filter(error => error !== '');
+    ).filter((error) => error !== '');
     // Return errors container.
     return errors;
   }
@@ -107,17 +101,18 @@ export class Keywords {
         // Replace `propertyData.isSuccess` to `propertyData?.processed?.some(v => v?.status?.isSuccess === 1)`.
         if (propertySchema.control === 'payment.widget.new' || propertySchema.control === 'payment.widget' || propertySchema.control === 'payment') {
           if (/\.isSuccess/.test(isValid)) {
-            propertyData.isSuccess =
-              propertyData?.processed?.some((v) => v?.status?.isSuccess === 1) || false;
+            propertyData.isSuccess = propertyData?.processed?.some((v) => v?.status?.isSuccess === 1) || false;
           }
         }
 
         const isCorrect = Keywords.sandbox.eval(isValid)(propertyData, pageObject, documentDataObject);
-        if (!isCorrect) { return `checkValid error (${errorText || isValid}).`; }
+        if (!isCorrect) {
+          return `checkValid error (${errorText || isValid}).`;
+        }
       }
       return '';
     } catch (error) {
-      global.log.save('json-schema-validation-exception|check-valid', { error: error && error.message });
+      getLog().save('json-schema-validation-exception|check-valid', { error: error && error.message });
       return '';
     }
   }
@@ -140,8 +135,7 @@ export class Keywords {
     // Replace `propertyData.isSuccess` to `propertyData?.processed?.some(v => v?.status?.isSuccess === 1)`.
     if (propertySchema.control === 'payment.widget.new' || propertySchema.control === 'payment.widget' || propertySchema.control === 'payment') {
       if (/\.isSuccess/.test(keywordData) && typeof propertyData !== 'undefined') {
-        propertyData.isSuccess =
-          propertyData?.processed?.some((v) => v?.status?.isSuccess === 1) || false;
+        propertyData.isSuccess = propertyData?.processed?.some((v) => v?.status?.isSuccess === 1) || false;
       }
     }
 
@@ -166,8 +160,7 @@ export class Keywords {
     }
 
     // Check accordance to keyword.
-    const isCorrect =
-      (propertyData || '').replace(/<\/?[^>]+>/g, '').length >= keywordData;
+    const isCorrect = (propertyData || '').replace(/<\/?[^>]+>/g, '').length >= keywordData;
     return isCorrect ? '' : 'HTML min length error.';
   }
 
@@ -185,8 +178,7 @@ export class Keywords {
     }
 
     // Check accordance to keyword.
-    const isCorrect =
-      (propertyData || '').replace(/<\/?[^>]+>/g, '').length <= keywordData;
+    const isCorrect = (propertyData || '').replace(/<\/?[^>]+>/g, '').length <= keywordData;
     return isCorrect ? '' : 'HTML max length error.';
   }
 
@@ -243,20 +235,21 @@ export class Keywords {
       const mask = propertySchema.mask;
       if (!mask || !propertyData) return '';
 
-      const regex = propertySchema.formatChars ? propertySchema.formatChars : {
-        9: '[0-9]',
-        a: '[A-Za-z]',
-        '*': '.*'
-      };
+      const regex = propertySchema.formatChars
+        ? propertySchema.formatChars
+        : {
+            9: '[0-9]',
+            a: '[A-Za-z]',
+            '*': '.*',
+          };
 
       const value = propertyData + '';
 
-      const everyValeCharMatchMask = [...value].every((v, i) => (new RegExp(((val) => (regex)[val] || `${val}`)(mask[i]))).test(v));
+      const everyValeCharMatchMask = [...value].every((v, i) => new RegExp(((val) => regex[val] || `${val}`)(mask[i])).test(v));
 
       return everyValeCharMatchMask ? '' : MASK_VALUE_ERROR;
-
     } catch (error) {
-      global.log.save('check-masks-validation-error', {error: error && error.message}, 'warn');
+      getLog().save('check-masks-validation-error', { error: error && error.message }, 'warn');
       return '';
     }
   }
@@ -269,15 +262,11 @@ export class Keywords {
    */
   static async options(propertyData, propertySchema) {
     // Define keyword.
-    if (
-      typeof propertySchema[KEYWORD_CONTROL] !== 'undefined' ||
-      propertySchema['type'] !== 'string' ||
-      !Array.isArray(propertySchema['options'])
-    ) {
+    if (typeof propertySchema[KEYWORD_CONTROL] !== 'undefined' || propertySchema['type'] !== 'string' || !Array.isArray(propertySchema['options'])) {
       return '';
     }
 
-    if (!propertySchema.options.some(v => v.id === propertyData)) {
+    if (!propertySchema.options.some((v) => v.id === propertyData)) {
       return 'Invalid option value.';
     }
 
@@ -313,31 +302,20 @@ export class Keywords {
    * @param {object} externalFunctions External function.
    * @returns {string} Error text.
    */
-  static async register(
-    propertyData,
-    propertySchema,
-    pageObject,
-    documentDataObject,
-    externalFunctions
-  ) {
+  static async register(propertyData, propertySchema, pageObject, documentDataObject, externalFunctions) {
     // Define keyword.
     const error = 'Invalid register value.';
     if (
       typeof propertyData === 'undefined' ||
       typeof propertySchema['keyId'] === 'undefined' ||
-      (propertySchema[KEYWORD_CONTROL] !== 'register' &&
-        propertySchema[KEYWORD_CONTROL] !== 'register.form')
+      (propertySchema[KEYWORD_CONTROL] !== 'register' && propertySchema[KEYWORD_CONTROL] !== 'register.form')
     ) {
       return '';
     }
 
-    let dataClone = Array.isArray(propertyData)
-      ? _.cloneDeep(propertyData)
-      : [_.cloneDeep(propertyData)];
+    const dataCloneSource = Array.isArray(propertyData) ? _.cloneDeep(propertyData) : [_.cloneDeep(propertyData)];
 
-    dataClone = JSONPath('$..[?(@.keyId && @.registerId && @.id)]', dataClone);
-
-    dataClone = dataClone[0];
+    const dataClone = JSONPath('$..[?(@.keyId && @.registerId && @.id)]', dataCloneSource)[0];
     if (!dataClone) {
       return error;
     }
@@ -352,7 +330,7 @@ export class Keywords {
       externalFunctions.getFilteredRecordsByKeyIdArguments.userUnitIds,
       { id: dataClone.id },
       true,
-      []
+      [],
     );
 
     const recordFromRegisterService = _.get(recordsFromRegisterService, 'data[0]');
@@ -379,13 +357,7 @@ export class Keywords {
    * @param {object} externalFunctions External function.
    * @returns {string} Error text.
    */
-  static async treeSelect(
-    propertyData,
-    propertySchema,
-    _pageObject,
-    _documentDataObject,
-    _externalFunctions
-  ) {
+  static async treeSelect(propertyData, propertySchema, _pageObject, _documentDataObject, _externalFunctions) {
     // Define keyword.
     const error = 'Invalid tree select value.';
     if (typeof propertyData === 'undefined' || propertySchema[KEYWORD_CONTROL] !== 'tree.select') {
@@ -395,7 +367,7 @@ export class Keywords {
     if (Array.isArray(propertySchema.options)) {
       for (const option of propertySchema.options) {
         if (Array.isArray(option.items)) {
-          if (option.items.some(v => v.id === propertyData.id && v.name === propertyData.name)) {
+          if (option.items.some((v) => v.id === propertyData.id && v.name === propertyData.name)) {
             return '';
           }
         }
@@ -414,19 +386,10 @@ export class Keywords {
    * @param {object} externalFunctions External function.
    * @returns {string} Error text.
    */
-  static async relatedSelects(
-    propertyData,
-    propertySchema,
-    _pageObject,
-    _documentDataObject,
-    _externalFunctions
-  ) {
+  static async relatedSelects(propertyData, propertySchema, _pageObject, _documentDataObject, _externalFunctions) {
     // Define keyword.
     const error = 'Invalid register value.';
-    if (
-      typeof propertyData === 'undefined' ||
-      propertySchema[KEYWORD_CONTROL] !== 'related.selects'
-    ) {
+    if (typeof propertyData === 'undefined' || propertySchema[KEYWORD_CONTROL] !== 'related.selects') {
       return '';
     }
 
@@ -442,32 +405,26 @@ export class Keywords {
    * @param {object} externalFunctions External function.
    * @returns {string} Error text.
    */
-  static async units(
-    propertyData,
-    propertySchema,
-    _pageObject,
-    _documentDataObject,
-    _externalFunctions
-  ) {
+  static async units(propertyData, propertySchema, _pageObject, _documentDataObject, _externalFunctions) {
     // Define keyword.
     const error = 'Invalid unit value.';
     if (typeof propertyData === 'undefined' || propertySchema[KEYWORD_CONTROL] !== 'unit.select') {
       return '';
     }
 
-    const units = await global.models.unit.getAll();
+    const units = await getModels().unit.getAll();
     if (units.length === 0) {
       return error;
     }
 
     if (propertySchema.multiply) {
       for (const unit of propertyData) {
-        if (!units.some(v => v.id === unit.value && v.name === unit.label)) {
+        if (!units.some((v) => v.id === unit.value && v.name === unit.label)) {
           return error;
         }
       }
     } else {
-      if (!units.some(v => v.id === propertyData.value && v.name === propertyData.label)) {
+      if (!units.some((v) => v.id === propertyData.value && v.name === propertyData.label)) {
         return error;
       }
     }
@@ -484,13 +441,7 @@ export class Keywords {
    * @param {object} externalFunctions External function.
    * @returns {string} Error text.
    */
-  static async checkVerifiedUserInfo(
-    propertyData,
-    propertySchema,
-    _pageObject,
-    documentDataObject,
-    _externalFunctions
-  ) {
+  static async checkVerifiedUserInfo(propertyData, propertySchema, _pageObject, documentDataObject, _externalFunctions) {
     if (propertySchema[KEYWORD_CONTROL] !== 'verifiedUserInfo') {
       return '';
     }
@@ -534,4 +485,3 @@ export class Keywords {
     return '';
   }
 }
-

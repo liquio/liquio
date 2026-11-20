@@ -1,5 +1,5 @@
 {
-  "apiHost": "http://localhost:8105",
+  "apiHost": "http://filestorage:8080",
   "token": "Basic <removed>",
   "containerId": 1
 }

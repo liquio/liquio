@@ -17,4 +17,3 @@ export class ValidatorError {
     this.message = ajvError.message;
   }
 }
-

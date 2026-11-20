@@ -1,4 +1,5 @@
 import { matchedData } from 'express-validator';
+import { bpmnMessageLogContext, errorRef } from '@liquio/back-core';
 import axios from 'axios';
 
 import { Controller } from './controller';
@@ -7,6 +8,9 @@ import { WorkflowBusiness } from '../businesses/workflow';
 import { WorkflowHandlerBusiness } from '../businesses/workflow_handler';
 import { Exceptions } from '../exceptions';
 import { WorkflowRestartEntity } from '../entities/workflow_restart';
+import { getLog, getModels } from '../lib/context';
+import { DESTINATION_BY_QUEUE_NAME } from '../lib/message_bus';
+import { InvalidParamsError } from '../lib/errors';
 
 /**
  * Workflow process controller.
@@ -101,9 +105,9 @@ export class WorkflowProcessController extends Controller {
     // Get workflow errors for workflow.
     let workflowErrors;
     try {
-      workflowErrors = await global.models.workflowError.getByWorkflowId(workflowId, ['event', 'gateway', 'manager']);
+      workflowErrors = await getModels().workflowError.getByWorkflowId(workflowId, ['event', 'gateway', 'manager']);
     } catch (error) {
-      global.log.save('get-workflow-errors-error', { error: error && error.message });
+      getLog().save('get-workflow-errors-error', { error: error && error.message });
     }
 
     // Check workflow errors.
@@ -119,10 +123,10 @@ export class WorkflowProcessController extends Controller {
     try {
       const queueName = this.workflowHandlerBusiness.defineQueueName(queueMessage);
       await this.workflowHandlerBusiness.pushInQueue(queueName, queueMessage);
-      await global.models.workflow.resolveError(workflowId);
+      await getModels().workflow.resolveError(workflowId);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.models.workflowRestart.create(
+      await getModels().workflowRestart.create(
         new WorkflowRestartEntity({
           workflowId,
           workflowErrorId: workflowError.id,
@@ -149,9 +153,9 @@ export class WorkflowProcessController extends Controller {
       // Get workflow errors for workflow.
       let workflowErrors;
       try {
-        workflowErrors = await global.models.workflowError.getByWorkflowId(workflowId, ['event', 'gateway', 'manager']);
+        workflowErrors = await getModels().workflowError.getByWorkflowId(workflowId, ['event', 'gateway', 'manager']);
       } catch (error) {
-        global.log.save('get-workflow-errors-error', { error: error && error.message });
+        getLog().save('get-workflow-errors-error', { error: error && error.message });
       }
 
       // Check workflow errors.
@@ -167,10 +171,10 @@ export class WorkflowProcessController extends Controller {
       try {
         const queueName = this.workflowHandlerBusiness.defineQueueName(queueMessage);
         await this.workflowHandlerBusiness.pushInQueue(queueName, queueMessage);
-        await global.models.workflow.resolveError(workflowId);
+        await getModels().workflow.resolveError(workflowId);
 
         const user = this.getRequestUserBaseInfo(req);
-        await global.models.workflowRestart.create(
+        await getModels().workflowRestart.create(
           new WorkflowRestartEntity({
             workflowId,
             workflowErrorId: workflowError.id,
@@ -201,16 +205,18 @@ export class WorkflowProcessController extends Controller {
 
     // Push message to queue.
     try {
+      await this.workflowHandlerBusiness.assertMessageBelongsToWorkflow(workflowId, message);
+
       const queueName = this.workflowHandlerBusiness.defineQueueName(message);
 
       response = await this.workflowHandlerBusiness.pushInQueue(queueName, message); // Response only when enabled debug mode.
 
       // If disabled debug mode.
       if (typeof message.debug === 'undefined' || message.debug === false) {
-        await global.models.workflow.setStatusFinal(workflowId, false);
+        await getModels().workflow.setStatusFinal(workflowId, false);
 
         const user = this.getRequestUserBaseInfo(req);
-        await global.models.workflowRestart.create(
+        await getModels().workflowRestart.create(
           new WorkflowRestartEntity({
             workflowId,
             type: 'manual',
@@ -265,10 +271,25 @@ export class WorkflowProcessController extends Controller {
           workflowId: calculatedWorkflowId,
         };
         const queueName = this.workflowHandlerBusiness.defineQueueName(normalizedMessage);
+        try {
+          await this.workflowHandlerBusiness.assertMessageReferences(calculatedWorkflowId, normalizedMessage);
+        } catch (error) {
+          if (error instanceof InvalidParamsError) {
+            getLog().save('restart-process-from-step-bulk-message-rejected', { workflowId: calculatedWorkflowId, reason: error.message });
+            continue;
+          }
+          throw error;
+        }
         await this.workflowHandlerBusiness.pushInQueue(queueName, normalizedMessage);
-        global.log.save('restart-process-from-step-bulk-message-handled', { message: normalizedMessage });
+        getLog().save(
+          'restart-process-from-step-bulk-message-handled',
+          bpmnMessageLogContext(DESTINATION_BY_QUEUE_NAME[queueName])(normalizedMessage),
+        );
       } catch (error) {
-        global.log.save('restart-process-from-step-bulk-message-error', { error: error && error.message, message });
+        getLog().save('restart-process-from-step-bulk-message-error', {
+          error: errorRef(error),
+          ...bpmnMessageLogContext('manager')(message),
+        });
       }
     }
 
@@ -440,6 +461,7 @@ export class WorkflowProcessController extends Controller {
       p7s = await this.workflowProcessBusiness.downloadP7s(fileId, asFile, asBase64);
     } catch (error) {
       const causeResponse = error?.cause?.response;
+      getLog().save('p7s-download-error', { fileId, message: error?.message, cause: causeResponse, stack: error?.stack });
       const isNotFound = error?.httpStatusCode === 404 || (typeof causeResponse === 'string' && causeResponse.includes('404'));
 
       // Response if not found.
@@ -450,20 +472,20 @@ export class WorkflowProcessController extends Controller {
             return this.responseError(
               res,
               {
-                message: causeResponse || 'P7S not found.',
+                message: 'P7S not found.',
               },
               404,
             );
           }
 
           // Handle if task ID defined.
-          const task = await global.models.task.findById(taskId);
-          const documentTemplate = await global.models.documentTemplate.findById(task.taskTemplateId);
+          const task = await getModels().task.findById(taskId);
+          const documentTemplate = await getModels().documentTemplate.findById(task.taskTemplateId);
           if (documentTemplate.jsonSchema?.isP7sSign !== true) {
             return this.responseError(
               res,
               {
-                message: causeResponse || 'P7S not found.',
+                message: 'P7S not found.',
               },
               404,
               [{ message: 'This document does not provide a P7S' }],
@@ -474,7 +496,7 @@ export class WorkflowProcessController extends Controller {
           return this.responseError(
             res,
             {
-              message: causeResponse || 'P7S not found.',
+              message: 'P7S not found.',
             },
             404,
           );
@@ -483,14 +505,14 @@ export class WorkflowProcessController extends Controller {
         return this.responseError(
           res,
           {
-            message: causeResponse || 'P7S not found.',
+            message: 'P7S not found.',
           },
           404,
         );
       }
 
       // Respone error.
-      return this.responseError(res, { message: causeResponse || error.message || 'P7S download failed.' });
+      return this.responseError(res, { message: 'P7S download failed.' });
     }
 
     // Response P7S.

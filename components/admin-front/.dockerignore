@@ -6,3 +6,12 @@ Dockerfile
 node_modules/
 build/
 public/config.json
+
+# Local config and secrets must never enter the build context.
+.env*
+**/.env*
+*.pem
+*.key
+*.log
+.npmrc
+**/secrets*

@@ -2,6 +2,7 @@ const DEFAULT_MESSAGE = 'Already committed.';
 
 export class CommitedError extends Error {
   httpStatusCode: number;
+  isPublic = true;
 
   constructor(message?: string) {
     super(message || DEFAULT_MESSAGE);

@@ -1,20 +1,21 @@
-const Multiconf = require('multiconf');
-const fs = require('fs');
+const { Config } = require('@liquio/back-core');
+const { z } = require('zod');
 
-const CONFIG_PATH = process.env.CONFIG_PATH || process.cwd() + '/config';
-const SECRET_PATH = process.env.SECRET_PATH;
+const result = Config.load({
+  defaultConfigPath: process.cwd() + '/config',
+  envPrefix: 'LIQUIO_CFG_ID_',
+  transform: (raw) => {
+    const configData = raw.config;
+    const env = process.env.NODE_ENV || configData.default_env || 'test';
+    const envConf = configData[env];
 
-const raw = Multiconf.get(
-  [CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])],
-  'LIQUIO_CFG_ID_'
-);
+    if (!envConf) {
+      throw new Error(`Config for env [${env}] is not defined or missing 'db' section.`);
+    }
 
-const configData = raw.config;
-const env = process.env.NODE_ENV || configData.default_env || 'test';
-const envConf = configData[env];
+    return envConf;
+  },
+  schema: z.looseObject({ db: z.looseObject({}) }),
+}).toObject();
 
-if (!envConf || !envConf.db) {
-  throw new Error(`Config for env [${env}] is not defined or missing 'db' section.`);
-}
-
-module.exports = envConf.db;
+module.exports = result.db;

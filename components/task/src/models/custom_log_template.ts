@@ -1,7 +1,8 @@
-
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { CustomLogTemplateEntity } from '../entities/custom_log_template';
+import { getConfig } from '../lib/context';
 
 /**
  * Custom log template model.
@@ -29,21 +30,21 @@ export class CustomLogTemplateModel extends Model {
             allowNull: false,
             primaryKey: true,
             autoIncrement: true,
-            type: Sequelize.INTEGER
+            type: Sequelize.INTEGER,
           },
           name: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           document_template_id: {
             allowNull: true,
             type: Sequelize.INTEGER,
-            references: { model: 'document_templates', key: 'id' }
+            references: { model: 'document_templates', key: 'id' },
           },
           event_template_id: {
             allowNull: true,
             type: Sequelize.INTEGER,
-            references: { model: 'event_templates', key: 'id' }
+            references: { model: 'event_templates', key: 'id' },
           },
           operation_type: {
             allowNull: false,
@@ -58,25 +59,25 @@ export class CustomLogTemplateModel extends Model {
               'generate-pdf',
               'sign',
               'commit',
-              'event-created'
-            ]
+              'event-created',
+            ],
           },
           schema: {
             allowNull: false,
             type: Sequelize.TEXT,
-            defaultValue: '(entity) => { return { type: \'Unknown type\', custom: [] }; }'
+            defaultValue: "(entity) => { return { type: 'Unknown type', custom: [] }; }",
           },
           is_get_workflow_data: {
             allowNull: true,
-            type: Sequelize.BOOLEAN
-          }
+            type: Sequelize.BOOLEAN,
+          },
         },
         {
           tableName: 'custom_log_templates',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       // Sequelize model params.
@@ -100,7 +101,7 @@ export class CustomLogTemplateModel extends Model {
   async getAll() {
     // DB query.
     const raw = await this.model.findAll({
-      sort: [['id', 'asc']]
+      sort: [['id', 'asc']],
     });
 
     // Return entities.
@@ -114,10 +115,10 @@ export class CustomLogTemplateModel extends Model {
    */
   async getAllWithCache() {
     // Check cache available.
-    const { templatesCacheLifetime: cacheLifetime = 60000 } = global.config.custom_logs;
+    const { templatesCacheLifetime: cacheLifetime = 60000 } = getConfig().custom_logs;
     const { createdAt: cacheCreatedAt, data: cacheData } = this.cache;
     const now = Date.now();
-    if (cacheCreatedAt && (now - cacheCreatedAt <= cacheLifetime)) {
+    if (cacheCreatedAt && now - cacheCreatedAt <= cacheLifetime) {
       return cacheData;
     }
 
@@ -142,7 +143,7 @@ export class CustomLogTemplateModel extends Model {
     const allEntities = await this.getAllWithCache();
 
     // Filter by template ID.
-    const entities = allEntities.filter(v => v.documentTemplateId && v.documentTemplateId === documentTemplateId);
+    const entities = allEntities.filter((v) => v.documentTemplateId && v.documentTemplateId === documentTemplateId);
 
     // Return entities.
     return entities;
@@ -159,8 +160,9 @@ export class CustomLogTemplateModel extends Model {
     const allEntities = await this.getAllWithCache();
 
     // Filter by template ID.
-    const entities = allEntities.filter(v => v.operationType && v.operationType === operationType &&
-      (v.documentTemplateId === documentTemplateId || !v.documentTemplateId));
+    const entities = allEntities.filter(
+      (v) => v.operationType && v.operationType === operationType && (v.documentTemplateId === documentTemplateId || !v.documentTemplateId),
+    );
 
     // Return entities.
     return entities;
@@ -176,7 +178,7 @@ export class CustomLogTemplateModel extends Model {
     const allEntities = await this.getAllWithCache();
 
     // Filter by template ID.
-    const entities = allEntities.filter(v => v.operationType && v.operationType === operationType);
+    const entities = allEntities.filter((v) => v.operationType && v.operationType === operationType);
 
     // Return entities.
     return entities;
@@ -197,8 +199,7 @@ export class CustomLogTemplateModel extends Model {
       schema: item.schema,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
-      isGetWorkflowData: item.is_get_workflow_data
+      isGetWorkflowData: item.is_get_workflow_data,
     });
   }
 }
-

@@ -1,6 +1,6 @@
 // Constants.
 const ERROR_MESSAGE_SAVE_METHOD_NOT_DEFINED = 'Save method not defined in current log provider.';
-const ERROR_MESSAGE_CAN_NOT_SAVE_DATA = 'Can\'t save data.';
+const ERROR_MESSAGE_CAN_NOT_SAVE_DATA = "Can't save data.";
 
 /**
  * Log provider.

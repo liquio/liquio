@@ -1,4 +1,5 @@
 import { body, query, param } from 'express-validator';
+
 import Validator from './validator';
 
 /**
@@ -43,7 +44,7 @@ export default class KeysValidator extends Validator {
       query('created_by').optional(),
       query('updated_from').optional(),
       query('updated_to').optional(),
-      query('updated_by').optional()
+      query('updated_by').optional(),
     ];
   }
 
@@ -58,7 +59,7 @@ export default class KeysValidator extends Validator {
       query('operation').isString().optional(),
       query('offset').isInt().toInt().optional(),
       query('limit').isInt().toInt().optional(),
-      query('record_data_like').optional()
+      query('record_data_like').optional(),
     ];
   }
 
@@ -96,7 +97,7 @@ export default class KeysValidator extends Validator {
       body('lock').isBoolean().optional(),
       body('access_mode').isIn(['full', 'read_only', 'write_only']).optional(),
       body('toExport').optional(),
-      body('isEncrypted').isBoolean().optional()
+      body('isEncrypted').isBoolean().optional(),
     ];
   }
 
@@ -126,7 +127,7 @@ export default class KeysValidator extends Validator {
       body('lock').isBoolean().optional(),
       body('access_mode').isIn(['full', 'read_only', 'write_only']).optional(),
       body('toExport').optional(),
-      body('isEncrypted').isBoolean().optional()
+      body('isEncrypted').isBoolean().optional(),
     ];
   }
 

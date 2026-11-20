@@ -1,5 +1,6 @@
 import { body, matchedData } from 'express-validator';
 
+import { publicError } from '../lib/http_error';
 import { Express, Request, Response, Router } from '../types';
 import { BaseController } from './base_controller';
 
@@ -12,12 +13,29 @@ export class EdsController extends BaseController {
   }
 
   protected registerRoutes() {
+    // Challenge token for the x509 key-file login (`POST /authorise/x509`).
+    if (this.config.auth_providers?.x509?.isEnabled) {
+      this.router.get('/authorise/eds/sign', this.getToken.bind(this));
+    }
     this.router.post(
       '/authorise/eds/sign',
       [body('token').isString(), body('signature').isString(), this.handleValidation.bind(this)],
       this.checkSign.bind(this),
     );
     this.router.get('/authorise/eds/serverList', this.getServerList.bind(this));
+  }
+
+  /**
+   * Obtain random token to sign.
+   */
+  async getToken(req: Request, res: Response): Promise<void> {
+    try {
+      const token = await this.service('eds').getRandomContentToSign(req.session);
+      res.send({ token });
+    } catch (error: any) {
+      this.log.save('get-token-error', { error: error?.message, stack: error?.stack }, 'error');
+      res.status(500).send({ error: publicError(error) });
+    }
   }
 
   /**
@@ -45,7 +63,7 @@ export class EdsController extends BaseController {
     // Check random content sign.
     let signer, issuer, serial, pem;
     try {
-      const signatureInfo = await this.service('eds').checkRandomContentSign(token, signature);
+      const signatureInfo = await this.service('eds').checkRandomContentSign(token, signature, req.session);
       signer = signatureInfo.signer;
       issuer = signatureInfo.issuer;
       serial = signatureInfo.serial;

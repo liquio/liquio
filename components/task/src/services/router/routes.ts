@@ -43,8 +43,34 @@ export const routes = {
       methodHandler: 'ping',
     },
   },
+  'GET /test/ping_with_auth': {
+    groups: [GROUPS.MONITORING],
+    middlewares: [],
+    validator: {
+      name: 'test',
+      method: 'ping',
+    },
+    controller: {
+      name: 'ping',
+      methodHandler: 'pingWithAuth',
+    },
+    basicAuth: true,
+  },
+  'POST /test/ping_with_auth': {
+    groups: [GROUPS.MONITORING],
+    middlewares: [],
+    validator: {
+      name: 'test',
+      method: 'ping',
+    },
+    controller: {
+      name: 'ping',
+      methodHandler: 'pingWithAuth',
+    },
+    basicAuth: true,
+  },
   'GET /test/ping/services': {
-    groups: [GROUPS.PUBLIC, GROUPS.MONITORING, GROUPS.ADMIN_API],
+    groups: [GROUPS.MONITORING, GROUPS.ADMIN_API],
     middlewares: [],
     validator: {
       name: 'test',
@@ -54,14 +80,16 @@ export const routes = {
       name: 'ping',
       method: 'pingServices',
     },
+    basicAuth: true,
   },
   'GET /test/ping/committed-documents/:document_template_id': {
-    groups: [GROUPS.PUBLIC, GROUPS.MONITORING],
+    groups: [GROUPS.MONITORING],
     middlewares: [],
     controller: {
       name: 'ping',
       method: 'pingCommittedDocumentsCount',
     },
+    basicAuth: true,
   },
   'GET /healthz': {
     groups: [GROUPS.PUBLIC, GROUPS.MONITORING],
@@ -113,6 +141,7 @@ export const routes = {
       method: 'getBearerToken',
     },
     basicAuth: true,
+    basicAuthOnly: true, // Bearer must not be exchangeable for a fresh Bearer.
   },
   'GET /redirect/auth': {
     groups: [GROUPS.PUBLIC, GROUPS.AUTH],
@@ -1532,6 +1561,7 @@ export const routes = {
   },
   'GET /external_reader/captcha/:service/:method': {
     middlewares: [],
+    validator: { name: 'externalReader', method: 'getCaptchaChallenge' },
     controller: { name: 'externalReader', method: 'getCaptchaChallenge' },
   },
   'POST /external_reader': {

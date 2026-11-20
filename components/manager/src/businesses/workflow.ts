@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
+import { errorRef } from '@liquio/back-core';
+
+import { DESTINATION_TASK, DESTINATION_GATEWAY, managerMessageLogContext, resolveEventDestination } from '../lib/message_bus';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { SystemNotifier } from '../lib/system_notifier';
 import { WorkflowErrorModel } from '../models/workflow_error';
@@ -10,6 +13,7 @@ import { GatewayModel } from '../models/gateway';
 import { EventModel } from '../models/event';
 import { TaskEntity } from '../entities/task';
 import { EventEntity } from '../entities/event';
+import { getConfig, getLog, getMessageBus } from '../lib/context';
 
 // Constants.
 const SYSTEM_USER = 'system';
@@ -19,6 +23,51 @@ const ERROR_GATEWAY_OR_WORKFLOW_NOT_FOUND = 'Gateway or workflow not found.';
 const ERROR_EVENT_OR_WORKFLOW_NOT_FOUND = 'Event or workflow not found.';
 const ERROR_INVALID_MESSAGE_OBJECT = 'Invalid message object.';
 const ERROR_INVALID_ENTITY = 'Invalid entity';
+
+// Fields of a `forwardToTask` message the task service reads (see task `createFromMessage` and `getRetryInfo`).
+const isIdLike = (v) => (typeof v === 'string' && v.length > 0) || (typeof v === 'number' && Number.isFinite(v));
+const isPlainObject = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isStringArray = (v) => Array.isArray(v) && v.every((i) => typeof i === 'string');
+const FORWARD_TO_TASK_FIELDS: Record<string, (v) => boolean> = {
+  workflowId: isIdLike,
+  workflowTemplateId: isIdLike,
+  taskTemplateId: isIdLike,
+  createWorkflowId: isIdLike,
+  workflowParentId: isIdLike,
+  userId: (v) => typeof v === 'string',
+  initData: isPlainObject,
+  unitIds: (v) => isPlainObject(v) || Array.isArray(v),
+  performerUnits: Array.isArray,
+  requiredPerformerUnits: Array.isArray,
+  performerUsers: isStringArray,
+  performerUsersIpn: isStringArray,
+  performerUsersEmail: isStringArray,
+  retryIterator: Number.isInteger,
+  onlyExecute: (v) => typeof v === 'boolean',
+};
+
+/**
+ * Pick the whitelisted fields of a `forwardToTask` message.
+ * @param {object} messageObject AMQP message object.
+ * @returns {object|undefined} Message to forward or undefined if the required `taskTemplateId` is missing or a field has a wrong type.
+ */
+function pickForwardToTaskMessage(messageObject: any): Record<string, unknown> | undefined {
+  if (!isIdLike(messageObject?.taskTemplateId)) {
+    return;
+  }
+  const result: Record<string, unknown> = { forwardToTask: true };
+  for (const [field, isValid] of Object.entries(FORWARD_TO_TASK_FIELDS)) {
+    const value = messageObject[field];
+    if (value === undefined || value === null) {
+      continue;
+    }
+    if (!isValid(value)) {
+      return;
+    }
+    result[field] = value;
+  }
+  return result;
+}
 
 /**
  * Workflow business.
@@ -62,32 +111,35 @@ export class WorkflowBusiness {
   }
 
   async init() {
-    global.log.save('bpmn-schemas-initialization-started');
+    getLog().save('bpmn-schemas-initialization-started');
     const workflowTemplates = await this.workflowTemplateModel.getAll();
 
-    this.bpmnSchemes = (
-      await Promise.all(
-        workflowTemplates.map(async (workflowTemplate) => {
-          try {
-            const bpmnSchema = await this.xmlJsConverter.convertXmlToJsObject(workflowTemplate.xmlBpmnSchema.replace(/bpmn2:/g, 'bpmn:'));
-            if (
-              !bpmnSchema ||
-              !bpmnSchema['bpmn:definitions'] ||
-              !bpmnSchema['bpmn:definitions']['bpmn:process'] ||
-              !Array.isArray(bpmnSchema['bpmn:definitions']['bpmn:process']) ||
-              !bpmnSchema['bpmn:definitions']['bpmn:process'][0]
-            ) {
-              throw new Error(ERROR_INVALID_XML);
-            }
+    this.bpmnSchemes = (await Promise.all(workflowTemplates.map((workflowTemplate) => this.parseBpmnSchema(workflowTemplate)))).filter((v) => !!v);
+    getLog().save('bpmn-schemas-initialization-ends');
+  }
 
-            return { id: workflowTemplate.id, name: workflowTemplate.name, schema: bpmnSchema['bpmn:definitions']['bpmn:process'][0] };
-          } catch {
-            global.log.save('invalid-bpmn-schema', { workflowTemplate });
-          }
-        }),
-      )
-    ).filter((v) => !!v);
-    global.log.save('bpmn-schemas-initialization-ends');
+  /**
+   * Parse the BPMN schema of a workflow template.
+   * @param {object} workflowTemplate Workflow template.
+   * @returns {Promise<{id: number, name: string, schema: object}|undefined>} Parsed schema, or undefined when the XML is invalid.
+   */
+  async parseBpmnSchema(workflowTemplate) {
+    try {
+      const bpmnSchema = await this.xmlJsConverter.convertXmlToJsObject(workflowTemplate.xmlBpmnSchema.replace(/bpmn2:/g, 'bpmn:'));
+      if (
+        !bpmnSchema ||
+        !bpmnSchema['bpmn:definitions'] ||
+        !bpmnSchema['bpmn:definitions']['bpmn:process'] ||
+        !Array.isArray(bpmnSchema['bpmn:definitions']['bpmn:process']) ||
+        !bpmnSchema['bpmn:definitions']['bpmn:process'][0]
+      ) {
+        throw new Error(ERROR_INVALID_XML);
+      }
+
+      return { id: workflowTemplate.id, name: workflowTemplate.name, schema: bpmnSchema['bpmn:definitions']['bpmn:process'][0] };
+    } catch {
+      getLog().save('invalid-bpmn-schema', { workflowTemplate });
+    }
   }
 
   /**
@@ -96,7 +148,30 @@ export class WorkflowBusiness {
    * @returns {Promise<object>}
    */
   async findSchemaById(id) {
-    return this.bpmnSchemes.find((item) => id === item.id);
+    const cachedSchema = this.bpmnSchemes.find((item) => id === item.id);
+    if (cachedSchema) {
+      return cachedSchema;
+    }
+
+    // A workflow template imported after the last reload isn't cached yet: load it now instead of
+    // failing (and dropping) the queue message until the next reload.
+    let workflowTemplate;
+    try {
+      workflowTemplate = await this.workflowTemplateModel.findById(id);
+    } catch {
+      return;
+    }
+    if (!workflowTemplate?.isActive) {
+      return;
+    }
+
+    const schema = await this.parseBpmnSchema(workflowTemplate);
+    if (schema) {
+      this.bpmnSchemes = [...this.bpmnSchemes.filter((item) => item.id !== id), schema];
+      getLog().save('bpmn-schema-loaded-on-demand', { workflowTemplateId: id });
+    }
+
+    return schema;
   }
 
   /**
@@ -119,16 +194,23 @@ export class WorkflowBusiness {
    */
   async createFromMessage(messageObject) {
     let workflowTemplateId;
+    // Derived from the DB entity only (never from the message): the error path below relies on it.
+    let workflowId: string | undefined;
     try {
-      let workflowId;
       const currentSequences = [];
       let bpmnSchema;
+      let notFinishedReason: string | undefined;
 
       // Find current position.
       switch (true) {
         // Only forward message to the task queue.
         case Object.prototype.hasOwnProperty.call(messageObject, 'forwardToTask'): {
-          global.messageQueue.produce('writingQueueTask', messageObject);
+          const forwardedMessage = pickForwardToTaskMessage(messageObject);
+          if (!forwardedMessage) {
+            getLog().save('forward-to-task-message-rejected', managerMessageLogContext(messageObject));
+            return true;
+          }
+          await getMessageBus().publish(DESTINATION_TASK, forwardedMessage);
           return true;
         }
         case Object.prototype.hasOwnProperty.call(messageObject, 'taskId'): {
@@ -139,6 +221,10 @@ export class WorkflowBusiness {
           }
           workflowId = task.workflowId;
           workflowTemplateId = task.workflowEntity.workflowTemplateId;
+          if (task.finished !== true) {
+            notFinishedReason = 'task-not-finished';
+            break;
+          }
           bpmnSchema = await this.findSchemaById(task.workflowEntity.workflowTemplateId);
           const sourceRef = bpmnSchema.schema['bpmn:sequenceFlow'].find(
             (item) => item['$']['sourceRef'].toLowerCase() === `task-${task.taskTemplateId}`,
@@ -160,6 +246,10 @@ export class WorkflowBusiness {
           const resultSequences = gateway.data.resultSequences ? gateway.data.resultSequences : [gateway.data.resultSequence];
           workflowId = gateway.workflowId;
           workflowTemplateId = gateway.workflowEntity.workflowTemplateId;
+          if (!gateway.data?.resultSequences && !gateway.data?.resultSequence) {
+            notFinishedReason = 'gateway-not-finished';
+            break;
+          }
 
           bpmnSchema = await this.findSchemaById(gateway.workflowEntity.workflowTemplateId);
 
@@ -181,6 +271,12 @@ export class WorkflowBusiness {
           }
           workflowId = event.workflowId;
           workflowTemplateId = event.workflowEntity.workflowTemplateId;
+          // An event that failed with `notFailOnError` is stored with `done: false` and an error marker in
+          // `data` (see the event component), and the flow must still advance after it.
+          if (event.done !== true && event.data?.notFailOnError !== true) {
+            notFinishedReason = 'event-not-finished';
+            break;
+          }
 
           bpmnSchema = await this.findSchemaById(event.workflowEntity.workflowTemplateId);
 
@@ -204,13 +300,29 @@ export class WorkflowBusiness {
           throw new Error(ERROR_INVALID_MESSAGE_OBJECT);
       }
 
+      // Premature message: the step is not finished yet. Ack and drop it, it must not advance the flow.
+      if (notFinishedReason) {
+        getLog().save('workflow-message-dropped', { reason: notFinishedReason, ...managerMessageLogContext(messageObject) });
+        return true;
+      }
+
       let workflow = await this.workflowModel.findById(workflowId);
+
+      if (!workflow) {
+        throw new Error(ERROR_TASK_OR_WORKFLOW_NOT_FOUND);
+      }
+
+      // Finished workflow: nothing to advance and nothing to record.
+      if (workflow.isFinal !== false) {
+        getLog().save('workflow-message-dropped', { reason: 'workflow-final', ...managerMessageLogContext(messageObject) });
+        return true;
+      }
 
       // Save message in workflow history.
       workflow = await this.pushMessageToWorkflow(workflow.id, 'in', messageObject, currentSequences);
 
       // Find next position.
-      if (bpmnSchema && workflowId && workflowTemplateId && workflow && workflow.isFinal === false) {
+      if (bpmnSchema && workflowId && workflowTemplateId && workflow) {
         for (let currentSequence of currentSequences) {
           // Finished gateway.
           if (currentSequence['$']['targetRef'].search(/^gateway-[0-9]+-end$/i) !== -1) {
@@ -265,8 +377,9 @@ export class WorkflowBusiness {
             // Save message in workflow history.
             workflow = await this.pushMessageToWorkflow(workflow.id, 'out', preparedMessageForQueue, currentSequences);
 
-            // Send to queue.
-            global.messageQueue.produce('writingQueueTask', preparedMessageForQueue);
+            // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
+            // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
+            await getMessageBus().publish(DESTINATION_TASK, preparedMessageForQueue, { messageId: preparedMessageForQueue.amqpMessageId });
           } else if (currentSequence['$']['targetRef'].search(/^gateway-[0-9]+$/i) !== -1) {
             const nextGatewayId = parseInt(currentSequence['$']['targetRef'].replace(/gateway-/i, ''));
             if (!nextGatewayId) {
@@ -319,8 +432,9 @@ export class WorkflowBusiness {
             // Save message in workflow history.
             workflow = await this.pushMessageToWorkflow(workflow.id, 'out', preparedMessageForQueue, currentSequences);
 
-            // Send to queue.
-            global.messageQueue.produce('writingQueueGateway', preparedMessageForQueue);
+            // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
+            // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
+            await getMessageBus().publish(DESTINATION_GATEWAY, preparedMessageForQueue, { messageId: preparedMessageForQueue.amqpMessageId });
           } else if (currentSequence['$']['targetRef'].search(/^event-[0-9]+$/i) !== -1) {
             const nextEventId = parseInt(currentSequence['$']['targetRef'].replace(/event-/i, ''));
             if (!nextEventId) {
@@ -345,29 +459,38 @@ export class WorkflowBusiness {
             // Save message in workflow history.
             workflow = await this.pushMessageToWorkflow(workflow.id, 'out', preparedMessageForQueue, currentSequences);
 
-            // Send to queue.
-            global.messageQueue.produce('writingQueueEvent', preparedMessageForQueue);
+            // Send to queue. A publish failure must not be silent: it reaches the catch below, which marks the
+            // workflow as errored (recoverable via admin continue/restart) instead of leaving it stalled.
+            await getMessageBus().publish(resolveEventDestination(getConfig().message_queue, preparedMessageForQueue), preparedMessageForQueue, {
+              messageId: preparedMessageForQueue.amqpMessageId,
+            });
           }
         }
       }
     } catch (error) {
-      global.log.save('workflow-processing-by-message-from-queue-error', {
-        messageObject,
-        error: { message: error && error.message, stack: error.stack },
-      });
+      let errorId: number | undefined;
 
       try {
-        await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject });
-        await this.workflowModel.setError(messageObject.workflowId);
+        // `workflowId` is trusted only when it was resolved from the task/event/gateway entity. The message value
+        // is attacker-controllable and must never be used to mark a workflow as failed.
+        errorId = await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject, workflowId });
+        getLog().save('workflow-processing-by-message-from-queue-error', {
+          ...managerMessageLogContext(messageObject),
+          error: errorRef(error),
+          errorId,
+        });
+        if (workflowId) {
+          await this.workflowModel.setError(workflowId);
+        }
       } catch (error) {
-        global.log.save('workflow-id-not-found-error', { messageObject, error: error.message });
+        getLog().save('workflow-id-not-found-error', { ...managerMessageLogContext(messageObject), error: errorRef(error) });
       }
 
       try {
         const workflowTemplate = await this.workflowTemplateModel.findById(workflowTemplateId);
-        await this.systemNotifier.sendEmails(messageObject.workflowId, workflowTemplate && workflowTemplate.name, error?.message);
+        await this.systemNotifier.sendEmails(workflowId, workflowTemplate && workflowTemplate.name, error?.message);
       } catch (error) {
-        global.log.save('system-notifier-error', error.message);
+        getLog().save('system-notifier-error', { error: errorRef(error) });
       }
     }
 

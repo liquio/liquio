@@ -2,10 +2,8 @@ import http from 'node:http';
 import https from 'node:https';
 
 import axios from 'axios';
-import bodyParser from 'body-parser';
 
 // Constants.
-const DEFAULT_MAX_BODY_SIZE = '10mb';
 const HTTP_METHOD_GET = 'GET';
 const HTTP_METHOD_POST = 'POST';
 const HTTP_METHOD_PUT = 'PUT';
@@ -110,35 +108,13 @@ export class HttpRequest {
       // Return parsed body object - only the data part to avoid circular refs
       return parseBody(response.data);
     } catch (error: any) {
-      // Handle axios errors
-      if (error.response) {
-        // Server responded with error status - only return the data part
-        return parseBody(error.response.data);
-      }
+      // axios only rejects here for transport failures (connect/timeout/aborted or broken body stream),
+      // including ones after headers arrived, so a partial response must not be returned as a result.
       // Network or other errors - throw a clean error message
       const wrapped = new Error(error.message || 'Network error');
       (wrapped as any).cause = error;
       throw wrapped;
     }
-  }
-
-  /**
-   * Parse body JSON.
-   * @param {object} app Express app instance.
-   * @param {string} [maxBodySize] Max body size.
-   */
-  static parseBodyJson(app: any, maxBodySize: string = DEFAULT_MAX_BODY_SIZE) {
-    // Parse body for content-type "application/json".
-    app.use(bodyParser.json({ limit: maxBodySize }));
-  }
-
-  /**
-   * Parse body urlencoded.
-   * @param {object} app Express app instance.
-   */
-  static parseBodyUrlencoded(app: any) {
-    // Parse body for content-type "application/x-www-form-urlencoded".
-    app.use(bodyParser.urlencoded({ extended: false }));
   }
 
   /**

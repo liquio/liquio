@@ -1,7 +1,8 @@
 import EventEmitter from 'events';
 
-import { InternalServerErrorException } from '@nestjs/common';
+import { HttpException, HttpStatus, InternalServerErrorException } from '@nestjs/common';
 
+import { log } from '@lib/log';
 import { Job, JobData } from './job';
 import { Worker } from './worker';
 
@@ -10,7 +11,21 @@ const DEFAULT_OPTIONS: ClusterOptions = {
   workerTimeout: 30_000,
   maxWorkers: 5,
   maxConcurrentJobs: 200,
+  maxQueueSize: 100,
 };
+
+export const QUEUE_RETRY_AFTER_SECONDS = 5;
+
+/**
+ * Thrown when the job queue is full. Answered as 429 with a `Retry-After` header.
+ */
+export class QueueFullException extends HttpException {
+  readonly retryAfterSeconds = QUEUE_RETRY_AFTER_SECONDS;
+
+  constructor() {
+    super('Queue is full', HttpStatus.TOO_MANY_REQUESTS);
+  }
+}
 
 /**
  * Cluster class for managing a pool of workers.
@@ -40,9 +55,20 @@ export class Cluster extends EventEmitter {
    * Initializes the cluster.
    */
   async init() {
+    if (this.options.noSandbox) {
+      log.save('pdf-generator|chromium-sandbox-disabled', {
+        warning: 'playwright.noSandbox is true: Chromium runs WITHOUT its sandbox, rely on pod-level isolation',
+      });
+    }
+
     for (let i = 0; i < this.options.maxWorkers; i++) {
       try {
-        const worker = new Worker();
+        const worker = new Worker({
+          allowedHosts: this.options.allowedHosts,
+          consoleLogLevels: this.options.consoleLogLevels,
+          consoleLogMaxMessages: this.options.consoleLogMaxMessages,
+          noSandbox: this.options.noSandbox,
+        });
         await worker.launch();
 
         this.workers.push(worker);
@@ -94,6 +120,12 @@ export class Cluster extends EventEmitter {
    */
   execute(data: JobData) {
     return new Promise<Buffer>((resolve, reject) => {
+      if (this.queue.length >= this.options.maxQueueSize) {
+        this.emit(ClusterEvents.QUEUE_FULL, { queueSize: this.queue.length });
+        reject(new QueueFullException());
+        return;
+      }
+
       const job = new Job(data, { onSuccess: resolve, onError: reject });
       this.queue.push(job);
       this.emit(ClusterEvents.EXECUTE, { job });
@@ -164,6 +196,15 @@ type ClusterOptions = {
   workerTimeout: number;
   maxWorkers: number;
   maxConcurrentJobs: number;
+  /** Max jobs waiting for a worker. Further requests are rejected with 429. */
+  maxQueueSize: number;
+  allowedHosts?: string[];
+  /** Page console message types to log. Default: warning, error. */
+  consoleLogLevels?: string[];
+  /** Max page console messages logged per job. Default: 20. */
+  consoleLogMaxMessages?: number;
+  /** Run Chromium without its sandbox. Default: false. */
+  noSandbox?: boolean;
 };
 
 export enum ClusterEvents {
@@ -175,4 +216,5 @@ export enum ClusterEvents {
   EXECUTE = 'execute',
   COMPLETED = 'completed',
   IDLE = 'idle',
+  QUEUE_FULL = 'queue-full',
 }

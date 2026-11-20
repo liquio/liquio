@@ -1,5 +1,6 @@
+import crypto from 'node:crypto';
+
 import { AxiosError } from 'axios';
-import crypto from 'crypto';
 import { cloneDeep } from 'lodash';
 
 import { typeOf } from './type_of';

@@ -11,6 +11,7 @@ metadata:
   "hostname" (default "0.0.0.0" .Values.config.server.hostname)
   "port" (default 8080 .Values.services.filestorage.containerPort)
   "maxBodySize" (default "100mb" .Values.config.server.maxBodySize)
+  "maxUploadSize" (default 104857600 .Values.config.server.maxUploadSize)
 -}}
 {{ $appBase := dict
   "customer" .Release.Name
@@ -24,6 +25,7 @@ metadata:
   "level" "info"
   "excludeParams" (list
     "token"
+    "meta="
     "authorization"
     "Authorization"
     "oauth-token"
@@ -31,6 +33,10 @@ metadata:
     "password"
     "oldPassword"
     "oldPasswords"
+    "tenantToken"
+    "X-Auth-Token"
+    "x-auth-token"
+    "x-subject-token"
   )
 -}}
 {{ $paginationBase := dict
@@ -74,8 +80,9 @@ metadata:
   )
 -}}
 {{ $modulesSettingsBase := dict }}
+{{- /* Preview is disabled unless config.filestorage.preview.server is set (prefer an in-cluster https:// URL). */ -}}
 {{ $previewBase := dict
-  "server" (printf "%s://%s" (include "liquio.scheme" .) (include "liquio.publicHost" (dict "ctx" . "service" "preview")))
+  "server" ""
   "routes" (dict
     "generatePreview" "/preview"
     "ping" "/test/ping"

@@ -1,27 +1,39 @@
 // @ts-nocheck
-import supertest from 'supertest';
-import * as portfinder from 'portfinder';
-import * as pg from 'pg';
 import { execSync } from 'node:child_process';
 import { EventEmitter } from 'node:events';
+import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
+
+import supertest from 'supertest';
+import nock from 'nock';
+import * as pg from 'pg';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
-import * as Multiconf from 'multiconf';
+import { Config, Log, ConsoleLogProvider } from '@liquio/back-core';
 
-import { Db } from '../src/lib/db';
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
-import { Providers } from '../src/providers';
-import { Models } from '../src/models';
-import { Router } from '../src/router';
+import { bootstrap } from '../src/bootstrap';
+import { setAppContext, getDb } from '../src/lib/context';
 
 const debug = createDebug;
 
+/** Runs fn with nock's http interception off, so testcontainers can reach the Docker socket; restores the previous state. */
+async function withoutNock<T>(fn: () => Promise<T>): Promise<T> {
+  const wasActive = nock.isActive();
+  if (wasActive) nock.restore();
+  try {
+    return await fn();
+  } finally {
+    if (wasActive) nock.activate();
+  }
+}
+
 // E2E tests are slow, so we increase the timeout.
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
-jest.mock('back-core', () => {
-  const original = jest.requireActual('back-core');
+jest.mock('@liquio/back-core', () => {
+  const original = jest.requireActual('@liquio/back-core');
   const { Log: OriginalLog } = original;
   const logs = [];
   const emitter = new EventEmitter();
@@ -61,9 +73,12 @@ jest.mock('back-core', () => {
   return { ...original, Log: MockLog };
 });
 
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config-templates/filestorage';
+const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-templates/filestorage');
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_FILESTORAGE';
 const ENV_PREFIX = `${LIQUIO_CONFIG_PREFIX}_`;
+
+// Auth token generated per test run: config templates ship no usable tokens.
+export const TEST_AUTH_HEADER = `Basic ${Buffer.from(`e2e:${randomBytes(24).toString('hex')}`).toString('base64')}`;
 
 export class TestApp {
   static pgContainer;
@@ -89,30 +104,36 @@ export class TestApp {
     return app;
   }
 
-  // Run this before all tests. Overrides are pushed through env vars (Multiconf's own override
-  // mechanism, see node_modules/multiconf's README), so both our own config object below and
+  // Run this before all tests. Overrides are pushed through env vars (the config loader's env override
+  // mechanism), so both our own config object below and
   // src/lib/config.ts's separate module-level singleton (used by Preview's no-arg constructor)
   // resolve to the exact same values.
-  static async beforeAll() {
+  static async beforeAll({ providers, preview }: { providers?: any; preview?: any } = {}) {
     // Read the base template once, only to compute full override objects to push back as env vars.
-    const templateConfig = Multiconf.get(CONFIG_PATH, ENV_PREFIX);
+    const templateConfig = Config.load({ configPath: CONFIG_PATH, secretPath: null, envPrefix: ENV_PREFIX }).toObject();
 
     process.env.CONFIG_PATH = CONFIG_PATH;
     process.env.LIQUIO_CONFIG_PREFIX = LIQUIO_CONFIG_PREFIX;
 
     process.env[`${ENV_PREFIX}server`] = JSON.stringify({
       ...templateConfig.server,
-      hostname: 'localhost',
-      port: await portfinder.getPortPromise({
-        host: 'localhost',
-        startPort: 60000 + (process.pid % 1000),
-      }),
+      hostname: '127.0.0.1',
+      maxUploadSize: 65536,
+      // Port 0: the OS assigns a free port atomically at listen time (see listen()).
+      port: 0,
+    });
+
+    // Templates ship an empty token list, so inject the generated test token.
+    process.env[`${ENV_PREFIX}auth`] = JSON.stringify({
+      ...templateConfig.auth,
+      tokens: [TEST_AUTH_HEADER],
     });
 
     // No external file storage provider is exercised by the controllers under test.
     process.env[`${ENV_PREFIX}providers`] = JSON.stringify({
       ...templateConfig.providers,
       activeProvider: null,
+      ...providers,
     });
 
     // Point the preview service at a closed local port, so tests exercise its
@@ -121,6 +142,7 @@ export class TestApp {
       ...templateConfig.preview,
       server: 'http://127.0.0.1:1',
       timeout: 1000,
+      ...preview,
     });
 
     const isExternalDb = !!process.env.DB_HOST;
@@ -139,7 +161,7 @@ export class TestApp {
       };
     } else {
       // Start PostgreSQL container.
-      this.pgContainer = await new PostgreSqlContainer('postgres:16').start();
+      this.pgContainer = await withoutNock(() => TestApp.startPostgres());
 
       // Inject database credentials into the config.
       dbConfig = {
@@ -156,6 +178,19 @@ export class TestApp {
     process.env[`${ENV_PREFIX}db`] = JSON.stringify(dbConfig);
 
     await TestApp.applyMigrations(dbConfig);
+  }
+
+  // "write EPIPE" came from nock intercepting the Docker socket (now bypassed via withoutNock); the retry is a backstop.
+  static async startPostgres(attempts = 3) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await new PostgreSqlContainer('postgres:16').start();
+      } catch (error) {
+        if (attempt >= attempts) {
+          throw error;
+        }
+      }
+    }
   }
 
   // Run migrations and seed a default container to set up the database schema and data.
@@ -177,14 +212,14 @@ export class TestApp {
          ON CONFLICT (id) DO NOTHING`,
       );
       // Advance the id sequence past the manually-inserted row, so subsequent auto-increments don't collide with it.
-      await client.query('SELECT setval(pg_get_serial_sequence(\'containers\', \'id\'), (SELECT MAX(id) FROM containers))');
+      await client.query("SELECT setval(pg_get_serial_sequence('containers', 'id'), (SELECT MAX(id) FROM containers))");
     } finally {
       await client.end();
     }
   }
 
   async init() {
-    // Load config the same way src/app.ts does, so it resolves to the exact env-var-overridden
+    // Load config the same way src/index.ts does, so it resolves to the exact env-var-overridden
     // values set in beforeAll() above — including for classes (e.g. Preview) that re-derive
     // config from this same module-level singleton instead of receiving it via constructor args.
     const { initialize: initializeConfig } = await import('../src/lib/config');
@@ -195,23 +230,19 @@ export class TestApp {
     const consoleLogProvider = new ConsoleLogProvider('console', { excludeParams: config.log.excludeParams });
     const log = new Log([consoleLogProvider], ['console']);
     this.log = log;
-    global.log = log;
+    setAppContext({ log });
 
-    global.db = await Db.getInstance(config.db);
-
-    // Init providers.
-    this.providers = new Providers(config.providers);
-    this.providers.init();
-
-    // Init models.
-    this.models = new Models(config, this.providers.activeProvider);
-    this.models.init();
+    // Same startup sequence as src/index.ts (validation, DB, providers, models, router).
+    const { providers, models, router } = await bootstrap(config, log);
+    this.providers = providers;
+    this.models = models;
+    this.routerService = router;
   }
 
   async listen() {
-    // Init router.
-    this.routerService = new Router(this.config);
-    await this.routerService.init();
+    // The router is already listening after bootstrap(); publish the OS-assigned port, so request() targets the real server.
+    const address = this.routerService.httpServer.address();
+    this.config.server.port = address.port;
   }
 
   // Run this before each test.
@@ -221,7 +252,12 @@ export class TestApp {
 
   // Run this after all tests.
   static async afterAll() {
-    await this.pgContainer?.stop();
+    await withoutNock(async () => {
+      await this.pgContainer?.stop();
+    });
+
+    // nock activates on import and patches the shared http module; leave it off so it can't leak into the next file in this worker.
+    nock.restore();
   }
 
   // Obtain a client instance to interact with the application.
@@ -232,11 +268,15 @@ export class TestApp {
 
   // Destroy the application.
   async destroy() {
-    if (global.db) {
-      await global.db.close();
+    if (getDb()) {
+      await getDb().close();
     }
-    if (this.routerService?.httpServer) {
-      this.routerService.httpServer.close();
+    const server = this.routerService?.httpServer;
+    if (server?.listening) {
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections?.();
+      });
     }
   }
 }

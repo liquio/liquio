@@ -3,6 +3,10 @@ import { BasePlugin } from "./base_provider";
 export type ProviderMethod = (args: ProviderMethodArgs) => Promise<unknown>;
 
 export interface ProviderMethodArgs {
+  /**
+   * Caller-asserted user identity, built by the task service from the authenticated user and trusted as-is:
+   * external-reader has no user authentication of its own. Do NOT use it as the only authorization for cross-user data.
+   */
   userFilter?: Record<string, unknown>;
   nonUserFilter?: unknown;
   extraParams?: Record<string, unknown>;

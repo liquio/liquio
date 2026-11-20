@@ -1,8 +1,12 @@
+import type https from 'node:https';
+
 import axios from 'axios';
 
 import { Provider } from '../provider';
 import { Auth } from './auth';
+import { createHttpsAgent } from '../../lib/tls';
 import { HttpRequest as Request } from '../../lib/http_request';
+import { getLog, getMetrics } from '../../lib/context';
 
 const EXTERNAL_SERVICE_NAME = 'openstack';
 const PROVIDER_NAME = 'openstack';
@@ -32,6 +36,7 @@ export class OpenStack extends Provider {
   container: string;
   authCacheTtl: number;
   auth: Auth;
+  httpsAgent?: https.Agent;
 
   /**
    * OpenStack constructor.
@@ -46,6 +51,7 @@ export class OpenStack extends Provider {
       this.authVersion = openStackConfig.authVersion || DEFAULT_AUTH_VERSION;
       this.routes = { ...DEFAULT_ROUTES, ...openStackConfig.routes };
       this.timeout = openStackConfig.timeout;
+      this.httpsAgent = createHttpsAgent(openStackConfig.tls);
       this.tenantName = openStackConfig.tenantName;
       this.account = openStackConfig.account;
       this.container = openStackConfig.container || DEFAULT_CONTAINER;
@@ -109,14 +115,13 @@ export class OpenStack extends Provider {
     const timer = new Date();
 
     // Get info to handle file.
-    global.log.save('openstack-file-downloading', { filePath });
+    getLog().save('openstack-file-downloading', { filePath });
     const infoToHandleFile = await this.getInfoToHandleFile(filePath);
     const { url, headers } = infoToHandleFile;
 
     // Get and return request options.
-    global.log.save('openstack-file-downloading|request-options', {
+    getLog().save('openstack-file-downloading|request-options', {
       url,
-      headers,
       method: Request.Methods.GET,
       timeout: this.timeout,
     });
@@ -142,7 +147,8 @@ export class OpenStack extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
-      responseType: 'stream'
+      httpsAgent: this.httpsAgent,
+      responseType: 'stream',
     });
 
     return response.data;
@@ -166,7 +172,8 @@ export class OpenStack extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
-      responseType: 'arraybuffer'
+      httpsAgent: this.httpsAgent,
+      responseType: 'arraybuffer',
     });
 
     // Convert ArrayBuffer to Buffer
@@ -190,16 +197,15 @@ export class OpenStack extends Provider {
     const timer = new Date();
 
     // Get info to handle file.
-    global.log.save('openstack-file-uploading', { filePath, contentType });
+    getLog().save('openstack-file-uploading', { filePath, contentType });
     const infoToHandleFile = await this.getInfoToHandleFile(filePath);
     const { url, headers } = infoToHandleFile;
     headers['Content-Type'] = contentType;
     const body = fileContent;
 
     // Get and return request options.
-    global.log.save('openstack-file-uploading|request-options', {
+    getLog().save('openstack-file-uploading|request-options', {
       url,
-      headers,
       method: Request.Methods.PUT,
       body: '***',
       timeout: this.timeout,
@@ -233,12 +239,13 @@ export class OpenStack extends Provider {
         headers: requestOptions.headers,
         data: requestOptions.body,
         timeout: requestOptions.timeout,
-        validateStatus: () => true // Don't throw on any status code
+        httpsAgent: this.httpsAgent,
+        validateStatus: () => true, // Don't throw on any status code
       });
 
       // Check response and log
-      const requestOptionsToLog = { ...requestOptions, body: '***' };
-      global.log.save('openstack-uploading-file-response', {
+      const requestOptionsToLog = { url: requestOptions.url, method: requestOptions.method, timeout: requestOptions.timeout, body: '***' };
+      getLog().save('openstack-uploading-file-response', {
         requestOptions: requestOptionsToLog,
         filePath,
         body: response.data,
@@ -255,7 +262,7 @@ export class OpenStack extends Provider {
 
       return uploadedFileInfo;
     } catch (error) {
-      global.log.save('openstack-uploading-error', { error: error && error.message, filePath });
+      getLog().save('openstack-uploading-error', { error: error && error.message, filePath });
       throw error;
     }
   }
@@ -271,13 +278,27 @@ export class OpenStack extends Provider {
     const timer = new Date();
 
     // Get info to handle file.
-    global.log.save('openstack-file-deleting', { filePath });
+    getLog().save('openstack-file-deleting', { filePath });
     const infoToHandleFile = await this.getInfoToHandleFile(filePath, containerName);
     const { url, headers } = infoToHandleFile;
 
     // Delete file.
-    const deletingResult = await Request.send({ url, headers, method: Request.Methods.DELETE, timeout: this.timeout });
-    global.log.save('openstack-file-deleting-result', deletingResult);
+    const { body: deletingResult, rawResponse } = await Request.sendDetailed({
+      url,
+      headers,
+      method: Request.Methods.DELETE,
+      timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
+    });
+    getLog().save('openstack-file-deleting-result', deletingResult);
+
+    // 404 means object is already absent - not an error. Other error statuses must not be silent.
+    const status = rawResponse?.status;
+    if (status >= 400 && status !== 404) {
+      const error: any = new Error(`OpenStack file deleting failed with status ${status}.`);
+      error.statusCode = status;
+      throw error;
+    }
 
     // Save metrics.
     this.externalServiceMetric('deleteFile', timer);
@@ -312,20 +333,21 @@ export class OpenStack extends Provider {
       headers,
       method: Request.Methods.HEAD,
       timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
     });
-    global.log.save('container-metadata', { containerMetadata });
+    getLog().save('container-metadata', { containerMetadata });
     const containerMetadataHeaders = containerMetadata.headers;
-    global.log.save('container-metadata-headers', { containerMetadataHeaders });
+    getLog().save('container-metadata-headers', { containerMetadataHeaders });
 
     const bytesUsedCount = containerMetadataHeaders[CONTAINER_BYTES_USED_HEADER];
     const objectCount = containerMetadataHeaders[CONTAINER_OBJECT_COUNT_HEADER];
-    global.log.save('bytes-used-count', { bytesUsedCount });
+    getLog().save('bytes-used-count', { bytesUsedCount });
 
     let bytesUsedCountNumber;
     try {
       bytesUsedCountNumber = Number(bytesUsedCount);
     } catch (error) {
-      global.log.save('get-openstack-bytes-used-count-error', { bytesUsedCount, error });
+      getLog().save('get-openstack-bytes-used-count-error', { bytesUsedCount, error });
       const wrappedError = new Error(error);
       (wrappedError as any).cause = error;
       throw wrappedError;
@@ -338,10 +360,10 @@ export class OpenStack extends Provider {
 
     return showObjectCount === 'true'
       ? {
-        gigabytesUsedCount,
-        gigabytesUsedCountRound,
-        objectCount,
-      }
+          gigabytesUsedCount,
+          gigabytesUsedCountRound,
+          objectCount,
+        }
       : { gigabytesUsedCount, gigabytesUsedCountRound };
   }
 
@@ -364,7 +386,7 @@ export class OpenStack extends Provider {
    */
   externalServiceMetric(methodName, timer) {
     // Check metrics initialization.
-    if (!global.metrics || !global.metrics.increment || !global.metrics.timing) {
+    if (!getMetrics() || !getMetrics().increment || !getMetrics().timing) {
       return;
     }
 
@@ -375,9 +397,9 @@ export class OpenStack extends Provider {
     const allTimeMetricName = `external_services.${EXTERNAL_SERVICE_NAME}.all.response_time`;
 
     // Init metrics.
-    global.metrics.increment(currentMetricName);
-    global.metrics.increment(allMetricName);
-    global.metrics.timing(currentTimeMetricName, timer);
-    global.metrics.timing(allTimeMetricName, timer);
+    getMetrics().increment(currentMetricName);
+    getMetrics().increment(allMetricName);
+    getMetrics().timing(currentTimeMetricName, timer);
+    getMetrics().timing(allTimeMetricName, timer);
   }
 }

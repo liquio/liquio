@@ -1,8 +1,8 @@
+import { Sandbox } from '@liquio/back-core';
 
-import PropByPath from 'prop-by-path';
-
+import PropByPath from '../../../lib/prop_by_path';
 import { DocumentHandler } from '../../../lib/document_handler';
-import { Sandbox } from '../../../lib/sandbox';
+import { getLog } from '../../../lib/context';
 
 // Constants.
 const ERROR_MESSAGE_METHOD_NOT_DEFINED = 'Method should be overridden in child class.';
@@ -17,13 +17,15 @@ export class Filler {
    * Filler.
    */
   constructor() {
-    this.sandbox = new Sandbox();
+    this.sandbox = Sandbox.getInstance();
   }
 
   /**
    * Fill.
    */
-  fill(..._args: any[]): any { throw new Error(ERROR_MESSAGE_METHOD_NOT_DEFINED); }
+  fill(..._args: any[]): any {
+    throw new Error(ERROR_MESSAGE_METHOD_NOT_DEFINED);
+  }
 
   /**
    * Handle all elements.
@@ -50,7 +52,7 @@ export class Filler {
       }
 
       // Save.
-      global.log.save('document-filler|defined-value-to-set', { path, schemaObject, successfullyDefined: true }, 'warn'); // No reason to log handledItem.
+      getLog().save('document-filler|defined-value-to-set', { path, schemaObject, successfullyDefined: true }, 'warn'); // No reason to log handledItem.
       PropByPath.set(objectToFill, path, handledItem);
     }
 
@@ -58,4 +60,3 @@ export class Filler {
     return objectToFill;
   }
 }
-

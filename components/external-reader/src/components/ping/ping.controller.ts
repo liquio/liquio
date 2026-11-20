@@ -2,7 +2,6 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 
 import { Public } from '@common/decorators';
-
 import { PingDtoResponse } from './ping.dto';
 
 @Controller('test')

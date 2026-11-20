@@ -1,12 +1,15 @@
-
 import crypto from 'node:crypto';
+
 import _ from 'lodash';
 import * as transliteration from 'transliteration';
 import { appendTraceMeta, getTraceMeta, getTraceId } from '@liquio/back-core';
+import { matchedData } from 'express-validator';
+
 import { Entity } from '../entities/entity';
 import { XmlJsConverter } from '../lib/xml_js_converter';
-import { matchedData } from 'express-validator';
 import { SequelizeDbError } from '../lib/errors';
+import { isPublicError, publicError } from '../lib/public_error';
+import { getConfig, getLog, getModels } from '../lib/context';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -16,8 +19,26 @@ const EMPTY_DATA = {};
 const EMPTY_TEXT = '';
 const CONTENT_TYPE_HEADER = 'Content-Type';
 const CONTENT_DISPOSITION_HEADER = 'Content-Disposition';
+const CONTENT_TYPE_OPTIONS_HEADER = 'X-Content-Type-Options';
+const INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 const DEFAULT_ERROR_MESSAGE = 'Server error.';
 const RESPONSE_REPLACEMENT_TEXT = '*****';
+
+/**
+ * Check that identity value is present.
+ * @param {*} value Identity value.
+ * @returns {boolean} Is present indicator.
+ */
+function isPresentIdentity(value: unknown): boolean {
+  if (typeof value === 'number') {
+    return true;
+  }
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized !== '' && normalized !== 'null' && normalized !== 'undefined';
+}
 
 /**
  * Controller.
@@ -53,9 +74,9 @@ export class Controller {
 
     // Log.
     if (this.writeResponseObjectToLog(res.req.originalUrl)) {
-      global.log.save('http-response|data', { ...responseMeta, ...responseObject });
+      getLog().save('http-response|data', { ...responseMeta, ...responseObject });
     } else {
-      global.log.save('http-response|data', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
+      getLog().save('http-response|data', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
     }
 
     const traceMeta: any = getTraceMeta();
@@ -82,9 +103,9 @@ export class Controller {
     const method = res.req.method;
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
     if (this.writeResponseObjectToLog(res.req.originalUrl)) {
-      global.log.save('http-response|text', { ...responseMeta, text });
+      getLog().save('http-response|text', { ...responseMeta, text });
     } else {
-      global.log.save('http-response|text', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
+      getLog().save('http-response|text', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
     }
 
     // Response.
@@ -110,9 +131,9 @@ export class Controller {
 
     // Log.
     if (this.writeResponseObjectToLog(res.req.originalUrl)) {
-      global.log.save('http-response|xml', { ...responseMeta, data: responseData });
+      getLog().save('http-response|xml', { ...responseMeta, data: responseData });
     } else {
-      global.log.save('http-response|xml', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
+      getLog().save('http-response|xml', { ...responseMeta, data: RESPONSE_REPLACEMENT_TEXT });
     }
 
     res.set(CONTENT_TYPE_HEADER, 'text/xml');
@@ -136,7 +157,7 @@ export class Controller {
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
 
     // Log.
-    global.log.save('http-response|accepted', { ...responseMeta, ...responseObject });
+    getLog().save('http-response|accepted', { ...responseMeta, ...responseObject });
 
     // Response.
     res.status(HTTP_STATUS_CODE_ACCEPTED).send(responseObject);
@@ -152,12 +173,18 @@ export class Controller {
   responseFile(res: any, file: any, contentType: any, fileName?: any) {
     // Response.
     res.set(CONTENT_TYPE_HEADER, contentType);
+    res.set(CONTENT_TYPE_OPTIONS_HEADER, 'nosniff');
     if (fileName) {
-      const convertedFileName = _.toLower(transliteration.transliterate(fileName)).replace(/\s+/g, '_');
+      const convertedFileName = _.toLower(transliteration.transliterate(fileName))
+        .replace(/\s+/g, '_')
+        .replace(/["\\\r\n]/g, '');
       res.set(CONTENT_DISPOSITION_HEADER, `attachment; filename="${convertedFileName}"`);
+    } else if (!INLINE_CONTENT_TYPES.includes(String(contentType).split(';')[0].trim().toLowerCase())) {
+      // Only safe types may be rendered inline; everything else is a download.
+      res.set(CONTENT_DISPOSITION_HEADER, 'attachment');
     }
 
-    global.log.save('http-response|file', { fileName, contentType });
+    getLog().save('http-response|file', { fileName, contentType });
 
     res.send(file);
   }
@@ -175,11 +202,20 @@ export class Controller {
       httpStatusCode = error.httpStatusCode;
     }
 
-    // Define params.
+    // Define params. Full values go to the log and workflow errors; the client gets only safe values.
     const message = error?.toString();
     const code = error?.code;
     const errorDetails = details || error?.cause || error?.details;
     const stack = error.stack;
+
+    // Error instances are hidden unless they are intentional (public); strings and plain objects are trusted constants from the code.
+    const isErrorInstance = error instanceof Error;
+    const isPublic = !isErrorInstance || isPublicError(error);
+    const clientMessage = isPublic ? message : publicError(error, httpStatusCode);
+    const clientCode = isPublic ? code : undefined;
+    // Details taken from the error itself are hidden for non-public errors; explicitly passed details are kept unless they are the error's own.
+    const clientDetails =
+      isPublic || (details && details !== (error as any)?.details && details !== (error as any)?.cause) ? errorDetails : undefined;
 
     // Define response object.
     const responseObject = {
@@ -190,6 +226,14 @@ export class Controller {
       },
       traceId: getTraceId(),
     };
+    const clientResponseObject = {
+      error: {
+        message: clientMessage,
+        details: clientDetails,
+        code: clientCode,
+      },
+      traceId: responseObject.traceId,
+    };
 
     // Define response meta.
     const url = res.req.originalUrl;
@@ -198,12 +242,12 @@ export class Controller {
 
     let logObject = { ...responseMeta, ...responseObject };
 
-    if (global.config.log?.stackTrace) {
+    if (getConfig().log?.stackTrace) {
       logObject = { ...logObject, error: { ...logObject.error, stack } };
     }
 
     // Log.
-    const logId = await global.log.save('http-response|error', logObject, 'error');
+    const logId = await getLog().save('http-response|error', logObject, 'error');
 
     // Handle error.
     const traceMeta = this.getTraceMeta();
@@ -214,47 +258,49 @@ export class Controller {
     if (traceMeta && traceMeta?.workflowId) {
       if (Array.isArray(errorDetails)) {
         // Ignore control: payment.widget, message: checkRequired error.
-        const filteredErrorDetails = errorDetails.filter((v) => v?.control !== 'payment.widget' && v?.control !== 'payment.widget.new' && v?.message !== 'checkRequired error.');
+        const filteredErrorDetails = errorDetails.filter(
+          (v) => v?.control !== 'payment.widget' && v?.control !== 'payment.widget.new' && v?.message !== 'checkRequired error.',
+        );
 
         if (filteredErrorDetails.length) {
-          global.models.workflowError.create({
+          getModels().workflowError.create({
             error: message,
             details: filteredErrorDetails,
             code,
             queueMessage: null,
             traceMeta,
-            logId
+            logId,
           });
         }
       } else {
-        global.models.workflowError.create({
+        getModels().workflowError.create({
           error: message,
           details: errorDetails,
           code,
           queueMessage: null,
           traceMeta,
-          logId
+          logId,
         });
       }
     }
 
     // Delete logged requestBody.
-    if (responseObject.error.message.startsWith('{"')) {
+    if (clientResponseObject.error.message.startsWith('{"')) {
       try {
-        responseObject.error.message = JSON.parse(responseObject.error.message);
-        delete responseObject.error.message.requestBody;
-        responseObject.error.message = JSON.stringify(responseObject.error.message);
+        const parsedMessage = JSON.parse(clientResponseObject.error.message);
+        delete parsedMessage.requestBody;
+        clientResponseObject.error.message = JSON.stringify(parsedMessage);
       } catch (error) {
-        global.log.save('try-to-parse-error-message', { message: responseObject.error.message, error: error.message }, 'error');
+        getLog().save('try-to-parse-error-message', { message: clientResponseObject.error.message, error: error.message }, 'error');
       }
     }
 
     if (error instanceof SequelizeDbError) {
-      delete responseObject.error.details;
+      delete clientResponseObject.error.details;
     }
 
     // Response.
-    res.status(httpStatusCode).send(responseObject);
+    res.status(httpStatusCode).send(clientResponseObject);
   }
 
   /**
@@ -264,7 +310,7 @@ export class Controller {
    */
   redirect(res, ...params) {
     // Log.
-    global.log.save('http-redirect', Array.isArray(params) && params.length === 1 ? params[0] : params);
+    getLog().save('http-redirect', Array.isArray(params) && params.length === 1 ? params[0] : params);
 
     // Redirect.
     res.redirect(...params);
@@ -334,20 +380,15 @@ export class Controller {
    * @returns {{systemId, userId, userName, orgName, position, remarks}} Request user ID.
    */
   getRequestAccessInfo(req) {
-    const systemId = req && req.basicAuthUser || null;
-    const {
-      userId = null,
-      name: userName = null,
-      companyName: orgName = null,
-      position = null
-    } = req && req.authUserInfo || {};
+    const systemId = (req && req.basicAuthUser) || null;
+    const { userId = null, name: userName = null, companyName: orgName = null, position = null } = (req && req.authUserInfo) || {};
     return {
       systemId,
       userId,
       userName,
       orgName,
       position,
-      remarks: null
+      remarks: null,
     };
   }
 
@@ -387,9 +428,9 @@ export class Controller {
     const units = this.getRequestUserUnitEntities(req);
     const { head, member, all } = units;
     return {
-      head: head.map(v => v.name),
-      member: member.map(v => v.name),
-      all: all.map(v => v.name)
+      head: head.map((v) => v.name),
+      member: member.map((v) => v.name),
+      all: all.map((v) => v.name),
     };
   }
 
@@ -402,9 +443,9 @@ export class Controller {
     const units = this.getRequestUserUnitEntities(req) || {};
     const { head = [], member = [], all = [] } = units;
     return {
-      head: head.map(v => v.id),
-      member: member.map(v => v.id),
-      all: all.map(v => v.id)
+      head: head.map((v) => v.id),
+      member: member.map((v) => v.id),
+      all: all.map((v) => v.id),
     };
   }
 
@@ -430,19 +471,24 @@ export class Controller {
     return memberUnitIds.includes(unitId);
   }
 
-
   /**
    * Get request user unit allow tokens.
    * @param {object} req HTTP request.
-   * @returns {{allowTokens: string[]}} Allow Tokens.
+   * @returns {string[]} Allow Tokens.
    */
-  getRequestUserUnitAllowTokens(req): any {
-    const units = this.getRequestUserUnitEntities(req);
-    const { all } = units;
-    const ipn = this.getRequestUserIpn(req);
-    const edrpou = this.getRequestUserEdrpou(req);
+  getRequestUserUnitAllowTokens(req): string[] {
+    const { all = [] } = this.getRequestUserUnitEntities(req) || {};
+    const unitTokens = (_.flattenDeep(all.map((v) => v?.allowTokens ?? [])) as unknown[]).filter(
+      (t): t is string => typeof t === 'string' && t.trim() !== '',
+    );
+    const identityTokens: string[] = [
+      ['rnokpp', this.getRequestUserIpn(req)],
+      ['edrpou', this.getRequestUserEdrpou(req)],
+    ]
+      .filter(([, value]) => isPresentIdentity(value))
+      .map(([type, value]) => `${type}:${`${value}`.trim()}`);
 
-    return [...new Set(_.flattenDeep(all.map(v => v.allowTokens))), `rnokpp:${ipn}`, `edrpou:${edrpou}`];
+    return [...new Set([...unitTokens, ...identityTokens])];
   }
 
   /**
@@ -496,7 +542,7 @@ export class Controller {
    * @returns {boolean}
    */
   isUserSignatureCouldBeMock(token) {
-    return this.config.auth.allowedTestSign && this.config.test_users?.list?.some(user => user.token === token);
+    return this.config.auth.allowedTestSign && this.config.test_users?.list?.some((user) => user.token === token);
   }
 
   /**
@@ -506,7 +552,7 @@ export class Controller {
    * @returns {boolean}
    */
   isUserPemCouldBeMock(token) {
-    return this.config.auth.allowedTestPem && this.config.test_users?.list?.some(user => user.token === token);
+    return this.config.auth.allowedTestPem && this.config.test_users?.list?.some((user) => user.token === token);
   }
 
   /**
@@ -515,7 +561,7 @@ export class Controller {
    * @returns {object}
    */
   convertUnderscoreKeysToCamelCase(data) {
-    const mapKeysDeep = (obj, cb) => _.mapValues(_.mapKeys(obj, cb), val => (_.isObject(val) ? mapKeysDeep(val, cb) : val));
+    const mapKeysDeep = (obj, cb) => _.mapValues(_.mapKeys(obj, cb), (val) => (_.isObject(val) ? mapKeysDeep(val, cb) : val));
 
     return mapKeysDeep(data, (value, key) => {
       return _.camelCase(key);
@@ -540,12 +586,12 @@ export class Controller {
    * @returns boolean
    */
   writeResponseObjectToLog(route) {
-    const rules = global.config.log.skipLoggingRoutesList;
+    const rules = getConfig().log.skipLoggingRoutesList;
 
     if (!rules || typeof route !== 'string') return true;
 
-    const skipByRules = rules.some(rule => route.match(rule.pattern) !== null);
-    const logByConfig = global.config.log.responsesData && global.config.log.responsesData === true;
+    const skipByRules = rules.some((rule) => route.match(rule.pattern) !== null);
+    const logByConfig = getConfig().log.responsesData && getConfig().log.responsesData === true;
 
     return logByConfig && !skipByRules;
   }
@@ -594,7 +640,7 @@ export class Controller {
    */
   methodHandler(methodName) {
     return async (req, res) => {
-      const [params, query] = (['params', 'query'] as const).map(locations => matchedData(req, { locations: [locations] }));
+      const [params, query] = (['params', 'query'] as const).map((locations) => matchedData(req, { locations: [locations] }));
 
       const userId = this.getRequestUserId && this.getRequestUserId(req);
       const userUnitIds = this.getRequestUserUnitIds && this.getRequestUserUnitIds(req);
@@ -607,8 +653,4 @@ export class Controller {
       }
     };
   }
-
-
 }
-
-

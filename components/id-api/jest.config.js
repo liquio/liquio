@@ -5,7 +5,8 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {}],
   },
-  testPathIgnorePatterns: ['/bundle/', '/dist/'],
-  testMatch: ['**/*.spec.ts'],
-  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
+  testPathIgnorePatterns: ['/dist/'],
+  testMatch: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/*.spec.ts'],
+  coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
 };

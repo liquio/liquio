@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { AdditionalDataSignatureEntity } from '../entities/additional_data_signature';
 
@@ -175,4 +176,3 @@ export class AdditionalDataSignatureModel extends Model {
     };
   }
 }
-

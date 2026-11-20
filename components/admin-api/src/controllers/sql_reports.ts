@@ -1,4 +1,6 @@
 import { Controller } from './controller';
+import { PublicError } from '../lib/public_error';
+import { getDb } from '../lib/context';
 
 const TYPES = {
   integer: 'integer',
@@ -257,7 +259,7 @@ export class SqlReportsController extends Controller {
    * @param {object} query HTTP Query Params
    */
   async getSqlReports({ params: { reportId }, query }) {
-    if (!sqlReports[reportId]) throw new Error(`report ${reportId} not found`);
+    if (!sqlReports[reportId]) throw new PublicError(`report ${reportId} not found`);
     const { sql, params: paramsObj = {} } = sqlReports[reportId];
     const params = Object.keys(paramsObj);
 
@@ -265,10 +267,10 @@ export class SqlReportsController extends Controller {
     if (Array.isArray(params)) {
       const queryParams = Object.keys(query);
       const missingParams = params.filter((value) => !queryParams.includes(value));
-      if (missingParams.length) throw new Error(`the following query params are missing: ${missingParams.join(', ')}`);
+      if (missingParams.length) throw new PublicError(`the following query params are missing: ${missingParams.join(', ')}`);
     }
 
-    const [result] = await global.db.query(sql, { replacements: query });
+    const [result] = await getDb().query(sql, { replacements: query });
     return result;
   }
 }

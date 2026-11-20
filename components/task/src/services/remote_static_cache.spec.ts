@@ -1,44 +1,65 @@
 import nock from 'nock';
-import * as redis from 'redis';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { RemoteStaticCache } = require('./remote_static_cache');
+import { getLog, setAppContext } from '../lib/context';
 
-// Mock redis client
+// Mock the back-core RedisClient this service delegates to.
+const redisConstructorSpy = jest.fn();
 const mockRedisClient = {
-  connect: jest.fn().mockResolvedValue(undefined),
   get: jest.fn(),
   set: jest.fn(),
 };
 
-// Mock redis.createClient
-jest.mock('redis', () => ({
-  createClient: jest.fn(() => mockRedisClient),
-}));
+class BackCoreRedisClientMock {
+  constructor(config: any) {
+    redisConstructorSpy(config);
+    return mockRedisClient as any;
+  }
+}
+
+jest.mock('@liquio/back-core', () => ({ RedisClient: BackCoreRedisClientMock }));
+
+// Required (rather than imported) after the mock above is registered, since this file also
+// needs to reference `redisConstructorSpy`/`mockRedisClient` from module scope.
+const { RemoteStaticCache } = require('./remote_static_cache');
 
 // Mock global log
-global.log = {
-  save: jest.fn(),
-} as any;
+setAppContext({
+  log: {
+    save: jest.fn(),
+  } as any,
+});
 
 describe('RemoteStaticCache', () => {
+  beforeAll(() => {
+    // Background updates are fire-and-forget; never let them reach the real network.
+    nock.disableNetConnect();
+  });
+
+  afterAll(() => {
+    nock.enableNetConnect();
+    nock.restore();
+  });
+
   beforeEach(() => {
     // Clear singleton between tests
     (RemoteStaticCache as any).singleton = null;
 
     // Clear all mocks
     jest.clearAllMocks();
-    mockRedisClient.connect.mockClear();
+    redisConstructorSpy.mockClear();
     mockRedisClient.get.mockClear();
     mockRedisClient.set.mockClear();
-    (redis.createClient as any).mockClear();
-    (global.log.save as any).mockClear();
+    (getLog().save as any).mockClear();
 
     // Clear nock
     nock.cleanAll();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Let the fire-and-forget background request consume its interceptor and settle before cleanup.
+    for (let i = 0; i < 100 && nock.pendingMocks().length > 0; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
     nock.cleanAll();
   });
 
@@ -49,12 +70,12 @@ describe('RemoteStaticCache', () => {
 
       const cache = new RemoteStaticCache(config, redisConfig);
 
-      expect(redis.createClient).toHaveBeenCalledWith({ socket: { host: 'localhost', port: 6379 } });
+      expect(redisConstructorSpy).toHaveBeenCalledWith(expect.objectContaining({ host: 'localhost', port: 6379 }));
       expect(cache.client).toBe(mockRedisClient);
-      expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-initialized', {
+      expect(getLog().save).toHaveBeenCalledWith('remote-static-cache-initialized', {
         useCache: true,
         host: 'localhost',
-        port: 6379
+        port: 6379,
       });
     });
 
@@ -64,10 +85,10 @@ describe('RemoteStaticCache', () => {
 
       const cache = new RemoteStaticCache(config, redisConfig);
 
-      expect(redis.createClient).not.toHaveBeenCalled();
+      expect(redisConstructorSpy).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
-      expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
-        useCache: true
+      expect(getLog().save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
+        useCache: true,
       });
     });
 
@@ -77,10 +98,10 @@ describe('RemoteStaticCache', () => {
 
       const cache = new RemoteStaticCache(config, redisConfig);
 
-      expect(redis.createClient).not.toHaveBeenCalled();
+      expect(redisConstructorSpy).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
-      expect(global.log.save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
-        useCache: false
+      expect(getLog().save).toHaveBeenCalledWith('remote-static-cache-not-initialized', {
+        useCache: false,
       });
     });
 
@@ -90,7 +111,7 @@ describe('RemoteStaticCache', () => {
 
       const cache = new RemoteStaticCache(config, redisConfig);
 
-      expect(redis.createClient).not.toHaveBeenCalled();
+      expect(redisConstructorSpy).not.toHaveBeenCalled();
       expect(cache.client).toBeUndefined();
     });
 
@@ -102,7 +123,7 @@ describe('RemoteStaticCache', () => {
       const cache2 = new RemoteStaticCache(config, redisConfig);
 
       expect(cache1).toBe(cache2);
-      expect(redis.createClient).toHaveBeenCalledTimes(1);
+      expect(redisConstructorSpy).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -125,9 +146,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
 
       // Mock HTTP request for update
-      nock('https://api.example.com')
-        .get('/data')
-        .reply(200, newData);
+      nock('https://api.example.com').get('/data').reply(200, newData);
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl);
 
@@ -146,9 +165,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(null);
 
       // Mock HTTP request for update
-      nock('https://api.example.com')
-        .get('/data')
-        .reply(200, newData);
+      nock('https://api.example.com').get('/data').reply(200, newData);
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl);
 
@@ -175,9 +192,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
 
       // Mock HTTP request to fail
-      nock('https://api.example.com')
-        .get('/data')
-        .replyWithError(new Error('Network error'));
+      nock('https://api.example.com').get('/data').reply(500, { error: 'Network error' });
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl);
 
@@ -194,9 +209,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
 
       // Mock HTTP request with custom timeout
-      nock('https://api.example.com')
-        .get('/data')
-        .reply(200, { success: true });
+      nock('https://api.example.com').get('/data').reply(200, { success: true });
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl, { timeout: 10000 });
 
@@ -214,7 +227,7 @@ describe('RemoteStaticCache', () => {
       const result = await cacheWithoutRedis.getAndUpdateByRemoteUrl(testUrl);
 
       expect(result).toBeUndefined();
-      expect(global.log.save).toHaveBeenCalledWith('redis-client-is-not-defined-for-static-cache');
+      expect(getLog().save).toHaveBeenCalledWith('redis-client-is-not-defined-for-static-cache');
       expect(mockRedisClient.get).not.toHaveBeenCalled();
     });
 
@@ -225,9 +238,7 @@ describe('RemoteStaticCache', () => {
       mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
 
       // Mock HTTP request
-      nock('https://api.example.com')
-        .get('/data')
-        .reply(200, { success: true });
+      nock('https://api.example.com').get('/data').reply(200, { success: true });
 
       const result = await cache.getAndUpdateByRemoteUrl(testUrl);
 

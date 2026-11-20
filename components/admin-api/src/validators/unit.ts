@@ -1,5 +1,6 @@
 import { checkSchema } from 'express-validator';
 
+import { getModels } from '../lib/context';
 import { ValidationConfig, Validator } from './validator';
 
 /**
@@ -119,11 +120,13 @@ export class UnitValidator extends Validator {
               return Promise.resolve();
             }
 
-            return global.models.unit.findById(value).then((unit) => {
-              if (unit) {
-                return Promise.reject('Unit id already exists.');
-              }
-            });
+            return getModels()
+              .unit.findById(value)
+              .then((unit) => {
+                if (unit) {
+                  return Promise.reject('Unit id already exists.');
+                }
+              });
           },
         },
       },
@@ -144,11 +147,13 @@ export class UnitValidator extends Validator {
         isString: true,
         custom: {
           options: (value) => {
-            return global.models.unit.findByName(value).then((unit) => {
-              if (unit) {
-                return Promise.reject('Unit already exists.');
-              }
-            });
+            return getModels()
+              .unit.findByName(value)
+              .then((unit) => {
+                if (unit) {
+                  return Promise.reject('Unit already exists.');
+                }
+              });
           },
         },
       },
@@ -233,11 +238,13 @@ export class UnitValidator extends Validator {
         isString: true,
         custom: {
           options: (value, { req }) => {
-            return global.models.unit.findByName(value).then((unit) => {
-              if (unit && unit.id !== req.params.id) {
-                return Promise.reject('Unit already exists.');
-              }
-            });
+            return getModels()
+              .unit.findByName(value)
+              .then((unit) => {
+                if (unit && unit.id !== req.params.id) {
+                  return Promise.reject('Unit already exists.');
+                }
+              });
           },
         },
       },

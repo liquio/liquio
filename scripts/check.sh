@@ -17,6 +17,35 @@ BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
+# Fail if a publicly known default service Basic token is committed to configs or charts: task (task:task), register
+# (admin-api register.json) and filestorage (auth.json test1:test).
+check_no_default_tokens() {
+  local default_token failed=0
+  for default_token in "dGFzazp0YXNr" "cmVnaXN0ZXI6T2FVaVo3MGt1SExq" "dGVzdDE6dGVzdA==" "dXNlcm5hbWU6cGFzc3dvcmQ=" "username:password" "testpassword"; do
+    if grep -rIl --exclude-dir=node_modules -e "$default_token" "$PROJECT_ROOT/config-templates" "$PROJECT_ROOT/helm-chart"; then
+      echo -e "${RED}Default Basic token $default_token found in the files above, remove it${NC}" >&2
+      failed=1
+    fi
+  done
+  return $failed
+}
+
+# Fail if the Task/Cabinet test auth or test sign bypass flags are enabled in configs or charts.
+check_no_test_auth_flags() {
+  local failed=0
+  if grep -rInE --exclude-dir=node_modules '"allowedTest(Auth|Sign)"[[:space:]]*:[[:space:]]*true' "$PROJECT_ROOT/config-templates"; then
+    failed=1
+  fi
+  if grep -rInE --exclude-dir=node_modules '"allowedTest(Auth|Sign)"[[:space:]]+true' "$PROJECT_ROOT/helm-chart/templates"; then
+    failed=1
+  fi
+  if [[ $failed -ne 0 ]]; then
+    echo -e "${RED}allowedTestAuth/allowedTestSign enabled in the files above, set them to false${NC}" >&2
+    return 1
+  fi
+  return 0
+}
+
 # Show usage information
 show_usage() {
   cat <<EOF
@@ -147,6 +176,12 @@ main() {
     [[ -n "$quiet_flag" ]] && lint_cmd="$lint_cmd $quiet_flag"
     commands+=("$lint_cmd")
     descriptions+=("Linting")
+
+    commands+=("check_no_default_tokens")
+    descriptions+=("Default credentials")
+
+    commands+=("check_no_test_auth_flags")
+    descriptions+=("Test auth bypass flags")
   fi
 
   if [[ "$run_test" == true ]]; then

@@ -1,4 +1,5 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
+
 import jwt from 'jsonwebtoken';
 
 import { Errors } from '../lib/errors';
@@ -14,6 +15,17 @@ const IPN_TYPE = 'ipn';
 const PASSPORT_TYPE = 'passport';
 const ID_CARD_TYPE = 'idCard';
 
+const USED_TOKEN_LOCK_PREFIX = 'eds-used-token';
+const MAX_SESSION_CHALLENGES = 5;
+
+/** Value of the `typ` claim that marks a JWT as a sign challenge issued by `getRandomContentToSign`. */
+export const SIGN_CHALLENGE_TYPE = 'sign-challenge';
+
+/** Session slice holding the sign challenges issued to it. */
+export interface SignChallengeSession {
+  signChallenges?: { hash: string; exp: number }[];
+}
+
 export interface IpnObject {
   DRFO?: string;
   EDRPOU?: string;
@@ -23,6 +35,9 @@ export interface IpnObject {
  * Electronic digital signature (EDS) service.
  */
 export class EdsService extends BaseService {
+  // Fallback single-use store (token hash -> expiry ms) for deployments without redis.
+  private readonly usedTokens = new Map<string, number>();
+
   constructor(...args: ConstructorParameters<typeof BaseService>) {
     super(...args);
   }
@@ -34,9 +49,15 @@ export class EdsService extends BaseService {
   /**
    * Get random content to sign.
    */
-  async getRandomContentToSign() {
+  async getRandomContentToSign(session: SignChallengeSession): Promise<string> {
+    if (!session) {
+      this.log.save('get-random-content-to-sign-no-session', {}, 'error');
+      throw new Error(Errors.List.INVALID_TOKEN.message);
+    }
+
     // Prepare payload for JWT.
     const payload = {
+      typ: SIGN_CHALLENGE_TYPE,
       timestamp: Date.now(),
       random: crypto.randomBytes(RANDOM_BYTES_LENGTH).toString(RANDOM_BYTES_STRING_ENCODING),
     };
@@ -52,7 +73,15 @@ export class EdsService extends BaseService {
 
     // Create JWT.
     const token = jwt.sign(payload, jwtSecret, { expiresIn: jwtExpiresIn as number });
-    this.log.save('get-random-content-to-sign-generated', { token }, 'info');
+
+    // Bind the challenge to the issuing session.
+    const exp = (jwt.decode(token) as jwt.JwtPayload).exp ?? Math.floor(Date.now() / 1000) + (jwtExpiresIn as number);
+    const now = Math.floor(Date.now() / 1000);
+    const pending = (session.signChallenges ?? []).filter((c) => c.exp > now);
+    pending.push({ hash: this.hashToken(token), exp });
+    session.signChallenges = pending.slice(-MAX_SESSION_CHALLENGES);
+
+    this.log.save('get-random-content-to-sign-generated', { expiresIn: jwtExpiresIn, pending: session.signChallenges.length }, 'info');
 
     // Response token.
     return token;
@@ -61,17 +90,21 @@ export class EdsService extends BaseService {
   /**
    * Check random content sign.
    */
-  async checkRandomContentSign(token: string, signature: string): Promise<{ signer: any; issuer: any; serial: any; pem: any }> {
+  async checkRandomContentSign(
+    token: string,
+    signature: string,
+    session: SignChallengeSession,
+  ): Promise<{ signer: any; issuer: any; serial: any; pem: any }> {
     // Log signature checking.
-    this.log.save('check-sign-started', { token, signature }, 'info');
+    this.log.save('check-sign-started', { tokenLength: token?.length, signatureLength: signature?.length }, 'info');
 
     // Check params.
     if (typeof token !== 'string') {
-      this.log.save('check-sign-token-error', { token }, 'error');
+      this.log.save('check-sign-token-error', { tokenType: typeof token }, 'error');
       throw new Error(Errors.List.TOKEN_NOT_FOUND.message);
     }
     if (typeof signature !== 'string') {
-      this.log.save('check-sign-signature-error', { signature }, 'error');
+      this.log.save('check-sign-signature-error', { signatureType: typeof signature }, 'error');
       throw new Error(Errors.List.SIGNATURE_NOT_FOUND.message);
     }
 
@@ -79,11 +112,11 @@ export class EdsService extends BaseService {
     if (encryptionEnabled) {
       try {
         signature = this.decodeSignature(signature);
-        this.log.save('check-sign-iit-decoded', { signature }, 'info');
+        this.log.save('check-sign-iit-decoded', { signatureLength: signature?.length }, 'info');
         signature = await this.service('x509').hashToInternalSignature(signature, token);
         this.log.save('check-sign-iit-converted', { signature: shortenStringWithPrefixSuffix(signature) }, 'info');
       } catch (err) {
-        this.log.save('check-sign-iit|decoding-error', { err }, 'error');
+        this.log.save('check-sign-iit|decoding-error', { error: (err as any)?.message }, 'error');
       }
     }
 
@@ -99,13 +132,70 @@ export class EdsService extends BaseService {
       throw new Error(Errors.List.INVALID_TOKEN.message);
     }
 
+    let payload: jwt.JwtPayload;
     try {
-      jwt.verify(token, jwtSecret);
+      payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
     } catch {
       throw new Error(Errors.List.INVALID_TOKEN.message);
     }
+    if (typeof payload !== 'object' || payload?.typ !== SIGN_CHALLENGE_TYPE) {
+      this.log.save('check-sign-token-wrong-type', {}, 'error');
+      throw new Error(Errors.List.INVALID_TOKEN.message);
+    }
+    const expiresAtSeconds = payload.exp ?? Math.floor(Date.now() / 1000) + JWT_DEFAULT_EXPIRES_IN;
 
-    return this.processSignatureInfo(signature, token);
+    // The challenge must have been issued to this very session.
+    const hash = this.hashToken(token);
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (!session?.signChallenges?.some((c) => c.hash === hash && c.exp > nowSeconds)) {
+      this.log.save('check-sign-token-session-mismatch', { hasSession: !!session }, 'error');
+      throw new Error(Errors.List.INVALID_TOKEN.message);
+    }
+
+    const result = await this.processSignatureInfo(signature, token);
+
+    // Remove the challenge from the session once the signature over it is verified.
+    const remaining = session.signChallenges.filter((c) => c.hash !== hash && c.exp > nowSeconds);
+    if (remaining.length) {
+      session.signChallenges = remaining;
+    } else {
+      delete session.signChallenges;
+    }
+
+    // The challenge is single-use: consume it only after the signature has been verified over it.
+    if (!(await this.consumeToken(token, expiresAtSeconds))) {
+      this.log.save('check-sign-token-replay', {}, 'error');
+      throw new Error(Errors.List.INVALID_TOKEN.message);
+    }
+
+    return result;
+  }
+
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Atomically mark the challenge token as used until it expires.
+   * @returns false if the token has been used already.
+   */
+  private async consumeToken(token: string, expiresAtSeconds: number): Promise<boolean> {
+    const key = this.hashToken(token);
+    const ttl = Math.max(1, expiresAtSeconds - Math.floor(Date.now() / 1000));
+
+    const redis = this.service('redis');
+    if (redis?.isEnabled) {
+      return (await redis.acquireLock(`${USED_TOKEN_LOCK_PREFIX}:${key}`, ttl)) !== null;
+    }
+
+    // In-memory fallback (single instance only).
+    const now = Date.now();
+    for (const [k, expiresAt] of this.usedTokens) {
+      if (expiresAt <= now) this.usedTokens.delete(k);
+    }
+    if (this.usedTokens.has(key)) return false;
+    this.usedTokens.set(key, now + ttl * 1000);
+    return true;
   }
 
   private async processSignatureInfo(signature: string, token: string): Promise<{ signer: any; issuer: any; serial: any; pem: any }> {
@@ -123,14 +213,18 @@ export class EdsService extends BaseService {
       throw new Error(Errors.List.INVALID_TOKEN.message);
     }
     const contentString = content?.toString();
-    this.log.save('check-sign-cert-issuer', { issuer, issuerOrganizationName: issuer?.organizationName, token }, 'info');
+    this.log.save('check-sign-cert-issuer', { issuer, issuerOrganizationName: issuer?.organizationName }, 'info');
     if (contentString !== token) {
-      this.log.save('check-sign-cert-wrong-token', { contentString: contentString ?? null, token: token || null }, 'error');
+      this.log.save('check-sign-cert-wrong-token', { hasContent: contentString !== undefined }, 'error');
       throw new Error(Errors.List.WRONG_SIGNED_CONTENT.message);
     }
 
     // Log.
-    this.log.save('authenticate-eds|user-info', { signer, issuer }, 'info');
+    this.log.save(
+      'authenticate-eds|user-info',
+      { signerFields: Object.keys(signer ?? {}), issuerOrganizationName: issuer?.organizationName },
+      'info',
+    );
 
     return { signer, issuer, serial, pem };
   }
@@ -158,7 +252,11 @@ export class EdsService extends BaseService {
   async getSignatureInfoX509(signature: string): Promise<SignatureInfoResponse> {
     try {
       const certInfo = await this.service('x509').getSignatureInfo(signature);
-      this.log.save('get-signature-info-certificate-data', { ...certInfo, content: 'REDACTED', pem: 'REDACTED' }, 'info');
+      this.log.save(
+        'get-signature-info-certificate-data',
+        { subjectFields: Object.keys(certInfo?.subject ?? {}), issuerOrganizationName: certInfo?.issuer?.organizationName },
+        'info',
+      );
 
       if (typeof certInfo.pem === 'undefined') {
         throw new Error(Errors.List.CAN_NOT_FIND_CERT.message);

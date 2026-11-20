@@ -1,0 +1,53 @@
+dn: uid=alice,ou=users,dc=example,dc=org
+changetype: add
+objectClass: inetOrgPerson
+uid: alice
+cn: Alice Smith
+sn: Smith
+givenName: Alice
+mail: alice.ldap@example.org
+userPassword: alicepw
+
+dn: uid=bob,ou=users,dc=example,dc=org
+changetype: add
+objectClass: inetOrgPerson
+uid: bob
+cn: Bob Jones
+sn: Jones
+givenName: Bob
+mail: bob.ldap@example.org
+userPassword: bobpw
+
+dn: uid=dave,ou=users,dc=example,dc=org
+changetype: add
+objectClass: inetOrgPerson
+uid: dave
+cn: Dave Brown
+sn: Brown
+givenName: Dave
+mail: dave.ldap@example.org
+userPassword: davepw
+
+dn: uid=erin,ou=users,dc=example,dc=org
+changetype: add
+objectClass: inetOrgPerson
+uid: erin
+cn: Erin White
+sn: White
+givenName: Erin
+mail: erin.ldap@example.org
+userPassword: erinpw
+
+dn: cn=liquio,ou=groups,dc=example,dc=org
+changetype: add
+objectClass: groupOfNames
+cn: liquio
+member: uid=alice,ou=users,dc=example,dc=org
+member: uid=dave,ou=users,dc=example,dc=org
+member: uid=erin,ou=users,dc=example,dc=org
+
+dn: cn=liquio-unit,ou=groups,dc=example,dc=org
+changetype: add
+objectClass: groupOfNames
+cn: liquio-unit
+member: uid=erin,ou=users,dc=example,dc=org

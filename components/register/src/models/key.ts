@@ -5,6 +5,7 @@ import KeyEntity, { KeyMeta, KeyRaw, KeySchema } from '../entities/key';
 import { BasicFilter, ModelItemResponse, ModelListWithMetaResponse, ModelUpdateResponse } from '../lib/interfaces';
 import { PgPubSub, PubSubCallbackData } from '../lib/pgpubsub';
 import { RedisClient } from '../lib/redis_client';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -32,81 +33,81 @@ export default class KeyModel extends Model {
             allowNull: false,
             primaryKey: true,
             autoIncrement: true,
-            type: Sequelize.INTEGER
+            type: Sequelize.INTEGER,
           },
           register_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'registers', key: 'id' }
+            references: { model: 'registers', key: 'id' },
           },
           name: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           description: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           schema: {
             allowNull: false,
             type: Sequelize.JSON,
-            defaultValue: {}
+            defaultValue: {},
           },
           parent_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'keys', key: 'id' }
+            references: { model: 'keys', key: 'id' },
           },
           meta: {
             allowNull: false,
             type: Sequelize.JSON,
-            defaultValue: {}
+            defaultValue: {},
           },
           to_string: {
             allowNull: false,
             type: Sequelize.TEXT,
-            default: '(record) => { return JSON.stringify(record.data); }'
+            default: '(record) => { return JSON.stringify(record.data); }',
           } as any,
           to_search_string: {
             type: Sequelize.TEXT,
             allowNull: false,
-            default: '(record) => { return null; }'
+            default: '(record) => { return null; }',
           } as any,
           created_by: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           updated_by: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           access_mode: {
             allowNull: false,
             type: Sequelize.ENUM('full', 'read_only', 'write_only'),
-            defaultValue: 'full'
+            defaultValue: 'full',
           },
           to_export: {
             allowNull: false,
             type: Sequelize.TEXT,
-            defaultValue: '(record) => { return null; }'
+            defaultValue: '(record) => { return null; }',
           },
           is_encrypted: {
             allowNull: false,
             defaultValue: false,
-            type: Sequelize.BOOLEAN
-          }
+            type: Sequelize.BOOLEAN,
+          },
         },
         {
           tableName: 'keys',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       PgPubSub.getInstance()?.subscribe('keys_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config?.cache?.key?.findById || DEFAULT_CACHE_TTL,
-        getAll: global.config?.cache?.key?.getAll || DEFAULT_CACHE_TTL
+        findById: getConfig()?.cache?.key?.findById || DEFAULT_CACHE_TTL,
+        getAll: getConfig()?.cache?.key?.getAll || DEFAULT_CACHE_TTL,
       };
 
       KeyModel.singleton = this;
@@ -133,25 +134,25 @@ export default class KeyModel extends Model {
       offset: 0,
       limit: 2,
       filter: {},
-      ...options
+      ...options,
     };
     const queryOptions = {
       order: [['created_at', 'desc']],
       where: filter,
       offset,
-      limit
+      limit,
     };
 
     // DB query with caching.
     const {
-      data: { count, rows: keysRaw }
+      data: { count, rows: keysRaw },
     } = await RedisClient.getOrSet(['key', 'getAll', options], () => this.model.findAndCountAll(queryOptions), this.cacheTtl.getAll);
 
     const keysEntities = keysRaw.map((keyRaw: any) => new KeyEntity(keyRaw)) as KeyEntity[];
 
     // Append key signature properties.
-    if (global?.config?.key_signature) {
-      keysEntities.forEach((key) => (key.keySignature = global.config.key_signature[key.id]));
+    if (getConfig()?.key_signature) {
+      keysEntities.forEach((key) => (key.keySignature = getConfig().key_signature[key.id]));
     }
 
     return { data: keysEntities, meta: { count, offset, limit } };
@@ -166,7 +167,7 @@ export default class KeyModel extends Model {
     const keyEntity = new KeyEntity(keyRaw);
 
     // Append key signature properties.
-    if (global?.config?.key_signature) {
+    if (getConfig()?.key_signature) {
       (keyEntity as any).keySignature = this.config.key_signature[keyEntity.id];
     }
 
@@ -194,7 +195,7 @@ export default class KeyModel extends Model {
     lock,
     accessMode,
     isEncrypted,
-    toExport
+    toExport,
   }: Partial<KeyCreateOptions>): Promise<ModelItemResponse<KeyEntity>> {
     const keyToCreateRaw: KeyRaw = {
       register_id: registerId,
@@ -209,7 +210,7 @@ export default class KeyModel extends Model {
       updated_by: user,
       access_mode: accessMode,
       to_export: toExport,
-      is_encrypted: !!isEncrypted
+      is_encrypted: !!isEncrypted,
     };
 
     // Backwards compatibility: remove after implementation on bpmn-admin
@@ -242,8 +243,8 @@ export default class KeyModel extends Model {
       lock,
       accessMode,
       toExport,
-      isEncrypted
-    }: Partial<KeyUpdateOptions>
+      isEncrypted,
+    }: Partial<KeyUpdateOptions>,
   ): Promise<ModelUpdateResponse<KeyEntity>> {
     const keyToUpdateRaw = this.removeUndefinedProperties({
       register_id: registerId,
@@ -257,7 +258,7 @@ export default class KeyModel extends Model {
       updated_by: user,
       access_mode: accessMode,
       to_export: toExport,
-      is_encrypted: isEncrypted
+      is_encrypted: isEncrypted,
     }) as KeyRaw;
 
     // Backwards compatibility: remove after implementation on bpmn-admin
@@ -271,7 +272,7 @@ export default class KeyModel extends Model {
 
     return {
       data: updatedKeyEntity,
-      updating: { rowsCount: updatedRowsCount }
+      updating: { rowsCount: updatedRowsCount },
     };
   }
 
@@ -339,7 +340,7 @@ export default class KeyModel extends Model {
           left join registers r3 on k.register_id = r3.id
         where k.id in (:ids);
       `,
-      { replacements: { ids }, type: Sequelize.QueryTypes.SELECT }
+      { replacements: { ids }, type: Sequelize.QueryTypes.SELECT },
     );
   }
 
@@ -395,7 +396,7 @@ export default class KeyModel extends Model {
           left join errors e on k.id = e.key_id
           left join registers r3 on k.register_id = r3.id
       `,
-      { type: Sequelize.QueryTypes.SELECT }
+      { type: Sequelize.QueryTypes.SELECT },
     );
   }
 
@@ -439,7 +440,7 @@ export default class KeyModel extends Model {
         JOIN records r ON k.id = r.key_id
         WHERE k.is_encrypted <> r.is_encrypted
         GROUP BY k.id`,
-      { type: Sequelize.QueryTypes.SELECT, raw: true }
+      { type: Sequelize.QueryTypes.SELECT, raw: true },
     );
 
     return results.map((result) => result.id);

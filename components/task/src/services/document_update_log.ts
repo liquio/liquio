@@ -1,7 +1,8 @@
+import { RedisClient } from '@liquio/back-core';
 
-import PropByPath from 'prop-by-path';
-import { createClient } from 'redis';
+import PropByPath from '../lib/prop_by_path';
 import { DocumentUpdateLogEntity } from '../entities/document_update_log';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * Document update log service.
@@ -17,7 +18,7 @@ export class DocumentUpdateLog {
    * @param {object} [config] Document update log config. Global config `document_update_log` used by default.
    * @param {object} [redisConfig] Redis config. Global config `redis` used by default.
    */
-  constructor(config = global.config.document_update_log, redisConfig = global.config.redis) {
+  constructor(config = getConfig().document_update_log, redisConfig = getConfig().redis) {
     // Singleton.
     if (!DocumentUpdateLog.singleton) {
       // Define params.
@@ -25,14 +26,18 @@ export class DocumentUpdateLog {
       const { isEnabled: isRedisEnabled, host, port } = redisConfig || {};
 
       // Document updated log config.
-      const { enabled, redis: { ttl } } = config || { redis: { ttl: 60 } };
-      this.enabled = (isRedisEnabled && enabled);
-      this.client = this.enabled && createClient({ socket: { host, port } }) || null;
-      this.client?.connect().catch(error => {
-        global.log.save('document-update-log-connection-error', error, 'error');
-      });
+      const {
+        enabled,
+        redis: { ttl },
+      } = config || { redis: { ttl: 60 } };
+      this.enabled = isRedisEnabled && enabled;
+      this.client = this.enabled ? new RedisClient({ host, port, defaultTtl: ttl, getLog }) : null;
       this.ttl = ttl;
-      if (this.client) { global.log.save('document-update-log-initialized', { enabled, host, port }); } else { global.log.save('document-update-log-not-initialized', { enabled }); }
+      if (this.client) {
+        getLog().save('document-update-log-initialized', { enabled, host, port });
+      } else {
+        getLog().save('document-update-log-not-initialized', { enabled });
+      }
 
       // Define singleton.
       DocumentUpdateLog.singleton = this;
@@ -52,17 +57,21 @@ export class DocumentUpdateLog {
    */
   async handleDocumentUpdate(updatedDocument, properties, userId, lastUpdateLogId) {
     // Check if document update log service disabled.
-    if (!this.enabled) { return undefined; }
+    if (!this.enabled) {
+      return undefined;
+    }
 
     // Create update log entity.
     const createdAt = new Date(updatedDocument.updatedAt);
     const documentId = updatedDocument.id;
-    const changes = properties.map(v => ({ path: v.path, value: PropByPath.get(updatedDocument.data, v.path) }));
+    const changes = properties.map((v) => ({ path: v.path, value: PropByPath.get(updatedDocument.data, v.path) }));
     const documentUpdateLogEntity = new DocumentUpdateLogEntity({ documentId, createdAt, userId, changes });
 
     // Save update log entity. Return if last update log ID not defined.
     await this.set(documentUpdateLogEntity);
-    if (!lastUpdateLogId) { return [documentUpdateLogEntity]; }
+    if (!lastUpdateLogId) {
+      return [documentUpdateLogEntity];
+    }
 
     // Define and return update logs entities.
     const fromDate = new Date(parseInt(lastUpdateLogId.split('.')[3]));
@@ -80,9 +89,9 @@ export class DocumentUpdateLog {
   async getByDocumentId(documentId, fromDate) {
     // Get document update log IDs.
     const idsSearchPattern = DocumentUpdateLogEntity.getIdSearchPattern(documentId);
-    const documentUpdateLogIds = await this.client.keys(idsSearchPattern);
+    const documentUpdateLogIds = await this.client.getKeys(idsSearchPattern);
     const documentUpdateLogIdsToGet = fromDate
-      ? documentUpdateLogIds.filter(v => new Date(parseInt(v.split('.')[3])) >= new Date(fromDate))
+      ? documentUpdateLogIds.filter((v) => new Date(parseInt(v.split('.')[3])) >= new Date(fromDate))
       : documentUpdateLogIds;
 
     // Get by IDs list. Sorted from new logs.
@@ -126,7 +135,6 @@ export class DocumentUpdateLog {
 
     // Set data as string with TTL.
     const dataString = JSON.stringify(documentUpdateLogEntity);
-    await this.client.set(documentUpdateLogEntity.id, dataString, { EX: this.ttl });
+    await this.client.set(documentUpdateLogEntity.id, dataString, this.ttl);
   }
 }
-

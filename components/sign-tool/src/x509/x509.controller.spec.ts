@@ -1,14 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
 import * as pkijs from 'pkijs';
 import * as asn1js from 'asn1js';
-import { OID_PKCS7_SIGNED_DATA } from './x509.constants';
 import { Crypto } from '@peculiar/webcrypto';
 
+import { OID_PKCS7_SIGNED_DATA } from './x509.constants';
 import { X509Controller } from './x509.controller';
 import { X509Service } from './x509.service';
 import { ConfigurationService } from '../configuration/configuration.service';
@@ -37,6 +38,7 @@ class MockLoggerService {
   setContext = jest.fn();
   error = jest.fn();
   log = jest.fn();
+  warn = jest.fn();
 }
 
 describe('X509Controller', () => {
@@ -59,6 +61,22 @@ describe('X509Controller', () => {
   });
 
   beforeEach(async () => {
+    // Fixture certificates expired on 2026-07-21; pin the clock (Date only) inside their validity period.
+    jest.useFakeTimers({
+      now: new Date('2026-01-01T00:00:00Z'),
+      doNotFake: [
+        'nextTick',
+        'setImmediate',
+        'clearImmediate',
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'queueMicrotask',
+        'performance',
+        'hrtime',
+      ],
+    });
     const module: TestingModule = await Test.createTestingModule({
       controllers: [X509Controller],
       providers: [
@@ -74,6 +92,7 @@ describe('X509Controller', () => {
   });
 
   afterEach(async () => {
+    jest.useRealTimers();
     await app.close();
   });
 
@@ -98,9 +117,7 @@ describe('X509Controller', () => {
           expect(res.body.issuer.commonName).toBe('Liquio Test CA');
           expect(res.body.issuer.organizationName).toBe('Liquio Test CA');
           expect(res.body.issuer.countryName).toBe('UA');
-          expect(res.body.serial).toBe(
-            '1DD5E3F086BA70CFE146B5B76F56BA03730FBECC',
-          );
+          expect(res.body.serial).toBe('1DD5E3F086BA70CFE146B5B76F56BA03730FBECC');
           expect(res.body.pem).toContain('BEGIN CERTIFICATE');
         });
     });
@@ -119,32 +136,21 @@ describe('X509Controller', () => {
   describe('POST /x509/verify-hash', () => {
     it('should return true (201) when signature is valid', async () => {
       // Compute the hash of the extracted content (base64-encoded SHA-256)
-      const der = sampleP7sDer.buffer.slice(
-        sampleP7sDer.byteOffset,
-        sampleP7sDer.byteOffset + sampleP7sDer.byteLength,
-      ) as ArrayBuffer;
+      const der = sampleP7sDer.buffer.slice(sampleP7sDer.byteOffset, sampleP7sDer.byteOffset + sampleP7sDer.byteLength) as ArrayBuffer;
       const asn1 = asn1js.fromBER(der);
       const contentInfo = new pkijs.ContentInfo({ schema: asn1.result });
       const signedData = new pkijs.SignedData({ schema: contentInfo.content });
 
       // Check if content is embedded or we need to use the original JSON file
       let contentBuffer: Buffer;
-      if (
-        signedData.encapContentInfo.eContent &&
-        signedData.encapContentInfo.eContent.valueBlock
-      ) {
-        contentBuffer = Buffer.from(
-          signedData.encapContentInfo.eContent.valueBlock.valueHex,
-        );
+      if (signedData.encapContentInfo.eContent && signedData.encapContentInfo.eContent.valueBlock) {
+        contentBuffer = Buffer.from((signedData.encapContentInfo.eContent as asn1js.OctetString).getValue());
       } else {
         // Use the original JSON content
         contentBuffer = sampleJson;
       }
 
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update(contentBuffer)
-        .digest('base64');
+      const expectedHash = crypto.createHash('sha256').update(contentBuffer).digest('base64');
       const payload = { hash: expectedHash, sign: sampleP7sB64 };
       await request(app.getHttpServer())
         .post('/x509/verify-hash')
@@ -184,10 +190,7 @@ describe('X509Controller', () => {
         data: Buffer.from('test').toString('base64'),
         isReturnAsBase64: true,
       };
-      const expectedHash = crypto
-        .createHash('sha256')
-        .update('test')
-        .digest('base64');
+      const expectedHash = crypto.createHash('sha256').update('test').digest('base64');
       await request(app.getHttpServer())
         .post('/x509/hash-data')
         .send(payload)
@@ -213,9 +216,7 @@ describe('X509Controller', () => {
         .send({ data: 'not-base64', isReturnAsBase64: true })
         .expect(400)
         .expect((res) => {
-          expect(res.body.message).toBe(
-            'Invalid data, expected base64-encoded string',
-          );
+          expect(res.body.message).toBe('Invalid data, expected base64-encoded string');
         });
     });
   });
@@ -291,10 +292,7 @@ describe('X509Controller', () => {
       const sigDer = fs.readFileSync(sigPath);
       const sigB64 = sigDer.toString('base64');
       const payload = { sign: sigB64 };
-      await request(app.getHttpServer())
-        .post('/x509/signature-info')
-        .send(payload)
-        .expect(400);
+      await request(app.getHttpServer()).post('/x509/signature-info').send(payload).expect(400);
     });
   });
 });

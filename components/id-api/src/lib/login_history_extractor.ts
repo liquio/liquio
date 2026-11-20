@@ -3,11 +3,12 @@ import { Request } from '../types';
 
 export type ActionType = 'login' | 'logout' | 'change_password';
 
+// `req.ip` is the proxy-resolved client address: it honours `x-forwarded-for` only for hops allowed by `trustProxy`.
 export function prepareLoginHistoryData(
   req: Request,
   { actionType = 'login' }: { actionType: ActionType },
 ): LoginHistoryCreationAttributes | undefined {
-  const ip = [req.headers['x-forwarded-for']?.toString() ?? req.socket.remoteAddress].filter(Boolean) as string[];
+  const ip = [req.ip ?? req.socket.remoteAddress].filter(Boolean) as string[];
   const userAgent = req.headers['user-agent'];
 
   const {

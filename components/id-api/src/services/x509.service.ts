@@ -1,7 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
+import { getTraceId } from '@liquio/back-core';
 
 import { Helpers } from '../lib/helpers';
-import { getTraceId } from '@liquio/back-core';
+import { internalRequestOptions } from '../lib/internal_transport';
 import { BaseService } from './base_service';
 import { typeOf } from '../lib/type_of';
 
@@ -86,6 +87,7 @@ export class X509Service extends BaseService {
     this.client = axios.create({
       baseURL: url,
       timeout: this.config.x509.timeout ?? 10000,
+      ...internalRequestOptions(this.config),
     });
   }
 

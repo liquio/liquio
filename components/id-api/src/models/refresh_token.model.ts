@@ -5,6 +5,7 @@ export interface RefreshTokenAttributes {
   clientId: number;
   expires: Date;
   userId: string;
+  authorizationVersion?: number;
 }
 
 export class RefreshTokenModel extends BaseModel<RefreshTokenAttributes> {
@@ -14,6 +15,7 @@ export class RefreshTokenModel extends BaseModel<RefreshTokenAttributes> {
     this.entity = this.sequelize.define(
       'refresh_tokens',
       {
+        authorizationVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         refreshToken: {
           allowNull: false,
           type: DataTypes.STRING,

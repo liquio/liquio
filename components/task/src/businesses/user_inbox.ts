@@ -1,6 +1,7 @@
+import { Sandbox } from '@liquio/back-core';
 
 import { Business } from './business';
-import { Sandbox } from '../lib/sandbox';
+import { getLog, getModels } from '../lib/context';
 
 /**
  * User inbox business.
@@ -18,7 +19,7 @@ export class UserInboxBusiness extends Business {
     // Define singleton.
     if (!UserInboxBusiness.singleton) {
       super(config);
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       UserInboxBusiness.singleton = this;
     }
     return UserInboxBusiness.singleton;
@@ -35,53 +36,53 @@ export class UserInboxBusiness extends Business {
 
     // Check task is finished.
     if (!taskIsFinished) {
-      global.log.save('save-to-inboxes|task-not-finished', { taskId, taskIsFinished, documentId });
+      getLog().save('save-to-inboxes|task-not-finished', { taskId, taskIsFinished, documentId });
       return;
     }
 
     // Check document ID.
     if (!documentId) {
-      global.log.save('save-to-inboxes|document-id-not-defined', { taskId, documentId });
+      getLog().save('save-to-inboxes|document-id-not-defined', { taskId, documentId });
       return;
     }
 
     // Check document.
-    const document = await global.models.document.findById(documentId);
+    const document = await getModels().document.findById(documentId);
     if (!document) {
-      global.log.save('save-to-inboxes|document-not-found', { taskId, documentId });
+      getLog().save('save-to-inboxes|document-not-found', { taskId, documentId });
       return;
     }
 
     if (!document.fileId) {
-      global.log.save('save-to-inboxes|document-has-no-file', { taskId, documentId });
+      getLog().save('save-to-inboxes|document-has-no-file', { taskId, documentId });
       return;
     }
 
     // Get document template.
     const { documentTemplateId, number: documentNumber } = document;
-    const documentTemplate = await global.models.documentTemplate.findById(documentTemplateId);
+    const documentTemplate = await getModels().documentTemplate.findById(documentTemplateId);
 
     // Define users list.
-    const { accessJsonSchema: { inboxes: inboxesJsonSchema }, name: documentTemplateName, jsonSchema: { fileName } } = documentTemplate;
+    const {
+      accessJsonSchema: { inboxes: inboxesJsonSchema },
+      name: documentTemplateName,
+      jsonSchema: { fileName },
+    } = documentTemplate;
     const usersList = await this.getUsersListForInboxes(inboxesJsonSchema, workflowId);
 
-    const preparedFileNameSchema = this.sandbox.evalWithArgs(
-      fileName,
-      [document.data],
-      {
-        checkArrow: true,
-        meta: { fn: 'documentTemplate.jsonSchemafileName', documentId, workflowId },
-      },
-    );
+    const preparedFileNameSchema = this.sandbox.evalWithArgs(fileName, [document.data], {
+      checkArrow: true,
+      meta: { fn: 'documentTemplate.jsonSchemafileName', documentId, workflowId },
+    });
     const preparedFileName = Array.isArray(preparedFileNameSchema) ? preparedFileNameSchema[0] : preparedFileNameSchema;
 
     // Save for all users.
     for (const user of usersList) {
-      (global.models.userInbox.create as any)({
+      (getModels().userInbox.create as any)({
         userId: user,
         documentId,
         name: preparedFileName || documentTemplateName,
-        number: documentNumber
+        number: documentNumber,
       });
     }
   }
@@ -100,35 +101,40 @@ export class UserInboxBusiness extends Business {
 
     // Handle if workflow creator.
     if (workflowCreator) {
-      const workflow = await global.models.workflow.findById(workflowId);
+      const workflow = await getModels().workflow.findById(workflowId);
       const { createdBy: workflowCreatedBy } = workflow;
-      global.log.save('save-to-inboxes|users-definition-by-workflow-created-by|defined', { workflowCreatedBy, inboxesJsonSchema, workflowId });
+      getLog().save('save-to-inboxes|users-definition-by-workflow-created-by|defined', { workflowCreatedBy, inboxesJsonSchema, workflowId });
       users.push(workflowCreatedBy);
     }
 
     // Handle function.
     if (usersStringifiedFunction) {
       // Get workflow documents.
-      const workflowDocuments = global.models.task.getDocumentsByWorkflowId(workflowId);
+      const workflowDocuments = getModels().task.getDocumentsByWorkflowId(workflowId);
 
       // Define and return users list.
       try {
-        const usersFunctionResponse = this.sandbox.evalWithArgs(
-          usersStringifiedFunction,
-          [workflowDocuments],
-          { meta: { fn: 'inboxesJsonSchema.users', workflowId } },
-        );
-        const usersAfterEvalFunction = Array.isArray(usersFunctionResponse) && usersFunctionResponse.every(v => typeof v === 'string') ?
-          usersFunctionResponse : (typeof usersFunctionResponse === 'string' ? [usersFunctionResponse] : []);
-        global.log.save('save-to-inboxes|users-definition-by-function|defined', { users, usersFunctionResponse, inboxesJsonSchema, workflowId });
+        const usersFunctionResponse = this.sandbox.evalWithArgs(usersStringifiedFunction, [workflowDocuments], {
+          meta: { fn: 'inboxesJsonSchema.users', workflowId },
+        });
+        const usersAfterEvalFunction =
+          Array.isArray(usersFunctionResponse) && usersFunctionResponse.every((v) => typeof v === 'string')
+            ? usersFunctionResponse
+            : typeof usersFunctionResponse === 'string'
+              ? [usersFunctionResponse]
+              : [];
+        getLog().save('save-to-inboxes|users-definition-by-function|defined', { users, usersFunctionResponse, inboxesJsonSchema, workflowId });
 
         users = users.concat(usersAfterEvalFunction);
       } catch (error) {
-        global.log.save('save-to-inboxes|users-definition-by-function|error', { inboxesJsonSchema, workflowId, error: error && error.message }, 'error');
+        getLog().save(
+          'save-to-inboxes|users-definition-by-function|error',
+          { inboxesJsonSchema, workflowId, error: error && error.message },
+          'error',
+        );
       }
     }
 
     return [...new Set(users)];
   }
 }
-

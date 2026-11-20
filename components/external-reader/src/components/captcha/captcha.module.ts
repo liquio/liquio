@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 
 import { ConfigurationModule } from '@components/configuration/configuration.module';
-
 import { CaptchaController } from './captcha.controller';
 import { CaptchaService } from './captcha.service';
 

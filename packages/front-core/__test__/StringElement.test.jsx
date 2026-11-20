@@ -2,8 +2,8 @@ import React from 'react';
 import { render, fireEvent, screen } from '@testing-library/react';
 import { shallow } from 'enzyme';
 
-import CustomValueSelect from 'components/JsonSchema/elements/StringElement/components/CustomValueSelect.jsx';
-import StringElement from 'components/JsonSchema/elements/StringElement/index.jsx';
+import CustomValueSelect from 'components/JsonSchema/elements/StringElement/components/CustomValueSelect';
+import StringElement from 'components/JsonSchema/elements/StringElement/index';
 import MockTheme from './../__mocks__/MockTheme.js';
 
 const props = {

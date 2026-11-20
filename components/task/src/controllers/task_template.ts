@@ -1,7 +1,6 @@
-
 import { Controller } from './controller';
 import { TaskTemplateModel } from '../models/task_template';
-import { ERROR_TASK_TEMPLATE_NOT_FOUND } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
 import { NotFoundError } from '../lib/errors';
 
 /**
@@ -61,10 +60,9 @@ export class TaskTemplateController extends Controller {
       return this.responseError(res, error);
     }
     if (!taskTemplate) {
-      return this.responseError(res, new NotFoundError(ERROR_TASK_TEMPLATE_NOT_FOUND));
+      return this.responseError(res, new NotFoundError(ErrorMessage.TaskTemplateNotFound));
     }
 
     this.responseData(res, this.filterResponse(taskTemplate));
   }
 }
-

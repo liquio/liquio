@@ -1,5 +1,7 @@
 import { Client } from 'pg';
 
+import { getLog } from './context';
+
 // Constants.
 const RETRY_CONNECTION_TIME = 10 * 1000; // 10 seconds
 
@@ -81,7 +83,7 @@ export class PgPubSub {
       database: this.config.database,
       password: this.config.password,
       port: this.config.port,
-      ssl: this.config.ssl
+      ssl: this.config.ssl,
     });
 
     client.on('notification', async (msg) => {
@@ -92,16 +94,16 @@ export class PgPubSub {
           const data = JSON.parse(payload);
           await Promise.all(subscriptions.map((callback) => callback(channel, data)));
         } catch (error) {
-          global.log.save('pgpubsub-notification-error', { error: error.message, stack: error.stack });
+          getLog().save('pgpubsub-notification-error', { error: error.message, stack: error.stack });
         }
       }
     });
 
     client.on('error', (error) => {
-      global.log.save('pgpubsub-error', {
+      getLog().save('pgpubsub-error', {
         error: error.message,
         stack: error.stack,
-        isReconnecting: this.isReconnecting
+        isReconnecting: this.isReconnecting,
       });
 
       if (!this.isReconnecting) {
@@ -110,7 +112,7 @@ export class PgPubSub {
     });
 
     client.on('end', () => {
-      global.log.save('pgpubsub-connection-ended', { isReconnecting: this.isReconnecting });
+      getLog().save('pgpubsub-connection-ended', { isReconnecting: this.isReconnecting });
 
       if (!this.isReconnecting && !this.client) {
         this.reconnect();
@@ -120,13 +122,13 @@ export class PgPubSub {
     await client.connect();
 
     this.client = client;
-    global.log.save('pgpubsub-connected', { message: 'Connected to PostgreSQL' });
+    getLog().save('pgpubsub-connected', { message: 'Connected to PostgreSQL' });
   }
 
   /**
    * Handles reconnection logic.
    */
-  async reconnect(){
+  async reconnect() {
     if (this.reconnectTimer) return;
 
     this.isReconnecting = true;
@@ -136,7 +138,7 @@ export class PgPubSub {
       await this.client.end();
       this.client = null;
     } catch (error) {
-      global.log.save('pgpubsub-end-client-error', {
+      getLog().save('pgpubsub-end-client-error', {
         error: error.message,
         stack: error.stack,
       });
@@ -144,7 +146,7 @@ export class PgPubSub {
 
     this.reconnectTimer = setInterval(async () => {
       try {
-        global.log.save('pgpubsub-starting-to-reconnect', {
+        getLog().save('pgpubsub-starting-to-reconnect', {
           reconnectAttempts: this.reconnectAttempts,
           message: 'Attempting to reconnect...',
         });
@@ -152,15 +154,15 @@ export class PgPubSub {
         this.reconnectAttempts += 1;
         await this.connect();
 
-        global.log.save('pgpubsub-reconnected-successfully', {
+        getLog().save('pgpubsub-reconnected-successfully', {
           reconnectAttempts: this.reconnectAttempts,
-          message: 'Reconnected successfully'
+          message: 'Reconnected successfully',
         });
 
         // Re-subscribe to channels.
-        for (const [channel,] of this.subscriptions.entries()) {
+        for (const [channel] of this.subscriptions.entries()) {
           await this.enqueueClientQuery('LISTEN ' + channel);
-          global.log.save('pgpubsub-resubscribed', { channel });
+          getLog().save('pgpubsub-resubscribed', { channel });
         }
 
         // Stop reconnection process.
@@ -169,7 +171,7 @@ export class PgPubSub {
         this.reconnectAttempts = 0;
         this.isReconnecting = false;
       } catch (error) {
-        global.log.save('pgpubsub-failed-to-reconnect', {
+        getLog().save('pgpubsub-failed-to-reconnect', {
           error: error.message,
           stack: error.stack,
           reconnectAttempts: this.reconnectAttempts,
@@ -200,7 +202,7 @@ export class PgPubSub {
         await this.client.end();
       }
     } catch (error) {
-      global.log.save('pgpubsub-cleanup-error', {
+      getLog().save('pgpubsub-cleanup-error', {
         error: error.message,
         stack: error.stack,
       });
@@ -224,7 +226,7 @@ export class PgPubSub {
       this.subscriptions.set(channelName, [callback]);
       await this.enqueueClientQuery('LISTEN ' + channelName);
     }
-    global.log.save('pgpubsub-subscribed', { channel: channelName });
+    getLog().save('pgpubsub-subscribed', { channel: channelName });
   }
 
   /**
@@ -237,7 +239,6 @@ export class PgPubSub {
       await this.enqueueClientQuery('UNLISTEN ' + channelName);
       this.subscriptions.delete(channelName);
     }
-    global.log.save('pgpubsub-unsubscribed', { channel: channelName });
+    getLog().save('pgpubsub-unsubscribed', { channel: channelName });
   }
 }
-

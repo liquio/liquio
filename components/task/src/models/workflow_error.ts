@@ -1,12 +1,11 @@
-
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { WorkflowErrorEntity } from '../entities/workflow_error';
+import { getLog } from '../lib/context';
 
 // Constants.
-const SUPPRESSED_ERRORS = [
-  'NotFoundError: Task not found.'
-];
+const SUPPRESSED_ERRORS = ['NotFoundError: Task not found.'];
 
 /**
  * Workflow error model.
@@ -25,7 +24,7 @@ export class WorkflowErrorModel extends Model {
         {
           workflow_id: {
             type: Sequelize.UUID,
-            references: { model: 'workflows', key: 'id' }
+            references: { model: 'workflows', key: 'id' },
           },
           service_name: Sequelize.STRING,
           data: Sequelize.JSON,
@@ -33,15 +32,15 @@ export class WorkflowErrorModel extends Model {
             allowNull: false,
             type: Sequelize.ENUM,
             values: ['error', 'warning'],
-            defaultValue: 'error'
-          }
+            defaultValue: 'error',
+          },
         },
         {
           tableName: 'workflow_errors',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -56,11 +55,15 @@ export class WorkflowErrorModel extends Model {
    * Create.
    * @param {object} data Data object.
    * @param {string} type Type.
+   * @param {object} [options] Options. workflowId - trusted workflow ID (null stores an unlinked row).
+   * @returns {Promise<number|undefined>} Created row id, or undefined when the row is skipped.
    */
-  async create(data, type = 'error') {
+  async create(data, type = 'error', options: { workflowId?: string | null } = {}) {
+    const hasTrustedWorkflowId = typeof options?.workflowId !== 'undefined';
+
     // If workflowId is not set, then we don't save the error.
-    const workflowId = data?.queueMessage?.workflowId || data?.traceMeta?.workflowId;
-    if (!workflowId) {
+    const workflowId = hasTrustedWorkflowId ? options.workflowId : data?.queueMessage?.workflowId || data?.traceMeta?.workflowId;
+    if (!hasTrustedWorkflowId && !workflowId) {
       return;
     }
 
@@ -70,13 +73,19 @@ export class WorkflowErrorModel extends Model {
       return;
     }
 
-    // Save to DB.
-    await this.model.create({
-      workflow_id: workflowId,
-      service_name: 'task',
-      data,
-      type
-    });
+    // Save to DB. Recording is best-effort and must never reject.
+    try {
+      const row = await this.model.create({
+        workflow_id: workflowId ?? null,
+        service_name: 'task',
+        data,
+        type,
+      });
+
+      return row.id;
+    } catch (error) {
+      getLog().save('workflow-error-save-failed', { workflowId, type, message: error?.message }, 'error');
+    }
   }
 
   /**
@@ -101,8 +110,7 @@ export class WorkflowErrorModel extends Model {
       data: item.data,
       type: item.type,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 }
-

@@ -1,9 +1,10 @@
-
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { UnitEntity } from '../entities/unit';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig, getLog } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 600;
@@ -28,7 +29,7 @@ export class UnitModel extends Model {
             allowNull: false,
             primaryKey: true,
             autoIncrement: true,
-            type: Sequelize.INTEGER
+            type: Sequelize.INTEGER,
           },
           parent_id: Sequelize.INTEGER,
           based_on: Sequelize.ARRAY(Sequelize.INTEGER),
@@ -41,20 +42,20 @@ export class UnitModel extends Model {
           allow_tokens: Sequelize.ARRAY(Sequelize.STRING),
           heads_ipn: Sequelize.ARRAY(Sequelize.STRING),
           members_ipn: Sequelize.ARRAY(Sequelize.STRING),
-          requested_members: Sequelize.ARRAY(Sequelize.JSONB)
+          requested_members: Sequelize.ARRAY(Sequelize.JSONB),
         },
         {
           tableName: 'units',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       PgPubSub.getInstance()?.subscribe('units_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        getAll: global.config.cache?.unit?.ttl || DEFAULT_CACHE_TTL,
+        getAll: getConfig().cache?.unit?.ttl || DEFAULT_CACHE_TTL,
       };
 
       UnitModel.singleton = this;
@@ -69,11 +70,7 @@ export class UnitModel extends Model {
    * @returns {Promise<UnitEntity[]>}
    */
   async getAll() {
-    const { data: unitsRaw } = await RedisClient.getOrSet(
-      RedisClient.createKey('unit', 'getAll'),
-      () => this.model.findAll(),
-      this.cacheTtl.getAll,
-    );
+    const { data: unitsRaw } = await RedisClient.getOrSet(RedisClient.createKey('unit', 'getAll'), () => this.model.findAll(), this.cacheTtl.getAll);
 
     return unitsRaw.map(this.prepareEntity);
   }
@@ -116,12 +113,12 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { members: Sequelize.fn('array_append', Sequelize.col('members'), userId) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-add-member|error', { unitId, userId });
+      getLog().save('unit-add-member|error', { unitId, userId });
       return null;
     }
 
@@ -129,7 +126,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-add-member', { unitId, userId });
+    getLog().save('unit-add-member', { unitId, userId });
 
     return unit;
   }
@@ -144,12 +141,12 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { heads: Sequelize.fn('array_append', Sequelize.col('heads'), userId) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-add-head|error', { unitId, userId });
+      getLog().save('unit-add-head|error', { unitId, userId });
       return null;
     }
 
@@ -157,7 +154,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-add-head', { unitId, userId });
+    getLog().save('unit-add-head', { unitId, userId });
 
     return unit;
   }
@@ -172,12 +169,12 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { requested_members: Sequelize.fn('array_append', Sequelize.col('requested_members'), JSON.stringify(requestedMember)) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-requested-member|error', { unitId, requestedMember });
+      getLog().save('unit-remove-requested-member|error', { unitId, requestedMember });
       return null;
     }
 
@@ -185,7 +182,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-requested-member', { unitId, requestedMember });
+    getLog().save('unit-remove-requested-member', { unitId, requestedMember });
 
     return unit;
   }
@@ -202,16 +199,13 @@ export class UnitModel extends Model {
     const { requestedMembers } = unit;
 
     // Remove requested member.
-    const requestedMembersToUpdate = requestedMembers.filter(v => v.ipn !== requestedMemberIpn);
-    const [, unitsRaw] = await this.model.update(
-      { requested_members: requestedMembersToUpdate },
-      { where: { id: unitId }, returning: true }
-    );
+    const requestedMembersToUpdate = requestedMembers.filter((v) => v.ipn !== requestedMemberIpn);
+    const [, unitsRaw] = await this.model.update({ requested_members: requestedMembersToUpdate }, { where: { id: unitId }, returning: true });
 
     // Define and return first updated row entity.
     const [updatedUnitRaw] = unitsRaw;
     const updatedUnit = this.prepareEntity(updatedUnitRaw);
-    global.log.save('unit-remove-requested-member', { unitId, requestedMemberIpn });
+    getLog().save('unit-remove-requested-member', { unitId, requestedMemberIpn });
     return updatedUnit;
   }
 
@@ -225,12 +219,12 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { heads_ipn: Sequelize.fn('array_remove', Sequelize.col('heads_ipn'), ipn) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-head-ipn|error', { unitId, ipn });
+      getLog().save('unit-remove-head-ipn|error', { unitId, ipn });
       return null;
     }
 
@@ -238,9 +232,47 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-head-ipn', { unitId, ipn });
+    getLog().save('unit-remove-head-ipn', { unitId, ipn });
 
     return unit;
+  }
+
+  /**
+   * Remove head.
+   * @param {number} unitId Unit ID.
+   * @param {string} userId User ID.
+   * @returns {Promise<UnitEntity>} Unit entity promise.
+   */
+  async removeHead(unitId: number, userId: string): Promise<UnitEntity | null> {
+    // Update.
+    const [, unitsRaw] = await this.model.update(
+      { heads: Sequelize.fn('array_remove', Sequelize.col('heads'), userId) },
+      { where: { id: unitId }, returning: true },
+    );
+
+    // Check.
+    if (!unitsRaw || unitsRaw.length !== 1) {
+      getLog().save('unit-remove-head|error', { unitId, userId });
+      return null;
+    }
+
+    // Define and return first updated row entity.
+    const [unitRaw] = unitsRaw;
+    const unit = this.prepareEntity(unitRaw);
+
+    getLog().save('unit-remove-head', { unitId, userId });
+
+    return unit;
+  }
+
+  /**
+   * Invalidate the units cache right away, without waiting for the row change notification.
+   */
+  async invalidateCache(): Promise<void> {
+    const redis = RedisClient.getInstance();
+    if (redis) {
+      await redis.delete(RedisClient.createKey('unit', 'getAll'));
+    }
   }
 
   /**
@@ -253,12 +285,12 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { members: Sequelize.fn('array_remove', Sequelize.col('members'), userId) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-member|error', { unitId, userId });
+      getLog().save('unit-remove-member|error', { unitId, userId });
       return null;
     }
 
@@ -266,7 +298,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-member', { unitId, userId });
+    getLog().save('unit-remove-member', { unitId, userId });
 
     return unit;
   }
@@ -281,12 +313,12 @@ export class UnitModel extends Model {
     // Update.
     const [, unitsRaw] = await this.model.update(
       { members_ipn: Sequelize.fn('array_remove', Sequelize.col('members_ipn'), ipn) },
-      { where: { id: unitId }, returning: true }
+      { where: { id: unitId }, returning: true },
     );
 
     // Check.
     if (!unitsRaw || unitsRaw.length !== 1) {
-      global.log.save('unit-remove-member-ipn|error', { unitId, ipn });
+      getLog().save('unit-remove-member-ipn|error', { unitId, ipn });
       return null;
     }
 
@@ -294,7 +326,7 @@ export class UnitModel extends Model {
     const [unitRaw] = unitsRaw;
     const unit = this.prepareEntity(unitRaw);
 
-    global.log.save('unit-remove-member-ipn', { unitId, ipn });
+    getLog().save('unit-remove-member-ipn', { unitId, ipn });
 
     return unit;
   }
@@ -318,7 +350,7 @@ export class UnitModel extends Model {
       allowTokens: unitRaw.allow_tokens,
       headsIpn: unitRaw.heads_ipn,
       membersIpn: unitRaw.members_ipn,
-      requestedMembers: unitRaw.requested_members
+      requestedMembers: unitRaw.requested_members,
     });
   }
 
@@ -340,4 +372,3 @@ export class UnitModel extends Model {
     }
   }
 }
-

@@ -1,6 +1,6 @@
-
 import { Provider as BaseProvider } from './providers/provider';
 import { FileStorageProvider } from './providers/filestorage';
+import { getConfig } from '../../lib/context';
 
 // Constants.
 const ERROR_MESSAGE_WRONG_PROVIDER = 'Wrong provider.';
@@ -19,7 +19,7 @@ export class StorageService {
   constructor(Provider = FileStorageProvider) {
     // Define singleton.
     if (!StorageService.singleton) {
-      this.provider = new Provider(config.storage[Provider.name]);
+      this.provider = new Provider(getConfig().storage[Provider.name]);
 
       if (!(this.provider instanceof BaseProvider)) {
         throw new Error(ERROR_MESSAGE_WRONG_PROVIDER);
@@ -32,4 +32,3 @@ export class StorageService {
     return StorageService.singleton;
   }
 }
-

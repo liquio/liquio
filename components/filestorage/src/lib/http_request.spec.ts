@@ -1,18 +1,22 @@
+import http from 'node:http';
+import { AddressInfo } from 'node:net';
+
 import nock from 'nock';
 import bodyParser from 'body-parser';
+
 import { HttpRequest } from './http_request';
 
 // Mock body-parser
 jest.mock('body-parser', () => ({
-  json: jest.fn(() => 'jsonParser'),
-  urlencoded: jest.fn(() => 'urlencodedParser'),
+  json: jest.fn(() => (req, res, next) => next()),
+  urlencoded: jest.fn(() => (req, res, next) => next()),
 }));
 
 describe('HttpRequest', () => {
   beforeAll(() => {
     // Disable net connect to ensure all requests are mocked
     nock.disableNetConnect();
-    
+
     // Use real timers to avoid timer-related issues
     jest.useRealTimers();
   });
@@ -26,9 +30,9 @@ describe('HttpRequest', () => {
     jest.clearAllMocks();
     // Clean up any interceptors after each test
     nock.cleanAll();
-    
+
     // Add a small delay to allow connections to close
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
   });
 
   afterAll(async () => {
@@ -38,9 +42,9 @@ describe('HttpRequest', () => {
     nock.cleanAll();
     nock.enableNetConnect();
     nock.restore();
-    
+
     // Give some time for cleanup to complete
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       const timer = setTimeout(resolve, 50);
       timer.unref?.(); // Unref the timer so it doesn't keep the process alive
     });
@@ -50,7 +54,7 @@ describe('HttpRequest', () => {
     describe('Methods', () => {
       it('should return correct HTTP methods', () => {
         const methods = HttpRequest.Methods;
-        
+
         expect(methods).toEqual({
           GET: 'GET',
           POST: 'POST',
@@ -64,7 +68,7 @@ describe('HttpRequest', () => {
     describe('ContentTypes', () => {
       it('should return correct content types', () => {
         const contentTypes = HttpRequest.ContentTypes;
-        
+
         expect(contentTypes).toEqual({
           CONTENT_TYPE_JSON: 'application/json',
           CONTENT_TYPE_FORM_URL_ENCODED: 'application/x-www-form-urlencoded',
@@ -75,7 +79,7 @@ describe('HttpRequest', () => {
     describe('Accepts', () => {
       it('should return correct accept types', () => {
         const accepts = HttpRequest.Accepts;
-        
+
         expect(accepts).toEqual({
           ACCEPT_JSON: 'application/json',
         });
@@ -87,17 +91,14 @@ describe('HttpRequest', () => {
     const mockRequestOptions = {
       url: 'https://api.example.com/test',
       method: 'GET',
-      headers: { 'Authorization': 'Bearer token' },
+      headers: { Authorization: 'Bearer token' },
       timeout: 5000,
     };
 
     it('should successfully send a request and return parsed JSON body', async () => {
       const mockResponseBody = { status: 'success', data: { id: 1 } };
 
-      nock('https://api.example.com')
-        .get('/test')
-        .matchHeader('Authorization', 'Bearer token')
-        .reply(200, mockResponseBody);
+      nock('https://api.example.com').get('/test').matchHeader('Authorization', 'Bearer token').reply(200, mockResponseBody);
 
       const result = await HttpRequest.send(mockRequestOptions);
 
@@ -107,9 +108,7 @@ describe('HttpRequest', () => {
     it('should return original body when JSON parsing fails', async () => {
       const mockResponseBody = 'plain text response';
 
-      nock('https://api.example.com')
-        .get('/test')
-        .reply(200, mockResponseBody);
+      nock('https://api.example.com').get('/test').reply(200, mockResponseBody);
 
       const result = await HttpRequest.send(mockRequestOptions);
 
@@ -117,9 +116,7 @@ describe('HttpRequest', () => {
     });
 
     it('should handle empty response body', async () => {
-      nock('https://api.example.com')
-        .get('/test')
-        .reply(200, '');
+      nock('https://api.example.com').get('/test').reply(200, '');
 
       const result = await HttpRequest.send(mockRequestOptions);
 
@@ -127,9 +124,7 @@ describe('HttpRequest', () => {
     });
 
     it('should handle null response body', async () => {
-      nock('https://api.example.com')
-        .get('/test')
-        .reply(200, null);
+      nock('https://api.example.com').get('/test').reply(200, null);
 
       const result = await HttpRequest.send(mockRequestOptions);
 
@@ -137,9 +132,7 @@ describe('HttpRequest', () => {
     });
 
     it('should handle undefined response body', async () => {
-      nock('https://api.example.com')
-        .get('/test')
-        .reply(200);
+      nock('https://api.example.com').get('/test').reply(200);
 
       const result = await HttpRequest.send(mockRequestOptions);
 
@@ -147,13 +140,9 @@ describe('HttpRequest', () => {
     });
 
     it('should reject when request returns an error', async () => {
-      nock('https://api.example.com')
-        .get('/test')
-        .replyWithError('Network error');
+      nock('https://api.example.com').get('/test').replyWithError('Network error');
 
-      await expect(HttpRequest.send(mockRequestOptions))
-        .rejects
-        .toThrow('Network error');
+      await expect(HttpRequest.send(mockRequestOptions)).rejects.toThrow('Network error');
     });
 
     it('should handle different HTTP methods', async () => {
@@ -163,9 +152,7 @@ describe('HttpRequest', () => {
         body: '{"name": "test"}',
       };
 
-      nock('https://api.example.com')
-        .post('/test', { name: 'test' })
-        .reply(201, { created: true });
+      nock('https://api.example.com').post('/test', { name: 'test' }).reply(201, { created: true });
 
       const result = await HttpRequest.send(postOptions);
 
@@ -179,9 +166,7 @@ describe('HttpRequest', () => {
         body: JSON.stringify({ name: 'test', value: 42 }),
       };
 
-      nock('https://api.example.com')
-        .post('/test', { name: 'test', value: 42 })
-        .reply(200, { success: true });
+      nock('https://api.example.com').post('/test', { name: 'test', value: 42 }).reply(200, { success: true });
 
       const result = await HttpRequest.send(requestWithBody);
 
@@ -194,9 +179,7 @@ describe('HttpRequest', () => {
         method: 'GET',
       };
 
-      nock('https://api.example.com')
-        .get('/minimal')
-        .reply(200, { minimal: true });
+      nock('https://api.example.com').get('/minimal').reply(200, { minimal: true });
 
       const result = await HttpRequest.send(minimalOptions);
 
@@ -227,9 +210,7 @@ describe('HttpRequest', () => {
         method: 'DELETE',
       };
 
-      nock('https://api.example.com')
-        .delete('/users/123')
-        .reply(204);
+      nock('https://api.example.com').delete('/users/123').reply(204);
 
       const result = await HttpRequest.send(deleteOptions);
 
@@ -238,17 +219,13 @@ describe('HttpRequest', () => {
 
     it('should handle different status codes', async () => {
       // Test 404 error response
-      nock('https://api.example.com')
-        .get('/test')
-        .reply(404, { error: 'Not found' });
+      nock('https://api.example.com').get('/test').reply(404, { error: 'Not found' });
 
       const result404 = await HttpRequest.send(mockRequestOptions);
       expect(result404).toEqual({ error: 'Not found' });
 
-      // Test 500 error response  
-      nock('https://api.example.com')
-        .get('/test')
-        .reply(500, 'Internal Server Error');
+      // Test 500 error response
+      nock('https://api.example.com').get('/test').reply(500, 'Internal Server Error');
 
       const result500 = await HttpRequest.send(mockRequestOptions);
       expect(result500).toEqual('Internal Server Error');
@@ -268,23 +245,65 @@ describe('HttpRequest', () => {
       HttpRequest.parseBodyJson(mockApp);
 
       expect(bodyParser.json).toHaveBeenCalledWith({ limit: '10mb' });
-      expect(mockApp.use).toHaveBeenCalledWith('jsonParser');
+      expect(mockApp.use).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it('should configure JSON body parser with custom max size', () => {
       const customMaxSize = '50mb';
-      
+
       HttpRequest.parseBodyJson(mockApp, customMaxSize);
 
       expect(bodyParser.json).toHaveBeenCalledWith({ limit: customMaxSize });
-      expect(mockApp.use).toHaveBeenCalledWith('jsonParser');
+      expect(mockApp.use).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it('should handle undefined max size parameter', () => {
       HttpRequest.parseBodyJson(mockApp, undefined);
 
       expect(bodyParser.json).toHaveBeenCalledWith({ limit: '10mb' });
-      expect(mockApp.use).toHaveBeenCalledWith('jsonParser');
+      expect(mockApp.use).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    it('should default req.body to an empty object when nothing was parsed', () => {
+      HttpRequest.parseBodyJson(mockApp);
+      const middleware = mockApp.use.mock.calls[0][0];
+      const req: any = {};
+      const next = jest.fn();
+
+      middleware(req, {}, next);
+
+      expect(req.body).toEqual({});
+      expect(next).toHaveBeenCalledWith(undefined);
+    });
+
+    it('should keep parsed req.body untouched', () => {
+      (bodyParser.json as jest.Mock).mockReturnValueOnce((req, res, next) => {
+        req.body = { a: 1 };
+        next();
+      });
+      HttpRequest.parseBodyJson(mockApp);
+      const middleware = mockApp.use.mock.calls[0][0];
+      const req: any = {};
+      const next = jest.fn();
+
+      middleware(req, {}, next);
+
+      expect(req.body).toEqual({ a: 1 });
+      expect(next).toHaveBeenCalledWith(undefined);
+    });
+
+    it('should pass parser errors to next and still default req.body', () => {
+      const parseError = new Error('invalid json');
+      (bodyParser.json as jest.Mock).mockReturnValueOnce((req, res, next) => next(parseError));
+      HttpRequest.parseBodyJson(mockApp);
+      const middleware = mockApp.use.mock.calls[0][0];
+      const req: any = {};
+      const next = jest.fn();
+
+      middleware(req, {}, next);
+
+      expect(req.body).toEqual({});
+      expect(next).toHaveBeenCalledWith(parseError);
     });
   });
 
@@ -301,7 +320,7 @@ describe('HttpRequest', () => {
       HttpRequest.parseBodyUrlencoded(mockApp);
 
       expect(bodyParser.urlencoded).toHaveBeenCalledWith({ extended: false });
-      expect(mockApp.use).toHaveBeenCalledWith('urlencodedParser');
+      expect(mockApp.use).toHaveBeenCalledWith(expect.any(Function));
     });
   });
 
@@ -312,7 +331,7 @@ describe('HttpRequest', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({ name: 'John Doe', email: 'john@example.com' }),
         timeout: 10000,
@@ -343,25 +362,19 @@ describe('HttpRequest', () => {
       };
 
       // Test successful response
-      nock('https://api.example.com')
-        .get('/content-test')
-        .reply(200, { success: true });
+      nock('https://api.example.com').get('/content-test').reply(200, { success: true });
 
       const result200 = await HttpRequest.send(requestOptions);
       expect(result200).toEqual({ success: true });
 
       // Test 404 error response
-      nock('https://api.example.com')
-        .get('/content-test')
-        .reply(404, { error: 'Not found' });
+      nock('https://api.example.com').get('/content-test').reply(404, { error: 'Not found' });
 
       const result404 = await HttpRequest.send(requestOptions);
       expect(result404).toEqual({ error: 'Not found' });
 
       // Test 500 error response
-      nock('https://api.example.com')
-        .get('/content-test')
-        .reply(500, 'Internal Server Error');
+      nock('https://api.example.com').get('/content-test').reply(500, 'Internal Server Error');
 
       const result500 = await HttpRequest.send(requestOptions);
       expect(result500).toEqual('Internal Server Error');
@@ -374,14 +387,9 @@ describe('HttpRequest', () => {
         timeout: 1000,
       };
 
-      nock('https://api.example.com')
-        .get('/slow')
-        .delay(2000)
-        .reply(200, { data: 'slow response' });
+      nock('https://api.example.com').get('/slow').delay(2000).reply(200, { data: 'slow response' });
 
-      await expect(HttpRequest.send(requestOptions))
-        .rejects
-        .toThrow();
+      await expect(HttpRequest.send(requestOptions)).rejects.toThrow();
     });
 
     it('should handle network connection errors', async () => {
@@ -390,13 +398,65 @@ describe('HttpRequest', () => {
         method: 'GET',
       };
 
-      nock('https://api.example.com')
-        .get('/error-test')
-        .replyWithError('ECONNREFUSED');
+      nock('https://api.example.com').get('/error-test').replyWithError('ECONNREFUSED');
 
-      await expect(HttpRequest.send(requestOptions))
-        .rejects
-        .toThrow();
+      await expect(HttpRequest.send(requestOptions)).rejects.toThrow();
     });
+  });
+
+  describe('send and sendDetailed with a broken response body', () => {
+    let server: http.Server;
+    let url: string;
+    let pending: http.ServerResponse[] = [];
+    let handler: (res: http.ServerResponse) => void;
+
+    beforeAll(async () => {
+      nock.enableNetConnect('127.0.0.1');
+      server = http.createServer((_req, res) => {
+        pending.push(res);
+        handler(res);
+      });
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
+    });
+
+    afterEach(() => {
+      pending.forEach((res) => res.destroy());
+      pending = [];
+    });
+
+    afterAll(async () => {
+      pending.forEach((res) => res.destroy());
+      (server as any).closeAllConnections?.();
+      await new Promise((resolve) => server.close(resolve));
+      nock.disableNetConnect();
+    });
+
+    it.each(['send', 'sendDetailed'] as const)(
+      '%s rejects when the connection drops after the headers',
+      async (method) => {
+        handler = (res) => {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.write('{"partial":');
+          setImmediate(() => res.destroy());
+        };
+
+        await expect(HttpRequest[method]({ url, method: 'GET', timeout: 2000 })).rejects.toThrow();
+      },
+      10_000,
+    );
+
+    it.each(['send', 'sendDetailed'] as const)(
+      '%s rejects when the body does not arrive before the timeout',
+      async (method) => {
+        handler = (res) => {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.write('{"partial":');
+        };
+
+        await expect(HttpRequest[method]({ url, method: 'GET', timeout: 300 })).rejects.toThrow();
+      },
+      10_000,
+    );
   });
 });

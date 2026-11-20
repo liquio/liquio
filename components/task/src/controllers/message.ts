@@ -1,6 +1,6 @@
-
 import { Controller } from './controller';
 import { NotifierService } from '../services/notifier';
+import { getRedisClient } from '../lib/context';
 
 /**
  * Message controller.
@@ -27,12 +27,13 @@ export class MessageController extends Controller {
    */
   async getAll(req, res) {
     const accessToken = this.getRequestUserAccessToken(req);
+    const userId = this.getRequestUserId(req);
     const eventId = req.query.event_id && parseInt(req.query.event_id);
     const queryParams = req.query;
 
     let messages;
     try {
-      messages = await this.notifierService.getMessages(accessToken, eventId, queryParams);
+      messages = await this.notifierService.getMessages(accessToken, eventId, queryParams, userId);
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -70,8 +71,8 @@ export class MessageController extends Controller {
     let result;
     try {
       const key = `count.unread.messages.${userId}`;
-      if (global.redisClient) {
-        const cachedResult = await global.redisClient.get(key);
+      if (getRedisClient()) {
+        const cachedResult = await getRedisClient().get(key);
         if (cachedResult) {
           return this.responseData(res, JSON.parse(cachedResult));
         }
@@ -79,8 +80,8 @@ export class MessageController extends Controller {
 
       result = await this.notifierService.getCountUnreadMessages(undefined, userId);
 
-      if (global.redisClient && result) {
-        await global.redisClient.set(key, result, 60);
+      if (getRedisClient() && result) {
+        await getRedisClient().set(key, result, 60);
       }
     } catch (error) {
       return this.responseError(res, error);
@@ -152,4 +153,3 @@ export class MessageController extends Controller {
     this.responseData(res, result);
   }
 }
-

@@ -1,17 +1,15 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-
 import { PluginLoader, PluginLogger, PluginRegistry } from '@liquio/plugin-sdk';
 
 import { ConfigurationService } from '@components/configuration/configuration.service';
-import { Configuration } from '@components/configuration/configuration.types';
+import { ExternalReaderConfig } from '@components/configuration/configuration.types';
 import { LoggerService } from '@components/observability/logger.service';
-
 import { BaseProvider, ProviderMethod } from './base.provider';
 import { HttpProvider } from './http.provider';
 
 @Injectable()
 export class ProvidersService implements OnModuleInit {
-  private readonly cfg: Configuration['services'];
+  private readonly cfg: NonNullable<ExternalReaderConfig['services']>;
   private services = new Map<string, BaseProvider<unknown>>();
   private providers: { [key: string]: typeof BaseProvider<unknown> };
   private pluginRegistry?: PluginRegistry;
@@ -54,9 +52,7 @@ export class ProvidersService implements OnModuleInit {
           const BuiltIn = this.providers[serviceConfig.class];
           const provider = BuiltIn
             ? new BuiltIn(this.logger, serviceConfig.options)
-            : (this.pluginRegistry?.get(serviceConfig.class) as unknown as
-                | BaseProvider<unknown>
-                | undefined);
+            : (this.pluginRegistry?.get(serviceConfig.class) as unknown as BaseProvider<unknown> | undefined);
 
           if (!provider) {
             this.logger.error('provider-service|class-not-found', {

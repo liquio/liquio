@@ -1,8 +1,10 @@
+import { getIdApiClient, IdApiClient, IdApiUserInfo } from '@liquio/back-core';
+
 import { Controller } from './controller';
 import { UnitModel } from '../models/unit';
-import { AuthService as Auth } from '../services/auth';
 import { CustomLogs } from '../services/custom_logs';
 import { UnitRulesModel } from '../models/unit_rules';
+import { getConfig, getModels } from '../lib/context';
 
 // Constants.
 const UNIT_EXCLUSIVE_RULE_TYPE = 'exclusive';
@@ -14,7 +16,7 @@ export class UnitController extends Controller {
   private static singleton: UnitController;
 
   unitModel: any;
-  auth: any;
+  idApiClient: IdApiClient;
   customLogs: any;
   unitRulesModel: any;
   config: any;
@@ -28,7 +30,7 @@ export class UnitController extends Controller {
       // Set params.
       super();
       this.unitModel = new UnitModel();
-      this.auth = new Auth().provider;
+      this.idApiClient = getIdApiClient();
       this.customLogs = new CustomLogs();
       this.unitRulesModel = new UnitRulesModel();
       this.config = config;
@@ -113,7 +115,7 @@ export class UnitController extends Controller {
     const withPrivateProps = true;
     let allNeededUsersRaw;
     try {
-      allNeededUsersRaw = await this.auth.getUsersByIds(allNeededUsersIds, withPrivateProps);
+      allNeededUsersRaw = await this.idApiClient.getUsersByIds(allNeededUsersIds, { withPrivateProps });
     } catch {
       return this.responseError(res, 'Users definition error.', 500);
     }
@@ -136,8 +138,8 @@ export class UnitController extends Controller {
     unit.membersUsers = unit.members.map((m) => allNeededUsers.find((nu) => nu.userId === m));
 
     // Check optional project params.
-    if (global.config?.custom?.optionalProjectParams?.userRoleUnits?.superHeadUnitId) {
-      const { superHeadUnitId } = global.config.custom.optionalProjectParams.userRoleUnits;
+    if (getConfig()?.custom?.optionalProjectParams?.userRoleUnits?.superHeadUnitId) {
+      const { superHeadUnitId } = getConfig().custom.optionalProjectParams.userRoleUnits;
 
       // Remove super head unit members from allowed user list.
       const units = await this.unitModel.getAll();
@@ -201,7 +203,7 @@ export class UnitController extends Controller {
     }
 
     // Define existing user.
-    const user = await this.auth.getUserByCode(ipn);
+    const user = (await this.idApiClient.getUserByCode(ipn)) as IdApiUserInfo | null;
     const { userId, firstName: userFirstName, middleName: userMiddleName, lastName: userLastName } = user || {};
     const userAlreadyUnitMember = unit.members.includes(userId);
     const userAlreadyExist = !!user;
@@ -245,7 +247,7 @@ export class UnitController extends Controller {
         updatedUnit = await this.unitModel.addMember(unitId, userId);
 
         // Save to access history.
-        await global.models.accessHistory.save({
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'added-to-member-unit',
           user: {
@@ -260,7 +262,7 @@ export class UnitController extends Controller {
 
           // Save to access history.
           const baseUnit = await this.unitModel.findById(baseUnitId);
-          await global.models.accessHistory.save({
+          await getModels().accessHistory.save({
             currentUser: currentUser,
             operationType: 'added-to-member-unit',
             user: {
@@ -353,7 +355,7 @@ export class UnitController extends Controller {
       let userLastName;
       try {
         units = await this.unitModel.getAll();
-        [user] = await this.auth.getUsersByIds(userId);
+        [user] = await this.idApiClient.getUsersByIds(userId);
         ({ firstName: userFirstName, middleName: userMiddleName, lastName: userLastName } = user || {});
       } catch (error) {
         return this.responseError(res, error);
@@ -366,10 +368,10 @@ export class UnitController extends Controller {
         updatedUnit = await this.unitModel.removeMember(unitId, userId);
 
         // Remove performer user from tasks.
-        await global.models.task.removePerformerUserFromTasks(userId, unitId);
+        await getModels().task.removePerformerUserFromTasks(userId, unitId);
 
         // Save to access history.
-        await global.models.accessHistory.save({
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'deleted-from-member-unit',
           user: {
@@ -397,7 +399,7 @@ export class UnitController extends Controller {
 
           // Save to access history.
           const baseUnit = await this.unitModel.findById(basedOnUnitId);
-          await global.models.accessHistory.save({
+          await getModels().accessHistory.save({
             currentUser: currentUser,
             operationType: 'deleted-from-member-unit',
             user: {
@@ -418,14 +420,14 @@ export class UnitController extends Controller {
         updatedUnit = await this.unitModel.removeMemberIpn(unitId, ipn);
         updatedUnit = await this.unitModel.removeRequestedMember(unitId, ipn);
 
-        const user = await this.auth.getUserByCode(ipn);
+        const user = (await this.idApiClient.getUserByCode(ipn)) as IdApiUserInfo | null;
         const { firstName: userFirstName, middleName: userMiddleName, lastName: userLastName } = user || {};
 
         // Remove performer user from tasks.
-        await global.models.task.removePerformerUserFromTasks(user.userId, unitId);
+        await getModels().task.removePerformerUserFromTasks(user.userId, unitId);
 
         // Save to access history.
-        await global.models.accessHistory.save({
+        await getModels().accessHistory.save({
           currentUser: currentUser,
           operationType: 'deleted-from-member-unit',
           user: {
@@ -486,7 +488,7 @@ export class UnitController extends Controller {
 
     let allNeededUsers;
     try {
-      const allNeededUsersRaw = await this.auth.getUsersByIds(allNeededUsersIds, true);
+      const allNeededUsersRaw = await this.idApiClient.getUsersByIds(allNeededUsersIds, { withPrivateProps: true });
       allNeededUsers = allNeededUsersRaw.map((v) => ({
         userId: v.userId,
         firstName: v.firstName,
@@ -503,4 +505,3 @@ export class UnitController extends Controller {
     this.responseData(res, allNeededUsers);
   }
 }
-

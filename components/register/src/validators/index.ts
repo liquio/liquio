@@ -45,7 +45,7 @@ export default class Validators {
       export: ExportValidator,
       import: ImportValidator,
       rollback: RollbackValidator,
-      ...customValidators
+      ...customValidators,
     };
 
     // Init validators.
@@ -58,9 +58,9 @@ export default class Validators {
             const n = {};
             n[v[0] as any] = v[1];
             return n;
-          })()
+          })(),
         }),
-        {}
+        {},
       );
   }
 

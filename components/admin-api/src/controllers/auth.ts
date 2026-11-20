@@ -1,10 +1,13 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+
 import _ from 'lodash';
+import { IdApiClient, appendTraceMeta, getIdApiClient } from '@liquio/back-core';
 
 import { Controller } from './controller';
-import { AuthService } from '../services/auth';
 import { Token } from '../lib/token';
-import { appendTraceMeta } from '@liquio/back-core';
 import { UnitBusiness } from '../businesses/unit';
+import { PublicError } from '../lib/public_error';
+import { getConfig, getLog, getModels } from '../lib/context';
 
 // Constants.
 const ROLES_SEPARATOR = ';';
@@ -19,7 +22,7 @@ const ERROR_MESSAGE_INCORRECT_SERVER_TOKEN = 'Incorrect server (admin) token.';
 export class AuthController extends Controller {
   private static singleton: AuthController;
 
-  public authService: AuthService;
+  public idApiClient: IdApiClient;
   public token: Token;
   public unitBusiness: UnitBusiness;
   public serverToken: string;
@@ -33,7 +36,7 @@ export class AuthController extends Controller {
     // Define singleton.
     if (!AuthController.singleton) {
       super(config);
-      this.authService = new AuthService(config.auth);
+      this.idApiClient = getIdApiClient();
       this.unitBusiness = new UnitBusiness(config);
       this.token = new Token(config.auth);
       this.serverToken = config.server.token;
@@ -55,41 +58,39 @@ export class AuthController extends Controller {
     // Get auth tokens.
     let authTokens;
     try {
-      authTokens = await this.authService.getTokens(code);
+      authTokens = await this.idApiClient.getTokens(code, { codeVerifier: req.body.code_verifier });
     } catch (err) {
       return this.responseError(res, err, 401);
     }
-    global.log.save('login-tokens', authTokens);
-
     // Get user info.
     let authUserInfo;
     try {
-      authUserInfo = await this.authService.getUser(authTokens.accessToken);
+      authUserInfo = await this.idApiClient.getUser(authTokens.accessToken);
 
       await this.setupAdminUnits(authUserInfo);
 
-      const units = await global.models.unit.getAll();
+      const units = await getModels().unit.getAll();
       for (const unit of units) {
         const headIpn = (unit.headsIpn || []).find((v) => v === authUserInfo.ipn);
         if (headIpn) {
-          await global.models.unit.addHead(unit.id, authUserInfo.userId);
-          await global.models.unit.removeHeadIpn(unit.id, headIpn);
+          await getModels().unit.addHead(unit.id, authUserInfo.userId);
+          await getModels().unit.removeHeadIpn(unit.id, headIpn);
 
           // Handle base units.
           const { basedOn = [] } = unit || {};
           for (const baseUnitId of basedOn) {
-            await global.models.unit.addHead(baseUnitId, authUserInfo.userId);
+            await getModels().unit.addHead(baseUnitId, authUserInfo.userId);
           }
         }
         const memberIpn = (unit.membersIpn || []).find((v) => v === authUserInfo.ipn);
         if (memberIpn) {
-          await global.models.unit.addMember(unit.id, authUserInfo.userId);
-          await global.models.unit.removeMemberIpn(unit.id, memberIpn);
+          await getModels().unit.addMember(unit.id, authUserInfo.userId);
+          await getModels().unit.removeMemberIpn(unit.id, memberIpn);
 
           // Handle base units.
           const { basedOn = [] } = unit || {};
           for (const baseUnitId of basedOn) {
-            await global.models.unit.addMember(baseUnitId, authUserInfo.userId);
+            await getModels().unit.addMember(baseUnitId, authUserInfo.userId);
           }
         }
         const requestedMember = (unit.requestedMembers || []).find((v) => v.ipn === authUserInfo.ipn);
@@ -101,17 +102,17 @@ export class AuthController extends Controller {
             `${requestedMemberMiddleName}`.toLowerCase() === `${userMiddleName}`.toLowerCase() &&
             `${requestedMemberLastName}`.toLowerCase() === `${userLastName}`.toLowerCase();
           if (theSameName) {
-            await global.models.unit.addMember(unit.id, authUserInfo.userId);
-            await global.models.unit.removeRequestedMember(unit.id, authUserInfo.ipn);
+            await getModels().unit.addMember(unit.id, authUserInfo.userId);
+            await getModels().unit.removeRequestedMember(unit.id, authUserInfo.ipn);
 
             // Handle base units.
             const { basedOn = [] } = unit || {};
             for (const baseUnitId of basedOn) {
-              await global.models.unit.addMember(baseUnitId, authUserInfo.userId);
+              await getModels().unit.addMember(baseUnitId, authUserInfo.userId);
             }
           } else {
-            await global.models.unit.removeRequestedMember(unit.id, authUserInfo.ipn);
-            await global.models.unit.addRequestedMember(unit.id, {
+            await getModels().unit.removeRequestedMember(unit.id, authUserInfo.ipn);
+            await getModels().unit.addRequestedMember(unit.id, {
               ipn: authUserInfo.ipn,
               firstName: requestedMemberFirstName,
               middleName: requestedMemberMiddleName,
@@ -124,7 +125,7 @@ export class AuthController extends Controller {
     } catch (err) {
       return this.responseError(res, err, 401);
     }
-    global.log.save('login-user-info', authUserInfo);
+    getLog().save('login-user-info', { userId: authUserInfo?.userId });
 
     // Get token.
     let token;
@@ -138,6 +139,20 @@ export class AuthController extends Controller {
 
     // Response.
     this.responseData(res, { token });
+  }
+
+  /**
+   * Check that token is the shared server (service) token. Constant time, never matches when server token is not set.
+   * @param {unknown} token Token from request.
+   * @returns {boolean} Is server token.
+   */
+  isServerToken(token: unknown): boolean {
+    if (typeof token !== 'string' || typeof this.serverToken !== 'string' || this.serverToken === '') {
+      return false;
+    }
+    const a = createHash('sha256').update(token).digest();
+    const b = createHash('sha256').update(this.serverToken).digest();
+    return timingSafeEqual(a, b);
   }
 
   /**
@@ -161,14 +176,10 @@ export class AuthController extends Controller {
         return isJustTry ? next() : this.responseError(res, ERROR_MESSAGE_TOKEN_NOT_DEFINED, 401);
       }
 
-      // Check server token.
-      if (token === this.serverToken) {
-        return next();
-      }
-
-      // Check case auth from another service.
+      // Check case auth from another service. The server token is accepted only on routes declared as service only.
       if (isServiceOnly) {
-        if (token !== this.serverToken) return this.responseError(res, ERROR_MESSAGE_INCORRECT_SERVER_TOKEN, 401);
+        if (!this.isServerToken(token)) return this.responseError(res, ERROR_MESSAGE_INCORRECT_SERVER_TOKEN, 401);
+        return next();
       }
 
       // Get auth access and refresh tokens.
@@ -188,7 +199,7 @@ export class AuthController extends Controller {
       // Get user info.
       let authUserInfo;
       try {
-        authUserInfo = await this.authService.getUser(authAccessToken);
+        authUserInfo = await this.idApiClient.getUser(authAccessToken);
       } catch (err) {
         return isJustTry ? next() : this.responseError(res, err, 401);
       }
@@ -198,7 +209,7 @@ export class AuthController extends Controller {
         // Try to get new auth access token by refresh token.
         let newAuthTokens;
         try {
-          newAuthTokens = await this.authService.renewTokens(authRefreshToken);
+          newAuthTokens = await this.idApiClient.renewTokens(authRefreshToken);
         } catch (err) {
           return isJustTry ? next() : this.responseError(res, err, 401);
         }
@@ -208,7 +219,7 @@ export class AuthController extends Controller {
 
         // Get user info.
         try {
-          authUserInfo = await this.authService.getUser(newAuthTokens.accessToken);
+          authUserInfo = await this.idApiClient.getUser(newAuthTokens.accessToken);
         } catch (err) {
           return isJustTry ? next() : this.responseError(res, err, 401);
         }
@@ -226,7 +237,7 @@ export class AuthController extends Controller {
       }
 
       // Append auth user info to request object.
-      req.authUserInfo = this.authService.getMainUserInfo(authUserInfo, true, true);
+      req.authUserInfo = this.idApiClient.getMainUserInfo(authUserInfo, true, true);
       req.authUserId = authUserInfo && authUserInfo.userId;
 
       // Append userId and name to response object.
@@ -240,7 +251,7 @@ export class AuthController extends Controller {
 
       const hasOneOfNeededRoles = this.hasOneOfNeededRoles(userRoles, roles);
       if (roles && !hasOneOfNeededRoles) {
-        global.log.save('user-without-needed-roles', { authUserInfo, userRoles, neededRoles: roles });
+        getLog().save('user-without-needed-roles', { userId, userRoles, neededRoles: roles });
         return this.responseError(res, ERROR_MESSAGE_WITHOUT_NEEDED_ROLE, 403);
       }
       req.authUserRoles = userRoles;
@@ -250,7 +261,7 @@ export class AuthController extends Controller {
       const allowableUnits = this.access?.allowableUnits || [];
 
       if (Array.isArray(allowableUnits) && allowableUnits.length && !allowableUnits.some((v) => authUserUnitIds.all.includes(v))) {
-        global.log.save('user-without-allowable-units', { authUserUnitIds });
+        getLog().save('user-without-allowable-units', { authUserUnitIds });
         return this.responseError(res, ERROR_MESSAGE_USER_WITHOUT_ALLOWABLE_UNITS, 403);
       }
 
@@ -261,6 +272,53 @@ export class AuthController extends Controller {
   }
 
   /**
+   * Authenticate token outside of HTTP middleware flow (e.g. WebSocket upgrade).
+   * @param {string} token Token.
+   * @param {string[]} roles Roles that has access (check by "or").
+   * @param {number[]} units Access for units (check by "or"). Empty - any unit.
+   * @returns {Promise<{ status: number, error?: string, authUserInfo?: object }>} Result.
+   */
+  async authenticateToken(token, roles: string[] = [], units: number[] = []): Promise<{ status: number; error?: string; authUserInfo?: any }> {
+    if (!token || typeof token !== 'string') {
+      return { status: 401, error: ERROR_MESSAGE_TOKEN_NOT_DEFINED };
+    }
+
+    let authUserInfo;
+    try {
+      const tokenData = this.token.decrypt(token);
+      const { accessToken, refreshToken } = tokenData.authTokens;
+
+      authUserInfo = await this.idApiClient.getUser(accessToken);
+      if (!authUserInfo || !authUserInfo.userId) {
+        const newAuthTokens = await this.idApiClient.renewTokens(refreshToken);
+        authUserInfo = await this.idApiClient.getUser(newAuthTokens.accessToken);
+      }
+    } catch (err) {
+      return { status: 401, error: err?.message || 'Unauthorized.' };
+    }
+    if (!authUserInfo || !authUserInfo.userId) {
+      return { status: 401, error: 'Unauthorized.' };
+    }
+
+    const mainUserInfo = this.idApiClient.getMainUserInfo(authUserInfo, true, true);
+    const userRoles = this.getUserRoles({ authUserInfo: mainUserInfo });
+    if (!this.hasOneOfNeededRoles(userRoles, roles)) {
+      return { status: 403, error: ERROR_MESSAGE_WITHOUT_NEEDED_ROLE };
+    }
+
+    const authUserUnitIds = await this.getUserUnitIds(authUserInfo.userId);
+    const allowableUnits = this.access?.allowableUnits || [];
+    if (Array.isArray(allowableUnits) && allowableUnits.length && !allowableUnits.some((v) => authUserUnitIds.all.includes(v))) {
+      return { status: 403, error: ERROR_MESSAGE_USER_WITHOUT_ALLOWABLE_UNITS };
+    }
+    if (units.length > 0 && !units.some((v) => authUserUnitIds.all.includes(v))) {
+      return { status: 403, error: 'Access denied.' };
+    }
+
+    return { status: 200, authUserInfo: mainUserInfo };
+  }
+
+  /**
    * Check unit access.
    */
   checkUnitAccess(req, res, next, units) {
@@ -268,7 +326,7 @@ export class AuthController extends Controller {
       if (units.some((v) => req.authUserUnitIds.all.some((unitId) => unitId === v))) {
         return next();
       } else {
-        return this.responseError(res, new Error('Access denied.'), 403);
+        return this.responseError(res, new PublicError('Access denied.'), 403);
       }
     }
 
@@ -282,11 +340,11 @@ export class AuthController extends Controller {
     const path = req.route.path;
     const method = _.keys(req.route.methods)[0];
 
-    if (global.config.access && global.config.access.paths && global.config.access.paths[path] && global.config.access.paths[path][method]) {
-      if (global.config.access.paths[path][method].units.some((v) => req.authUserUnitIds.all.some((unitId) => unitId === v))) {
+    if (getConfig().access && getConfig().access.paths && getConfig().access.paths[path] && getConfig().access.paths[path][method]) {
+      if (getConfig().access.paths[path][method].units.some((v) => req.authUserUnitIds.all.some((unitId) => unitId === v))) {
         return next();
       } else {
-        return this.responseError(res, new Error('Access denied.'), 403);
+        return this.responseError(res, new PublicError('Access denied.'), 403);
       }
     }
 
@@ -309,7 +367,7 @@ export class AuthController extends Controller {
    * @returns {Promise<{head: UnitEntity[], member: UnitEntity[], all: UnitEntity[]}>} Unit info.
    */
   async getUserUnitIds(userId) {
-    const units = await global.models.unit.getAll();
+    const units = await getModels().unit.getAll();
     const head = units.filter((v) => v.heads.includes(userId));
     const member = units.filter((v) => v.members.includes(userId));
     const all = [...new Set([...head, ...member])];
@@ -340,11 +398,10 @@ export class AuthController extends Controller {
     // Define params.
     const { authUserInfo, authUserRoles, authUserUnitIds } = req;
 
-    // Append full ava URL.
-    const avaUrl = authUserInfo && authUserInfo.avaUrl;
-    const fullAvaUrl = avaUrl && `${this.config.auth.server}${avaUrl}`;
+    // The ava URL is already full (the id-api client built it).
+    const fullAvaUrl = authUserInfo && authUserInfo.avaUrl;
     const userInfo = { ...authUserInfo, authUserRoles, authUserUnitIds, fullAvaUrl };
-    const normalizedUserInfo = this.authService.getMainUserInfo(userInfo, true, true);
+    const normalizedUserInfo = this.idApiClient.getMainUserInfo(userInfo, true, true);
 
     // Response.
     this.responseData(res, this.convertUnderscoreKeysToCamelCase(normalizedUserInfo));
@@ -367,7 +424,7 @@ export class AuthController extends Controller {
 
     // Change password.
     try {
-      const result = await this.authService.changePassword(authUserInfo.email, oldPassword, newPassword);
+      const result = await this.idApiClient.changePassword(authUserInfo.email, oldPassword, newPassword);
 
       if (!result?.success) {
         return this.responseError(res, result?.error || 'Failed to change password.', 400);
@@ -388,7 +445,7 @@ export class AuthController extends Controller {
     try {
       // Refer to `admin` configuration block to check for setup requirements.
       if (this.config.user.shouldSetupAdmin && this.config.user.adminUnitId) {
-        global.log.save('setup-admin-units', { userInfo });
+        getLog().save('setup-admin-units', { userId: userInfo?.userId });
 
         const { adminUnitId } = this.config.user;
 
@@ -413,12 +470,12 @@ export class AuthController extends Controller {
             .filter((role) => role !== 'admin')
             .concat('admin')
             .join(';');
-          await this.authService.updateByUserId(userInfo.userId, { role: preparedRoles }, userInfo.userId);
+          await this.idApiClient.updateUserById(userInfo.userId, { role: preparedRoles }, userInfo.userId);
         }
       }
     } catch (error) {
       // Report the error and skip the setup
-      global.log.save('setup-admin-units-error', { error: error.message, stack: error.stack }, 'error');
+      getLog().save('setup-admin-units-error', { error: error.message, stack: error.stack }, 'error');
     }
   }
 }

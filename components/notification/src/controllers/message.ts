@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 import axios from 'axios';
 import NodeCache from 'node-cache';
 import { Router } from 'express';
+
 import { Auth } from '../models/authServer';
 import { UserSubscribesModel } from '../models/user_subscribes';
 import { CommunicationModel } from '../models/communications';
@@ -15,9 +16,14 @@ import { IncommingMessagesModel } from '../models/incomming_messages';
 import { ImportantMessagesModel } from '../models/important_messages';
 import { UsersMessagesModel } from '../models/users_messages';
 import { MessageCryptTypesModel } from '../models/message_crypt_types';
-import { checkAuth, checkTestAuth } from './auth';
+import { checkAuth, checkTestAuth, checkAdminCookie, checkSameOrigin } from './auth';
+import { resolveUserId } from './resolve_user_id';
+import { renderDecrypted } from '../lib/rule_to_show';
+import { getConf, getLog } from '../lib/context';
+import { maskPhones } from '../lib/mask';
 
 const router = Router();
+const adminRouter = Router();
 const Subscribes = new UserSubscribesModel().UserSubscribes;
 const Communication = new CommunicationModel().Communications;
 const Settings = new SettingsModel().Settings;
@@ -83,12 +89,15 @@ const HEADER_TOTAL_COUNT = 'X-Total';
 const UNREAD_MESSAGE_VALUE = 0;
 const READ_MESSAGE_VALUE = 1;
 const SMS_CHANNEL = '2';
+const MAX_DECRYPTED_BASE64_LENGTH = 64 * 1024;
+const BASE64_REGEXP = /^[A-Za-z0-9+/]+={0,2}$/;
 
 export class Message extends Auth {
   constructor(app: any) {
     super();
     this.registerRoutes();
     app.use('/message', router);
+    app.use('/admin/api/message', adminRouter);
   }
 
   /**
@@ -100,6 +109,10 @@ export class Message extends Auth {
     router.post('/test/sms', checkTestAuth, this.sendTestSMS.bind(this));
     router.post('/test/user', checkTestAuth, this.sendTestUser.bind(this));
     router.post('/test/comlex_options', checkAuth, this.sendTestMessageByComplexOptions.bind(this));
+
+    // Admin panel routes (admin cookie instead of Basic credentials in client code).
+    adminRouter.post('/phonesList', checkSameOrigin, checkAdminCookie, this.sendMessageByPhonesList.bind(this));
+    adminRouter.post('/eventId', checkSameOrigin, checkAdminCookie, this.sendMessageByEventId.bind(this));
 
     // Send messages routes.
     router.post('/usersList', checkAuth, this.sendMessageByUsersList.bind(this));
@@ -116,12 +129,20 @@ export class Message extends Auth {
     router.get('/', checkAuth, this.getMessages.bind(this));
     router.get('/senderErrorCallback', this.senderErrorCallack.bind(this));
     router.post('/sms/callback/', this.gmsuCallback.bind(this));
-    router.put('/is_read', this.setIsReadProperty.bind(this));
-    router.get('/unread', this.getUnreadUserMessagesCount.bind(this));
+    router.put('/is_read', checkAuth, this.setIsReadProperty.bind(this));
+    router.get('/unread', checkAuth, this.getUnreadUserMessagesCount.bind(this));
     router.get('/important', checkAuth, this.getImportantMessages.bind(this));
     router.put('/important/:id/set-unimportant', checkAuth, this.setUnimportantMessage.bind(this));
-    router.get('/:id', this.getMessageById.bind(this));
+    router.get('/:id', checkAuth, this.getMessageById.bind(this));
     router.put('/:id/decrypt', checkAuth, this.decryptMessage.bind(this));
+  }
+
+  /**
+   * Resolve user ID from query: validated access token first, `user_id` only without a token (Basic service auth is required by routes).
+   * @param {object} query Request query.
+   */
+  resolveUserId(query: any) {
+    return resolveUserId(query, (token) => this.checkToken(token));
   }
 
   /**
@@ -136,8 +157,8 @@ export class Message extends Auth {
       return res.send({ error: 'Message ID must be defined as number' });
     }
     const { decryptedBase64 } = req.body;
-    if (typeof decryptedBase64 !== 'string') {
-      return res.send({ error: 'Decrypted base64 should be defined as number.' });
+    if (typeof decryptedBase64 !== 'string' || decryptedBase64.length > MAX_DECRYPTED_BASE64_LENGTH || !BASE64_REGEXP.test(decryptedBase64)) {
+      return res.send(400, { error: 'Decrypted base64 should be a non-empty base64 string of allowed length.' });
     }
 
     // Check access token defined.
@@ -158,12 +179,20 @@ export class Message extends Auth {
       return res.send({ error: 'Can not get message.' });
     }
 
+    // Broadcast messages share one row between all recipients: nobody may rewrite it. Decrypted content is write-once.
+    if (message.showToAll || !message.isEncrypted) {
+      return res.send(403, { error: 'Message can not be decrypted.' });
+    }
+
     // Update message.
     let updatedMessage;
     try {
       updatedMessage = await this.setDecrypted(messageId, decryptedBase64, req.query.access_token);
     } catch (error) {
-      global.log.save('decrypt-message-error', { messageId, error: (error && error.message) || error }, 'error');
+      if (error && error.statusCode) {
+        return res.send(error.statusCode, error.error);
+      }
+      getLog().save('decrypt-message-error', { messageId, error: (error && error.message) || error }, 'error');
       return res.send({ message: 'Can not decrypt message.' });
     }
 
@@ -180,19 +209,22 @@ export class Message extends Auth {
    */
   async setDecrypted(messageId, decryptedBase64, accessToken) {
     try {
-      await IncommingMessages.update(
+      const [affectedCount] = await IncommingMessages.update(
         {
           is_encrypted: false,
           decrypted_base64: decryptedBase64,
         },
         {
-          where: { message_id: messageId },
+          where: { message_id: messageId, is_encrypted: true },
         },
       );
+      if (!affectedCount) {
+        throw Object.assign(new Error('Message is already decrypted.'), { statusCode: 409, error: { message: 'Message is already decrypted.' } });
+      }
       const updatedMessage = await this.getById(messageId, { access_token: accessToken });
       return updatedMessage;
     } catch (error) {
-      global.log.save('set-decrypted-message-error', { error: (error && error.message) || error }, 'error');
+      getLog().save('set-decrypted-message-error', { error: (error && error.message) || error }, 'error');
       throw error;
     }
   }
@@ -209,7 +241,7 @@ export class Message extends Auth {
     const text = TEST_EMAIL.TEXT;
 
     // Check emails.
-    const availableEmails = (global.conf && global.conf.testService && global.conf.testService.emails) || [];
+    const availableEmails = (getConf() && getConf().testService && getConf().testService.emails) || [];
     const isEmailExist = availableEmails.includes(email);
     if (!isEmailExist) {
       return res.send({ error: { message: 'Used email not defined as test in config.' } });
@@ -238,7 +270,7 @@ export class Message extends Auth {
     const translit = TEST_SMS.MESSAGE_TRANSLIT;
 
     // Check phone number.
-    const availablePhones = (global.conf && global.conf.testService && global.conf.testService.phones) || [];
+    const availablePhones = (getConf() && getConf().testService && getConf().testService.phones) || [];
     const isPhoneExist = availablePhones.includes(phone);
     if (!isPhoneExist) {
       return res.send({ error: { message: 'Used phone not defined as test in config.' } });
@@ -269,7 +301,7 @@ export class Message extends Auth {
     const translit = TEST_SMS.MESSAGE_TRANSLIT;
 
     // Check user ID.
-    const availableUserIds = (global.conf && global.conf.testService && global.conf.testService.userIds) || [];
+    const availableUserIds = (getConf() && getConf().testService && getConf().testService.userIds) || [];
     const isUserIdExist = availableUserIds.includes(userId);
     if (!isUserIdExist) {
       return res.send({ error: { message: 'Used user ID not defined as test in config.' } });
@@ -322,7 +354,7 @@ export class Message extends Auth {
     const normalizedText = await this.normalizeComplexText(text);
 
     // Check user ID.
-    const availableUserIds = (global.conf && global.conf.testService && global.conf.testService.userIds) || [];
+    const availableUserIds = (getConf() && getConf().testService && getConf().testService.userIds) || [];
     const isUserIdExist = availableUserIds.includes(userId);
     if (!isUserIdExist) {
       return res.send({ error: { message: 'Used ID not defined as test in config.' } });
@@ -336,7 +368,7 @@ export class Message extends Auth {
       return res.send({ error: { code: error.errorCode, message: error.message } });
     }
     if (!usersInfo[0]) {
-      return res.send({ error: { message: 'Can\'t find user data' } });
+      return res.send({ error: { message: "Can't find user data" } });
     }
     const user = usersInfo[0];
 
@@ -345,7 +377,7 @@ export class Message extends Auth {
     const email = user.email;
     const phoneForLogging = phone ? phone.slice(0, -2) + '**' : '';
     const emailForLogging = email ? '**' + email.slice(2, email.length) : '';
-    global.log.save('send-test-message-by-complex-option-request', { userId, phone: phoneForLogging, email: emailForLogging });
+    getLog().save('send-test-message-by-complex-option-request', { userId, phone: phoneForLogging, email: emailForLogging });
 
     const processingIdsList = [];
     for (const transfer of transfers) {
@@ -371,7 +403,7 @@ export class Message extends Auth {
       processingIdsList.push(processingId);
     }
     const isConnectionToEConsultApi = processingIdsList.some((v) => typeof v === 'string');
-    global.log.save('send-test-message-by-complex-option-response', { response: processingIdsList });
+    getLog().save('send-test-message-by-complex-option-response', { response: processingIdsList });
 
     // Response sending result.
     res.send({ data: { isConnectionToEConsultApi, processingIdsList } });
@@ -421,7 +453,7 @@ export class Message extends Auth {
     let sendByEmail = usersInfo.map((v) => v.email).filter((v) => !!v);
     let sendByEmailPromise;
     let sendBySmsPromise;
-    global.log.save('send-message-by-user-request', { phones: sendBySms, emails: sendByEmail });
+    getLog().save('send-message-by-user-request', { phones: sendBySms, emails: sendByEmail });
 
     usersMessages = await UsersMessages.bulkCreate(
       usersInfo.map((v) => {
@@ -443,7 +475,7 @@ export class Message extends Auth {
     // Check if need to send by SMS.
     if (this.isValidShortMessageTranslit(body) && this.isValidShortMessage(body) && !not_send) {
       // Check phones prefix in SMS blacklist.
-      const smsBlacklist = (global.conf && global.conf.smsBlacklist) || [];
+      const smsBlacklist = (getConf() && getConf().smsBlacklist) || [];
       const phonesToSend = sendBySms;
       const allowedPhones = [];
       const blockedPhones = [];
@@ -457,7 +489,11 @@ export class Message extends Auth {
       }
       if (blockedPhones.length > 0) {
         // Inform SMS can not be sent.
-        global.log.save('send-message-by-user-blocked-by-blacklist', { blockedPhones, allowedPhones, smsBlacklist });
+        getLog().save('send-message-by-user-blocked-by-blacklist', {
+          blockedPhones: maskPhones(blockedPhones),
+          allowedPhones: maskPhones(allowedPhones),
+          smsBlacklistSize: smsBlacklist.length,
+        });
         sendBySms = { error: 'Some phones denied by blacklist.', blockedPhones };
         sendBySmsPromise = Promise.resolve(sendBySms);
       } else {
@@ -540,7 +576,7 @@ export class Message extends Auth {
     // Define params.
     const { body } = req;
     const { workflowId, transfers, destination, options, text } = body || {};
-    global.log.save('send-message-by-complex-option-request');
+    getLog().save('send-message-by-complex-option-request');
 
     // Check main params.
     const errors = this.getComplexParamsErrors(workflowId, transfers, destination, options, text);
@@ -563,7 +599,7 @@ export class Message extends Auth {
         usersInfo = await this.getUsers([userId]);
         userInfo = usersInfo && usersInfo[0];
         if (!userInfo) {
-          return res.send(400, { error: { message: 'Can\'t find user by ID.' } });
+          return res.send(400, { error: { message: "Can't find user by ID." } });
         }
       } catch (error) {
         return res.send(400, { error: { message: 'User definition error.', details: error && error.message } });
@@ -578,7 +614,7 @@ export class Message extends Auth {
     const phoneToSend = ['sms', 'push'].some((v) => transfers.includes(v)) ? validPhone : undefined;
     const emailForLogging = emailToSend ? '**' + emailToSend.slice(2, email.length) : '';
     const phoneForLogging = phoneToSend ? phoneToSend.slice(0, -2) + '**' : '';
-    global.log.save('send-message-by-complex-option-request-body', { email: emailForLogging, phone: phoneForLogging });
+    getLog().save('send-message-by-complex-option-request-body', { email: emailForLogging, phone: phoneForLogging });
 
     // Define user name.
     const lastName = (userInfo && userInfo.last_name) || undefined;
@@ -586,7 +622,7 @@ export class Message extends Auth {
     const middleName = (userInfo && userInfo.middle_name) || undefined;
 
     // Define phone prefix in SMS blacklist.
-    const smsBlacklist = (global.conf && global.conf.smsBlacklist) || [];
+    const smsBlacklist = (getConf() && getConf().smsBlacklist) || [];
     const isSmsBlacklistIncludesPhone = phoneToSend && smsBlacklist.some((v) => phoneToSend.startsWith(v));
 
     // Get options.
@@ -604,11 +640,16 @@ export class Message extends Auth {
     const rawResponsesList = [];
     for (const transfer of transfers) {
       // Log destination params.
-      global.log.save('send-message-by-complex-option-transfer', { transfer, emailToSend, phoneToSend });
+      getLog().save('send-message-by-complex-option-transfer', { transfer, emailToSend, phoneToSend });
 
       // Check id it's SMS transfer and do not send if phone denied by blacklist.
       if (transfer === 'sms' && isSmsBlacklistIncludesPhone) {
-        global.log.save('denied-by-sms-blacklist', { routeType: 'send-via-complex-options', transfer, phoneToSend, smsBlacklist });
+        getLog().save('denied-by-sms-blacklist', {
+          routeType: 'send-via-complex-options',
+          transfer,
+          phoneToSend: maskPhones([phoneToSend])[0],
+          smsBlacklistSize: smsBlacklist.length,
+        });
         processingIdsList.push('User phone denied by blacklist.');
         rawResponsesList.push(null);
         continue;
@@ -682,7 +723,7 @@ export class Message extends Auth {
 
     // Response.
     const response = { processingIds: processingIdsList, rawResponses: rawResponsesList };
-    global.log.save('send-message-by-complex-option-response', { response });
+    getLog().save('send-message-by-complex-option-response', { response });
     res.send(response);
   }
 
@@ -730,16 +771,16 @@ export class Message extends Auth {
    */
   async sendToEConsultingComplexService(sendingOptionsObject: any): Promise<any> {
     // Prepare E-Consulting service options.
-    const eConsultingConf = (global.conf && global.conf.eConsultingService) || {};
+    const eConsultingConf = (getConf() && getConf().eConsultingService) || {};
     const { sendComplexMessageUrl, Authorization, logAll } = eConsultingConf;
 
     if (!sendComplexMessageUrl) {
       const error = { message: 'E-Consulting service URL not defined.' };
-      global.log.save('econsulting-complex-service-error', error, 'error');
+      getLog().save('econsulting-complex-service-error', error, 'error');
       return { error };
     }
 
-    global.log.save('econsulting-complex-service-request', { sendToEConsultingComplexService: logAll ? sendingOptionsObject : '***' });
+    getLog().save('econsulting-complex-service-request', { sendToEConsultingComplexService: logAll ? sendingOptionsObject : '***' });
     const requestSendingOptions = {
       url: sendComplexMessageUrl,
       method: 'POST',
@@ -757,7 +798,7 @@ export class Message extends Auth {
 
     // Log and return response.
     const response = { processingId: rawResponse && rawResponse.MessageID, rawResponse };
-    global.log.save('econsulting-complex-service-response', { response });
+    getLog().save('econsulting-complex-service-response', { response });
     return response;
   }
 
@@ -779,7 +820,7 @@ export class Message extends Auth {
    */
   async getAttachLink(attachItem) {
     // Prepare persist link options.
-    const persistLinkConf = (global.conf && global.conf.persistLink) || {};
+    const persistLinkConf = (getConf() && getConf().persistLink) || {};
     const { createLinkUrl, openStackServerName, token } = persistLinkConf;
     const requestPersistLinkOptions = {
       url: createLinkUrl || 'http://0.0.0.0:3346/link',
@@ -808,7 +849,7 @@ export class Message extends Auth {
    */
   async getStaticLink(link) {
     // Prepare persist link options.
-    const persistLinkConf = (global.conf && global.conf.persistLink) || {};
+    const persistLinkConf = (getConf() && getConf().persistLink) || {};
     const { createLinkUrl, token } = persistLinkConf;
     const requestPersistLinkOptions = {
       url: createLinkUrl || 'http://0.0.0.0:3346/link',
@@ -857,7 +898,7 @@ export class Message extends Auth {
     }
 
     // Set links to documents.
-    const persistLinkConf = (global.conf && global.conf.persistLink) || {};
+    const persistLinkConf = (getConf() && getConf().persistLink) || {};
     const { documentLinkPrefix } = persistLinkConf;
     while (normalizedText.indexOf('{document=') !== -1) {
       // Define replacing params.
@@ -951,14 +992,14 @@ export class Message extends Auth {
     const { body } = req;
     let result;
 
-    global.log.save('send-message-by-phone-request', { list_phone: body.list_phone });
+    getLog().save('send-message-by-phone-request', { list_phone: body.list_phone });
 
     if (!this.issetPhonesList(body)) {
       return res.send(400, { message: 'Phones list empty' });
     }
 
     // Check phones prefix in SMS blacklist.
-    const smsBlacklist = (global.conf && global.conf.smsBlacklist) || [];
+    const smsBlacklist = (getConf() && getConf().smsBlacklist) || [];
     const phonesToSend = Array.isArray(body.list_phone) ? body.list_phone : [body.list_phone];
 
     const allowedPhones = [];
@@ -972,11 +1013,15 @@ export class Message extends Auth {
       }
     }
     if (blockedPhones.length > 0) {
-      global.log.save('send-message-by-phone-blocked-by-blacklist', { blockedPhones, allowedPhones, smsBlacklist });
+      getLog().save('send-message-by-phone-blocked-by-blacklist', {
+        blockedPhones: maskPhones(blockedPhones),
+        allowedPhones: maskPhones(allowedPhones),
+        smsBlacklistSize: smsBlacklist.length,
+      });
       return res.send(500, { error: 'Some phones denied by blacklist.', blockedPhones });
     }
 
-    const sendSmsByNotifyhubAPI = global.conf && global.conf.sendSmsByNotifyhubAPI;
+    const sendSmsByNotifyhubAPI = getConf() && getConf().sendSmsByNotifyhubAPI;
     if (sendSmsByNotifyhubAPI) {
       const phone = allowedPhones && allowedPhones[0];
       // Define body for e-consulting service.
@@ -1088,8 +1133,8 @@ export class Message extends Auth {
     let result, resultCount, unreadQuantity, readQuantity;
     if (req.query.access_token || req.query.user_id) {
       try {
-        const userId = req.query.user_id || (await this.checkToken(req.query.access_token))._id;
-        const queryParams = { ...req.query, user_id: req.query.user_id || userId };
+        const userId = await this.resolveUserId(req.query);
+        const queryParams = { ...req.query, user_id: userId };
         delete queryParams.access_token;
         const resultPromise = showAll && req.query.access_token ? this.getAllUserMessages(queryParams) : this.getUserMessages(queryParams);
         const resultCountPromise =
@@ -1103,11 +1148,11 @@ export class Message extends Auth {
           readQuantityPromise,
         ]);
       } catch (e) {
-        const statusCode = e?.statusCode || e?.response?.status || 500;
+        const statusCode = e?.statusCode || e?.status || 500;
         const error = {
           message: e?.message || 'Can not get messages.',
         };
-        global.log.save('get-messages-error', { statusCode, error }, 'error');
+        getLog().save('get-messages-error', { statusCode, error }, 'error');
         return res.send(statusCode, { error });
       }
     } else {
@@ -1154,7 +1199,7 @@ export class Message extends Auth {
       ],
       order: [['date_create', 'desc']],
     };
-    global.log.save('get-all-messages-query-options', { queryOptions });
+    getLog().save('get-all-messages-query-options', { queryOptions });
     const messages = await IncommingMessages.findAll(queryOptions);
 
     return messages.map((v) => {
@@ -1419,7 +1464,7 @@ export class Message extends Auth {
     for (const message of messages) {
       if (message.ruleToShow) {
         try {
-          message.decryptedToShow = eval(message.ruleToShow)(message.decryptedBase64);
+          message.decryptedToShow = renderDecrypted(message.ruleToShow, message.decryptedBase64);
         } catch (error) {
           message.decryptionToShowError = (error && error.message) || error;
         }
@@ -1515,19 +1560,11 @@ export class Message extends Auth {
     }
 
     let countUpdatedRows;
-    if (req.query.access_token || req.query.user_id) {
-      // Update message data.
-      try {
-        countUpdatedRows = await this.setIsReadByMessageId(req.query, messageIdsArray);
-      } catch (e) {
-        console.error(e);
-        return res.send(e.statusCode, e.error);
-      }
-    } else {
-      const error = {
-        message: 'Access token and user id should be defined.',
-      };
-      return res.send(error);
+    try {
+      countUpdatedRows = await this.setIsReadByMessageId(req.query, messageIdsArray);
+    } catch (e) {
+      console.error(e);
+      return res.send(e.statusCode || 500, e.error || { error: e.message });
     }
     const isSet = countUpdatedRows && countUpdatedRows[0] && countUpdatedRows[0] === messageIdsArray.length ? true : false;
 
@@ -1541,19 +1578,7 @@ export class Message extends Auth {
    */
   async setIsReadByMessageId(queryParams, messageIds) {
     // Define user.
-    let user_id;
-    if ('access_token' in queryParams) {
-      let userId;
-      try {
-        userId = await this.checkToken(queryParams.access_token);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
-      user_id = userId._id;
-    } else if ('user_id' in queryParams) {
-      user_id = queryParams.user_id;
-    }
+    const user_id = await this.resolveUserId(queryParams);
 
     // Define params.
     const userMessagesFilterObject = {
@@ -1575,25 +1600,14 @@ export class Message extends Auth {
 
   async getUnreadUserMessagesCount(req: any, res: any) {
     let total;
-    if (req.query.access_token || req.query.user_id) {
-      // Update message data.
-      try {
-        let userId;
-        if (req.query.access_token) {
-          userId = (await this.checkToken(req.query.access_token))._id;
-        }
-        const queryParams = { ...req.query, user_id: req.query.user_id || userId };
-        delete queryParams.access_token;
-        total = await this.countUnreadMessages(queryParams);
-      } catch (e) {
-        console.error(e);
-        return res.send(e.statusCode, e.error);
-      }
-    } else {
-      const error = {
-        message: 'Access token and user id should be defined.',
-      };
-      return res.send(error);
+    try {
+      const userId = await this.resolveUserId(req.query);
+      const queryParams = { ...req.query, user_id: userId };
+      delete queryParams.access_token;
+      total = await this.countUnreadMessages(queryParams);
+    } catch (e) {
+      console.error(e);
+      return res.send(e.statusCode || 500, e.error || { error: e.message });
     }
 
     // Response result.
@@ -1602,19 +1616,7 @@ export class Message extends Auth {
 
   async countUnreadMessages(queryParams) {
     // Define user.
-    let user_id;
-    if ('access_token' in queryParams) {
-      let userId;
-      try {
-        userId = await this.checkToken(queryParams.access_token);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
-      user_id = userId._id;
-    } else if ('user_id' in queryParams) {
-      user_id = queryParams.user_id;
-    }
+    const user_id = await this.resolveUserId(queryParams);
 
     // Try to get event ID filter.
     const { event_id } = queryParams;
@@ -1703,22 +1705,17 @@ export class Message extends Auth {
     }
 
     let message;
-    if (req.query.access_token || req.query.user_id) {
-      // Get message data.
-      try {
-        message = await this.getById(messageId, req.query);
-        if (!message) {
-          return res.send(404, { error: 'Message not found.' });
-        }
-      } catch (error) {
-        global.log.save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
-        return res.send(500, { error: (error && error.message) || error });
+    try {
+      message = await this.getById(messageId, req.query);
+      if (!message) {
+        return res.send(404, { error: 'Message not found.' });
       }
-    } else {
-      const error = {
-        message: 'Access token or user id should be defined.',
-      };
-      return res.send(400, error);
+    } catch (error) {
+      if (error && error.statusCode) {
+        return res.send(error.statusCode, error.error);
+      }
+      getLog().save('get-message-by-id-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
+      return res.send(500, { error: (error && error.message) || error });
     }
 
     // Response result.
@@ -1727,21 +1724,7 @@ export class Message extends Auth {
 
   async getById(messageId, queryParams) {
     // Define user.
-    let user_id;
-    if ('access_token' in queryParams) {
-      let userId;
-      try {
-        userId = await this.checkToken(queryParams.access_token);
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
-      user_id = userId._id;
-    } else if ('user_id' in queryParams) {
-      user_id = queryParams.user_id;
-    } else {
-      throw new Error('Should be defined in query access_token or user_id.');
-    }
+    const user_id = await this.resolveUserId(queryParams);
 
     // Define messages info.
     const userMessagesFilterObject = { user_id, message_id: messageId };
@@ -1784,6 +1767,7 @@ export class Message extends Auth {
       isRead: message.is_read,
       userMessageId: message.user_message_id,
       userId: message.user_id,
+      showToAll: message.show_to_all,
     };
 
     // Check if decrypted.
@@ -1791,7 +1775,7 @@ export class Message extends Auth {
       const messageCryptType = await MessageCryptTypes.findOne({ where: { id: currentMessage.messageCryptTypeId } });
       const { rule_to_show: ruleToShow } = messageCryptType;
       try {
-        currentMessage.decryptedToShow = eval(ruleToShow)(currentMessage.decryptedBase64);
+        currentMessage.decryptedToShow = renderDecrypted(ruleToShow, currentMessage.decryptedBase64);
       } catch (error) {
         currentMessage.decryptionToShowError = (error && error.message) || error;
       }
@@ -2146,7 +2130,7 @@ export class Message extends Auth {
     try {
       msg = await IncommingMessages.create({ ...body });
     } catch (err) {
-      global.log.save('send-msg-to-all-create-incomming-message-error', { error: err }, 'error');
+      getLog().save('send-msg-to-all-create-incomming-message-error', { error: err }, 'error');
       return res.send(500, err);
     }
 
@@ -2158,7 +2142,7 @@ export class Message extends Auth {
         show_to_all: true,
       });
     } catch (err) {
-      global.log.save('send-msg-to-all-create-user-message-error', { error: err }, 'error');
+      getLog().save('send-msg-to-all-create-user-message-error', { error: err }, 'error');
       return res.send(500, err);
     }
 
@@ -2186,7 +2170,7 @@ export class Message extends Auth {
         order: [[IncommingMessages, 'date_create', orderByDateType]],
       });
     } catch (error) {
-      global.log.save('get-messages-to-all-users-error', { error: (error && error.message) || error }, 'error');
+      getLog().save('get-messages-to-all-users-error', { error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
 
@@ -2209,31 +2193,28 @@ export class Message extends Auth {
   }
 
   async deleteMessagetoAll(req: any, res: any) {
-    const { params } = req;
-    const { id } = params;
+    const id = /^\d+$/.test(String(req.params.id)) ? parseInt(req.params.id, 10) : NaN;
+    if (Number.isNaN(id)) {
+      return res.send(400, { error: 'Message id should be a number.' });
+    }
 
-    let deletedFromIncomming;
     try {
-      deletedFromIncomming = await IncommingMessages.destroy({ where: { message_id: id } });
+      // Only broadcast messages can be deleted through this route.
+      const broadcast = await UsersMessages.findOne({ where: { message_id: id, show_to_all: true } });
+      if (!broadcast) {
+        return res.send(404, { error: 'Message not found.' });
+      }
+
+      await UsersMessages.sequelize.transaction(async (transaction: any) => {
+        await UsersMessages.destroy({ where: { message_id: id, show_to_all: true }, transaction });
+        await IncommingMessages.destroy({ where: { message_id: id }, transaction });
+      });
     } catch (error) {
-      global.log.save('delete-msg-to-all-delete-incomming-message-error', { error }, 'error');
+      getLog().save('delete-msg-to-all-error', { error }, 'error');
       return res.send(500, error);
     }
 
-    let deletedFromMsg;
-    if (deletedFromIncomming) {
-      try {
-        deletedFromMsg = await UsersMessages.destroy({
-          where: { message_id: id },
-        });
-      } catch (error) {
-        global.log.save('delete-msg-to-all-delete-user-message-error', { error }, 'error');
-        return res.send(500, error);
-      }
-    }
-
-    const isDeleted = deletedFromMsg || deletedFromMsg === 0 ? true : false;
-    return res.send({ isDeleted });
+    return res.send({ isDeleted: true });
   }
 
   async senderErrorCallack(req: any, res: any, _next: any) {
@@ -2335,7 +2316,7 @@ export class Message extends Auth {
 
       return res.send({ data: messages });
     } catch (error) {
-      global.log.save('get-important-messages-error', { error: (error && error.message) || error }, 'error');
+      getLog().save('get-important-messages-error', { error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
   }
@@ -2353,18 +2334,7 @@ export class Message extends Auth {
         return res.send(400, { error: 'Message ID must be defined as number' });
       }
 
-      // Check access token defined.
-      if (!req.query.access_token && !req.query.user_id) {
-        const error = { error: 'Access token or user_id should be defined.' };
-        return res.send(400, error);
-      }
-
-      let userId;
-      if (req.query.access_token) {
-        userId = (await this.checkToken(req.query.access_token))._id;
-      } else {
-        userId = req.query.user_id;
-      }
+      const userId = await this.resolveUserId(req.query);
 
       // Update important message.
       let updatedImportantMessage;
@@ -2375,17 +2345,15 @@ export class Message extends Auth {
           return res.send(404, { error: 'Not found message for this user_id.' });
         }
 
-        // Check strict allow_hide.
-        if (typeof req.query.strict_allow_hide !== 'undefined' && req.query.strict_allow_hide === 'true') {
-          const importantMessage = await ImportantMessages.findOne({ where: { message_id: messageId, user_message_id: message.userMessageId } });
-          if (importantMessage && importantMessage.allow_hide === false) {
-            const error = { error: 'Param allow_hide set false.' };
-            return res.send(400, error);
-          }
+        // Check allow_hide (always, regardless of client params).
+        const importantMessage = await ImportantMessages.findOne({ where: { message_id: messageId, user_message_id: message.userMessageId } });
+        if (importantMessage && importantMessage.allow_hide === false) {
+          const error = { error: 'Param allow_hide set false.' };
+          return res.send(400, error);
         }
 
         const [, importantMessages] = await ImportantMessages.update(
-          { is_active: false, allow_hide: true },
+          { is_active: false },
           {
             where: { user_message_id: message.userMessageId },
             returning: true,
@@ -2401,7 +2369,10 @@ export class Message extends Auth {
       // Response result.
       return res.send({ data: updatedImportantMessage });
     } catch (error) {
-      global.log.save('set-unimportant-message-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
+      if (error && error.statusCode) {
+        return res.send(error.statusCode, error.error);
+      }
+      getLog().save('set-unimportant-message-error', { messageId: req.params.id, error: (error && error.message) || error }, 'error');
       return res.send(500, { error: (error && error.message) || error });
     }
   }

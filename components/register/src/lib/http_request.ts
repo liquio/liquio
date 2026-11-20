@@ -2,6 +2,9 @@ import axios, { AxiosRequestConfig } from 'axios';
 import bodyParser from 'body-parser';
 
 import prepareAxiosErrorToLog from './prepareAxiosErrorToLog';
+import { TlsConfig, createHttpsAgent } from './tls';
+import { redactRequestOptions } from './redact_headers';
+import { getLog } from './context';
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';
@@ -25,7 +28,7 @@ export default class HttpRequest {
       GET: HTTP_METHOD_GET,
       POST: HTTP_METHOD_POST,
       PUT: HTTP_METHOD_PUT,
-      DELETE: HTTP_METHOD_DELETE
+      DELETE: HTTP_METHOD_DELETE,
     };
   }
 
@@ -35,7 +38,7 @@ export default class HttpRequest {
   static get ContentTypes() {
     return {
       CONTENT_TYPE_JSON,
-      CONTENT_TYPE_FORM_URL_ENCODED
+      CONTENT_TYPE_FORM_URL_ENCODED,
     };
   }
 
@@ -44,7 +47,7 @@ export default class HttpRequest {
    */
   static get Accepts() {
     return {
-      ACCEPT_JSON
+      ACCEPT_JSON,
     };
   }
 
@@ -56,6 +59,7 @@ export default class HttpRequest {
    * @param {object} [requestOptions.headers] Headers in format {"key": "value"}.
    * @param {string} [requestOptions.body] Body string.
    * @param {number} [requestOptions.timeout] Connection timeout.
+   * @param {TlsConfig} [requestOptions.tls] Optional TLS options (private CA). Verification is on by default.
    * @return {Promise<object>}
    */
   static async send(requestOptions: {
@@ -64,21 +68,26 @@ export default class HttpRequest {
     headers?: Record<string, string>;
     body?: string;
     timeout?: number;
+    tls?: TlsConfig;
   }): Promise<object> {
     // Expect requestOptions as for request lib and transform it for axios for backward compatibility.
-    const { body, ...rest } = requestOptions;
+    const { body, tls, ...rest } = requestOptions;
     const axiosOptions: AxiosRequestConfig = {
       ...rest,
-      data: body
+      data: body,
     };
+    const httpsAgent = createHttpsAgent(tls, rest.url);
+    if (httpsAgent) {
+      axiosOptions.httpsAgent = httpsAgent;
+    }
     try {
       const { data: responseBody } = await axios(axiosOptions);
       return parseBody(responseBody);
     } catch (error) {
       // Log and rethrow error
-      global.log?.save('http-request-send-error', {
-        requestOptions: axiosOptions,
-        ...prepareAxiosErrorToLog(error)
+      getLog()?.save('http-request-send-error', {
+        requestOptions: redactRequestOptions(axiosOptions),
+        ...prepareAxiosErrorToLog(error),
       });
       throw error;
     }

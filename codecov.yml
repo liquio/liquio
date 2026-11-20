@@ -1,0 +1,54 @@
+comment: false
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+flag_management:
+  default_rules:
+    carryforward: true
+  individual_flags:
+    - name: admin-api
+      paths:
+        - components/admin-api/
+    - name: event
+      paths:
+        - components/event/
+    - name: external-reader
+      paths:
+        - components/external-reader/
+    - name: filestorage
+      paths:
+        - components/filestorage/
+    - name: gateway
+      paths:
+        - components/gateway/
+    - name: id-api
+      paths:
+        - components/id-api/
+    - name: manager
+      paths:
+        - components/manager/
+    - name: notification
+      paths:
+        - components/notification/
+    - name: pdf-generator
+      paths:
+        - components/pdf-generator/
+    - name: persist-link
+      paths:
+        - components/persist-link/
+    - name: register
+      paths:
+        - components/register/
+    - name: sign-tool
+      paths:
+        - components/sign-tool/
+    - name: task
+      paths:
+        - components/task/

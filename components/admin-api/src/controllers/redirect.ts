@@ -1,4 +1,5 @@
 import { Controller } from './controller';
+import { getConfig } from '../lib/context';
 
 /**
  * Redirect controller.
@@ -27,11 +28,14 @@ export class RedirectController extends Controller {
   async auth(req, res) {
     // Read state.
     const { state } = req.query;
-    const stateQueryParam = state ? `&state=${state}` : '';
 
     // Define params.
     const idAuthUrl = `${this.config.auth.front || this.config.auth.server}:${this.config.auth.frontPort || this.config.auth.port}/authorise`;
-    const idAuthQueryParams = `?redirect_uri=${global.config.auth.authRedirectUrl}&client_id=${this.config.auth.clientId}${stateQueryParam}`;
+    const idAuthQueryParams = `?${new URLSearchParams({
+      redirect_uri: getConfig().auth.authRedirectUrl,
+      client_id: this.config.auth.clientId,
+      ...(state ? { state: String(state) } : {}),
+    }).toString()}`;
     const idAuthFullUrl = `${idAuthUrl}${idAuthQueryParams}`;
     const redirectUrl = idAuthFullUrl;
 
@@ -50,7 +54,7 @@ export class RedirectController extends Controller {
       this.config.auth.serverPublicUrl ||
       `${this.config.auth.front || this.config.auth.server}:${this.config.auth.frontPort || this.config.auth.port}`;
     const idLogoutUrl = `${serverPublicUrl}/logout`;
-    const idLogoutQueryParams = `?redirect_uri=${global.config.auth.authRedirectUrl}`;
+    const idLogoutQueryParams = `?redirect_uri=${getConfig().auth.authRedirectUrl}`;
     const redirectUrl = `${idLogoutUrl}${idLogoutQueryParams}`;
 
     // Redirect.

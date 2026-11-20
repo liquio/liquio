@@ -1,3 +1,7 @@
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigurationService } from './configuration.service';
@@ -19,6 +23,8 @@ jest.mock('../observability/logger.service', () => {
   };
 });
 
+const ENV_KEY = 'LIQUIO_CFG_SIGN_TOOL_server';
+
 describe('ConfigurationService', () => {
   let service: ConfigurationService;
 
@@ -31,7 +37,65 @@ describe('ConfigurationService', () => {
     service = module.get<ConfigurationService>(ConfigurationService);
   });
 
+  afterEach(() => {
+    delete process.env[ENV_KEY];
+  });
+
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('loads server config from the configured dir', () => {
+    expect(service.get('server')).toMatchObject({ host: 'localhost', port: 3000 });
+  });
+
+  it('overrides config from env', () => {
+    process.env[ENV_KEY] = '{"port":1}';
+    jest.isolateModules(() => {
+      const { ConfigurationService: Isolated } = require('./configuration.service');
+      const logger = { setContext: jest.fn(), error: jest.fn() };
+      expect(new Isolated(logger).get('server').port).toBe(1);
+    });
+  });
+
+  it('throws sanitized error on invalid env JSON', () => {
+    const sentinel = 'SENTINEL_SECRET_VALUE';
+    process.env[ENV_KEY] = `{${sentinel}`;
+    jest.isolateModules(() => {
+      const { ConfigurationService: Isolated } = require('./configuration.service');
+      const logger = { setContext: jest.fn(), error: jest.fn() };
+      expect(() => new Isolated(logger)).toThrow('Unable to load configuration');
+      expect(logger.error).toHaveBeenCalled();
+      expect(JSON.stringify(logger.error.mock.calls[0][1].error)).not.toContain(sentinel);
+    });
+  });
+
+  it('throws ConfigValidationError when server config is missing', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sign-tool-cfg-'));
+    const previous = process.env.CONFIG_PATH;
+    process.env.CONFIG_PATH = dir;
+    try {
+      jest.isolateModules(() => {
+        const { ConfigurationService: Isolated } = require('./configuration.service');
+        const { ConfigValidationError } = require('@liquio/back-core');
+        const logger = { setContext: jest.fn(), error: jest.fn() };
+        let thrown: any;
+        try {
+          new Isolated(logger);
+        } catch (e) {
+          thrown = e;
+        }
+        expect(thrown).toBeInstanceOf(ConfigValidationError);
+        expect(thrown.issues.map((i: any) => i.path)).toContain('server');
+        expect(logger.error).toHaveBeenCalledWith('configuration-error', expect.any(Object));
+      });
+    } finally {
+      if (previous === undefined) {
+        delete process.env.CONFIG_PATH;
+      } else {
+        process.env.CONFIG_PATH = previous;
+      }
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

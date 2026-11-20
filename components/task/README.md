@@ -1,5 +1,7 @@
 # task
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=task)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=task)
+
 Core business-logic engine: runs BPMN task instances, forms, signing, and
 register/document integration. The backend that `admin-api` and
 `cabinet-api` proxy user requests to. See the full system context in
@@ -33,6 +35,10 @@ npm run migration-clear
 npm run plugin-installer
 ```
 
+## E2E infrastructure
+
+`npm run test:e2e` (`jest.e2e.config.js`) runs `tests/**/*.e2e-spec.ts` against the real app and enforces coverage of at least 80% statements and lines. Docker is required: Postgres, Redis and RabbitMQ are started through testcontainers. Postgres can instead be an external database when `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_NAME` are set. Downstream services (id-api, register, filestorage, sign-tool, notifier, payment, KYC, external reader) are mocked with `nock` or replaced by spies. Command-line scripts (`src/commands`) and `src/index.ts` are not counted. Use `--runInBand --forceExit` for a stable run.
+
 ## Service dependencies
 
 From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
@@ -51,3 +57,20 @@ From the [C4 diagram](../../ARCHITECTURE.md#c4-container-diagram):
 - `task` → RabbitMQ (publishes/consumes BPMN messages)
 - `task` → PostgreSQL (`bpmn` database, shared with `admin-api`,
   `cabinet-api`, `manager`, `gateway`, `event`)
+
+## Cross-service ping and the manager monitoring token
+
+The manager `/test/ping` and `/monitors/system` routes return 403 unless the
+`x-monitoring-token` header matches manager `server.monitoring.token` and
+`server.monitoring.isEnabled` is `true`. To let this service ping the manager
+(service-wide ping / health check), enable monitoring on the manager and set
+`ping.manager.monitoringToken` in `ping.json` to the same token. When
+`monitoringToken` is empty the header is not sent.
+
+## PDF templates
+
+PDF HTML is rendered with Handlebars only. The legacy `{step.field}` syntax was removed; such text is output literally.
+
+- `{{ }}` escapes values. `{{{ }}}` inserts raw HTML and is the template author's explicit choice.
+- Context: document data, then config `file_generator.variables`, then `workflow`. Later sources win over earlier ones.
+- Helpers: `eq`, `ne`, `dateFormat` and others registered in `FileGeneratorService.handlebarHelpers`, plus `{{currentDate [format]}}`: the render date, `DD.MM.YYYY` by default, or a moment format such as `{{currentDate 'YYYY-MM-DD'}}`. There is no `global.currentDate`.

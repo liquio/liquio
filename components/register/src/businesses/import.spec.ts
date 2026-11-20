@@ -1,8 +1,9 @@
+import { Log, LogProvider, Sandbox } from '@liquio/back-core';
+
 import ImportBusiness from './import';
 import RecordModel from '../models/record';
 import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
-import { Log, LogProvider } from '@liquio/back-core';
 
 // Mock models
 jest.mock('../models/record');
@@ -25,6 +26,11 @@ describe('ImportBusiness', () => {
   let recordModelMock: jest.Mocked<typeof RecordModel>;
   let registerModelMock: jest.Mocked<typeof RegisterModel>;
   let keyModelMock: jest.Mocked<typeof KeyModel>;
+
+  beforeAll(() => {
+    // Existing records are validated through JsonSchema, which evaluates customTypes in the sandbox.
+    new Sandbox({ getLog: () => ({ save: jest.fn() }) });
+  });
 
   beforeEach(() => {
     // Initialize Log singleton if not already done
@@ -49,23 +55,66 @@ describe('ImportBusiness', () => {
       findById: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
-      bulkDelete: jest.fn()
+      bulkDelete: jest.fn(),
     });
 
     registerModelMock.getInstance = jest.fn().mockReturnValue({
       findById: jest.fn(),
       create: jest.fn(),
-      update: jest.fn()
+      update: jest.fn(),
     });
 
     keyModelMock.getInstance = jest.fn().mockReturnValue({
       findById: jest.fn(),
       create: jest.fn(),
-      update: jest.fn()
+      update: jest.fn(),
     });
 
     // Create instance
     importBusiness = new ImportBusiness({});
+  });
+
+  describe('importRecord encryption state (RG-12)', () => {
+    const importId = 'imp';
+    const setup = (isEncrypted: boolean | undefined, existing: boolean) => {
+      const recordModel: any = recordModelMock.getInstance();
+      const keyModel: any = keyModelMock.getInstance();
+      keyModel.findById.mockResolvedValue(isEncrypted === undefined ? null : { data: { id: 5, isEncrypted } });
+      if (existing) recordModel.findById.mockResolvedValue({ data: { id: 'r1' } });
+      else recordModel.findById.mockRejectedValue(new Error('nf'));
+      (importBusiness as any).recordModel = recordModel;
+      (importBusiness as any).keyModel = keyModel;
+      (importBusiness as any).toImport = { [importId]: { details: { insertedRecordsCount: 0, updatedRecordsCount: 0 } } };
+      (importBusiness as any).updateToImportState = jest.fn();
+      return recordModel;
+    };
+
+    it('sets isEncrypted from the target key when the file omits it', async () => {
+      const recordModel = setup(true, false);
+      await importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: { a: 1 } });
+      expect(recordModel.create.mock.calls[0][0].isEncrypted).toBe(true);
+    });
+
+    it('overrides isEncrypted=false from the file for an encrypted key (create and update)', async () => {
+      let recordModel = setup(true, false);
+      await importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: {}, isEncrypted: false });
+      expect(recordModel.create.mock.calls[0][0].isEncrypted).toBe(true);
+      recordModel = setup(true, true);
+      await importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: {}, isEncrypted: false });
+      expect(recordModel.update.mock.calls[0][1].isEncrypted).toBe(true);
+    });
+
+    it('does not encrypt for an unencrypted key even if the file says so', async () => {
+      const recordModel = setup(false, false);
+      await importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: {}, isEncrypted: true });
+      expect(recordModel.create.mock.calls[0][0].isEncrypted).toBe(false);
+    });
+
+    it('fails closed when the key does not exist', async () => {
+      const recordModel = setup(undefined, false);
+      await expect(importBusiness.importRecord(importId, { id: 'r1', keyId: 5, data: {} })).rejects.toThrow('Key of the record');
+      expect(recordModel.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('checkExistingRecordsByJsonSchema', () => {
@@ -74,19 +123,19 @@ describe('ImportBusiness', () => {
       type: 'object',
       properties: {
         name: { type: 'string' },
-        age: { type: 'number' }
+        age: { type: 'number' },
       },
-      required: ['name']
+      required: ['name'],
     };
 
     it('should validate existing records against JSON schema', async () => {
       const validRecords = [
         { id: 1, data: { name: 'John', age: 30 } },
-        { id: 2, data: { name: 'Jane', age: 25 } }
+        { id: 2, data: { name: 'Jane', age: 25 } },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: validRecords
+        data: validRecords,
       });
 
       // Should not throw
@@ -96,11 +145,11 @@ describe('ImportBusiness', () => {
     it('should throw error when record does not match schema', async () => {
       const invalidRecords = [
         { id: 1, data: { name: 'John', age: 30 } },
-        { id: 2, data: { age: 25 } } // Missing required 'name' field
+        { id: 2, data: { age: 25 } }, // Missing required 'name' field
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, simpleSchema)).rejects.toThrow(/doesn't match JSON schema/);
@@ -108,11 +157,11 @@ describe('ImportBusiness', () => {
 
     it('should throw error with correct record ID in message', async () => {
       const invalidRecords = [
-        { id: 999, data: { age: 25 } } // Missing required 'name' field
+        { id: 999, data: { age: 25 } }, // Missing required 'name' field
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       try {
@@ -125,7 +174,7 @@ describe('ImportBusiness', () => {
 
     it('should validate empty records array', async () => {
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: []
+        data: [],
       });
 
       // Should not throw
@@ -142,12 +191,12 @@ describe('ImportBusiness', () => {
             properties: {
               street: { type: 'string' },
               city: { type: 'string' },
-              zipCode: { type: 'number' }
+              zipCode: { type: 'number' },
             },
-            required: ['city']
-          }
+            required: ['city'],
+          },
         },
-        required: ['name']
+        required: ['name'],
       };
 
       const validRecords = [
@@ -158,14 +207,14 @@ describe('ImportBusiness', () => {
             address: {
               street: '123 Main St',
               city: 'New York',
-              zipCode: 10001
-            }
-          }
-        }
+              zipCode: 10001,
+            },
+          },
+        },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: validRecords
+        data: validRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, complexSchema)).resolves.not.toThrow();
@@ -179,12 +228,12 @@ describe('ImportBusiness', () => {
           address: {
             type: 'object',
             properties: {
-              city: { type: 'string' }
+              city: { type: 'string' },
             },
-            required: ['city']
-          }
+            required: ['city'],
+          },
         },
-        required: ['name']
+        required: ['name'],
       };
 
       const invalidRecords = [
@@ -193,15 +242,15 @@ describe('ImportBusiness', () => {
           data: {
             name: 'John',
             address: {
-              street: '123 Main St'
+              street: '123 Main St',
               // Missing required 'city'
-            }
-          }
-        }
+            },
+          },
+        },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, complexSchema)).rejects.toThrow(/doesn't match JSON schema/);
@@ -213,9 +262,9 @@ describe('ImportBusiness', () => {
         properties: {
           email: { type: 'string' },
           count: { type: 'number' },
-          active: { type: 'boolean' }
+          active: { type: 'boolean' },
         },
-        required: ['email', 'count', 'active']
+        required: ['email', 'count', 'active'],
       };
 
       const validRecords = [
@@ -224,13 +273,13 @@ describe('ImportBusiness', () => {
           data: {
             email: 'john@example.com',
             count: 42,
-            active: true
-          }
-        }
+            active: true,
+          },
+        },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: validRecords
+        data: validRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).resolves.not.toThrow();
@@ -240,22 +289,22 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          count: { type: 'number' }
+          count: { type: 'number' },
         },
-        required: ['count']
+        required: ['count'],
       };
 
       const invalidRecords = [
         {
           id: 1,
           data: {
-            count: 'not a number' // Should be number
-          }
-        }
+            count: 'not a number', // Should be number
+          },
+        },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).rejects.toThrow(/doesn't match JSON schema/);
@@ -268,10 +317,10 @@ describe('ImportBusiness', () => {
           name: { type: 'string' },
           tags: {
             type: 'array',
-            items: { type: 'string' }
-          }
+            items: { type: 'string' },
+          },
         },
-        required: ['name']
+        required: ['name'],
       };
 
       const validRecords = [
@@ -279,13 +328,13 @@ describe('ImportBusiness', () => {
           id: 1,
           data: {
             name: 'John',
-            tags: ['tag1', 'tag2', 'tag3']
-          }
-        }
+            tags: ['tag1', 'tag2', 'tag3'],
+          },
+        },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: validRecords
+        data: validRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).resolves.not.toThrow();
@@ -297,22 +346,22 @@ describe('ImportBusiness', () => {
         properties: {
           tags: {
             type: 'array',
-            items: { type: 'string' }
-          }
-        }
+            items: { type: 'string' },
+          },
+        },
       };
 
       const invalidRecords = [
         {
           id: 1,
           data: {
-            tags: ['valid', 123, 'valid'] // 123 should be string
-          }
-        }
+            tags: ['valid', 123, 'valid'], // 123 should be string
+          },
+        },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).rejects.toThrow(/doesn't match JSON schema/);
@@ -322,22 +371,22 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          name: { type: 'string' }
+          name: { type: 'string' },
         },
-        additionalProperties: false
+        additionalProperties: false,
       };
 
       const validRecords = [
         {
           id: 1,
           data: {
-            name: 'John'
-          }
-        }
+            name: 'John',
+          },
+        },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: validRecords
+        data: validRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).resolves.not.toThrow();
@@ -347,9 +396,9 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          name: { type: 'string' }
+          name: { type: 'string' },
         },
-        additionalProperties: false
+        additionalProperties: false,
       };
 
       const invalidRecords = [
@@ -357,13 +406,13 @@ describe('ImportBusiness', () => {
           id: 1,
           data: {
             name: 'John',
-            extra: 'field' // Not allowed
-          }
-        }
+            extra: 'field', // Not allowed
+          },
+        },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).rejects.toThrow(/doesn't match JSON schema/);
@@ -375,9 +424,9 @@ describe('ImportBusiness', () => {
         properties: {
           name: { type: 'string' },
           email: { type: 'string' },
-          age: { type: 'number' }
+          age: { type: 'number' },
         },
-        required: ['name', 'email']
+        required: ['name', 'email'],
       };
 
       const invalidRecords = [
@@ -385,13 +434,13 @@ describe('ImportBusiness', () => {
           id: 1,
           data: {
             // Missing both required fields
-            age: 'not a number'
-          }
-        }
+            age: 'not a number',
+          },
+        },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       try {
@@ -408,19 +457,19 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          name: { type: 'string' }
+          name: { type: 'string' },
         },
-        required: ['name']
+        required: ['name'],
       };
 
       const records = [
         { id: 1, data: { name: 'John' } },
         { id: 2, data: { name: 'Jane' } },
-        { id: 3, data: {} } // Missing required field
+        { id: 3, data: {} }, // Missing required field
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: records
+        data: records,
       });
 
       try {
@@ -435,15 +484,15 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          age: { type: 'number', minimum: 0, maximum: 150 }
+          age: { type: 'number', minimum: 0, maximum: 150 },
         },
-        required: ['age']
+        required: ['age'],
       };
 
       const validRecords = [{ id: 1, data: { age: 25 } }];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: validRecords
+        data: validRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).resolves.not.toThrow();
@@ -453,17 +502,17 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          age: { type: 'number', minimum: 0, maximum: 150 }
+          age: { type: 'number', minimum: 0, maximum: 150 },
         },
-        required: ['age']
+        required: ['age'],
       };
 
       const invalidRecords = [
-        { id: 1, data: { age: 200 } } // Exceeds maximum
+        { id: 1, data: { age: 200 } }, // Exceeds maximum
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).rejects.toThrow(/doesn't match JSON schema/);
@@ -473,17 +522,17 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          name: { type: ['string', 'null'] }
-        }
+          name: { type: ['string', 'null'] },
+        },
       };
 
       const validRecords = [
         { id: 1, data: { name: 'John' } },
-        { id: 2, data: { name: null } }
+        { id: 2, data: { name: null } },
       ];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: validRecords
+        data: validRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).resolves.not.toThrow();
@@ -493,15 +542,15 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          name: { type: 'string' }
+          name: { type: 'string' },
         },
-        required: ['name']
+        required: ['name'],
       };
 
       const invalidRecords = [{ id: 1, data: { name: null } }];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).rejects.toThrow(/doesn't match JSON schema/);
@@ -511,14 +560,14 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          phone: { type: 'string', pattern: '^\\d{3}-\\d{3}-\\d{4}$' }
-        }
+          phone: { type: 'string', pattern: '^\\d{3}-\\d{3}-\\d{4}$' },
+        },
       };
 
       const validRecords = [{ id: 1, data: { phone: '123-456-7890' } }];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: validRecords
+        data: validRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).resolves.not.toThrow();
@@ -528,17 +577,64 @@ describe('ImportBusiness', () => {
       const schema = {
         type: 'object',
         properties: {
-          phone: { type: 'string', pattern: '^\\d{3}-\\d{3}-\\d{4}$' }
-        }
+          phone: { type: 'string', pattern: '^\\d{3}-\\d{3}-\\d{4}$' },
+        },
       };
 
       const invalidRecords = [{ id: 1, data: { phone: 'invalid-phone' } }];
 
       recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({
-        data: invalidRecords
+        data: invalidRecords,
       });
 
       await expect(importBusiness.checkExistingRecordsByJsonSchema(keyId, schema)).rejects.toThrow(/doesn't match JSON schema/);
+    });
+  });
+
+  describe('checkExistingRecordsByJsonSchema with Liquio keywords', () => {
+    const customTypes = { isEven: '(value) => value % 2 === 0' };
+    const schemaWithKeywords = () => ({
+      type: 'object',
+      customTypes: { ...customTypes },
+      properties: { count: { type: 'number', isEven: true, public: true } },
+    });
+
+    it('accepts customTypes and public and leaves the schema to be saved untouched', async () => {
+      const schema = schemaWithKeywords();
+      recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({ data: [{ id: 1, data: { count: 2 } }] });
+
+      await expect(importBusiness.checkExistingRecordsByJsonSchema(123, schema)).resolves.toBeUndefined();
+      expect(schema.customTypes).toEqual(customTypes);
+    });
+
+    it('rejects an existing record that fails a custom type', async () => {
+      recordModelMock.getInstance().getByKeyId = jest.fn().mockResolvedValue({ data: [{ id: 7, data: { count: 3 } }] });
+
+      await expect(importBusiness.checkExistingRecordsByJsonSchema(123, schemaWithKeywords())).rejects.toThrow(
+        /Record with ID "7" doesn't match JSON schema/,
+      );
+    });
+  });
+
+  describe('startImport', () => {
+    beforeEach(() => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+    });
+
+    afterEach(() => {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+    });
+
+    it('logs a failed background import instead of leaving the rejection unhandled', async () => {
+      const save = jest.spyOn((importBusiness as any).log, 'save');
+      jest.spyOn(importBusiness, 'validate').mockResolvedValue(undefined);
+      jest.spyOn(importBusiness, 'import').mockRejectedValue(new Error('strict mode: unknown keyword'));
+
+      const importId = await importBusiness.startImport({ key: {}, register: {}, records: [] });
+      await new Promise(process.nextTick);
+
+      expect(save).toHaveBeenCalledWith('import-failed', { importId, error: 'strict mode: unknown keyword' }, 'error');
     });
   });
 });

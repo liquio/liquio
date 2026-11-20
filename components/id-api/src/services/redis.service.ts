@@ -1,17 +1,34 @@
-import crypto from 'crypto';
-import { createClient, RedisClientType } from 'redis';
+import crypto from 'node:crypto';
 
-import { Config } from '../config';
+import { RedisClient } from '@liquio/back-core';
+
+import { IdApiConfig } from '../config';
 import { BaseService } from './base_service';
 
 export const DEFAULT_TTL_IN_SECONDS = 300; // 5 minutes.
 export const DEFAULT_PREFIX = process.env.npm_package_name ?? 'id';
 
+// Compare-and-delete: only the holder of the lock (the one with the matching value) may release it.
+const RELEASE_LOCK_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+// Compare-and-expire: only the holder of the lock may extend it.
+const EXTEND_LOCK_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) else return 0 end";
+
+// Fixed window counter: INCR, and set the expiry only when the key is created, so the window does not slide.
+const INCREMENT_WINDOW_SCRIPT = "local v = redis.call('incr', KEYS[1]) if v == 1 then redis.call('expire', KEYS[1], ARGV[1]) end return v";
+
+// The part of the underlying `redis` client that the lock commands need. back-core keeps the client private.
+interface RawRedisClient {
+  set(key: string, value: string, options: { NX: true; EX: number }): Promise<string | null>;
+  eval(script: string, options: { keys: string[]; arguments: string[] }): Promise<unknown>;
+}
+
+/**
+ * Redis service: a thin DI adapter (fitting this component's `Services`/`BaseService`
+ * registry) over `@liquio/back-core`'s `RedisClient`.
+ */
 export class RedisService extends BaseService {
-  private readonly prefix: string = DEFAULT_PREFIX;
-  private readonly client!: RedisClientType;
-  private readonly cfg: Config['redis'];
-  private readonly defaultTtl: number = DEFAULT_TTL_IN_SECONDS;
+  private readonly cfg: IdApiConfig['redis'];
+  private readonly redisClient?: RedisClient;
 
   constructor(...args: ConstructorParameters<typeof BaseService>) {
     super(...args);
@@ -19,41 +36,29 @@ export class RedisService extends BaseService {
     this.cfg = this.config.redis;
 
     if (this.cfg?.isEnabled && this.cfg?.host && this.cfg?.port) {
-      this.client = createClient({
-        socket: { host: this.cfg.host, port: this.cfg.port },
+      this.redisClient = new RedisClient({
+        host: this.cfg.host,
+        port: this.cfg.port,
+        defaultTtl: this.cfg.defaultTtl ?? DEFAULT_TTL_IN_SECONDS,
+        prefix: this.cfg.prefix ?? DEFAULT_PREFIX,
+        getLog: () => this.log,
       });
-    }
-
-    if (this.cfg?.prefix) {
-      this.prefix = this.cfg.prefix;
-    }
-
-    if (this.cfg?.defaultTtl) {
-      this.defaultTtl = this.cfg.defaultTtl;
     }
   }
 
   get isEnabled() {
-    return this.cfg?.isEnabled || false;
+    return !!this.redisClient?.isEnabled;
   }
 
   async init() {
     if (this.isEnabled) {
-      try {
-        await this.client.connect();
-      } catch (error) {
-        throw new Error(`Can not connect to redis: ${error}`);
-      }
+      await this.redisClient!.connect();
     }
   }
 
   async stop() {
     if (this.isEnabled) {
-      try {
-        await this.client.disconnect();
-      } catch (error) {
-        throw new Error(`Can not disconnect from redis: ${error}`);
-      }
+      await this.redisClient!.close();
     }
   }
 
@@ -63,9 +68,7 @@ export class RedisService extends BaseService {
    * @return {string} Hash key.
    **/
   createKey(...args: any[]): string {
-    const parts = [this.prefix, ...args].map((i) => (typeof i !== 'object' ? String(i) : i));
-
-    return parts.map((item) => (typeof item === 'object' ? crypto.createHash('md5').update(JSON.stringify(item)).digest('hex') : item)).join('.');
+    return this.redisClient ? this.redisClient.createKey(...args) : args.join('.');
   }
 
   /**
@@ -75,22 +78,10 @@ export class RedisService extends BaseService {
    * @param {number} ttl Time to live in seconds (optional).
    **/
   async getOrSet(key: string | any[], fn: () => Promise<any>, ttl?: number): Promise<{ data: any; isFromCache: boolean }> {
-    key = Array.isArray(key) ? this.createKey(...key) : key;
-
-    if (this.isEnabled) {
-      const data = await this.get(key);
-      if (data) {
-        return { data: JSON.parse(data), isFromCache: true };
-      }
+    if (!this.redisClient) {
+      return { data: await fn(), isFromCache: false };
     }
-
-    const data = await fn();
-
-    if (this.isEnabled) {
-      await this.set(key, data !== undefined ? JSON.stringify(data) : null, ttl);
-    }
-
-    return { data, isFromCache: false };
+    return this.redisClient.getOrSet(key, fn, ttl);
   }
 
   /**
@@ -107,28 +98,10 @@ export class RedisService extends BaseService {
     setFn: () => Promise<any>,
     ttl?: number,
   ): Promise<{ data: any; isFromCache: boolean }> {
-    key = Array.isArray(key) ? this.createKey(...key) : key;
-
-    if (!this.isEnabled) {
+    if (!this.redisClient) {
       return { data: await setFn(), isFromCache: false };
     }
-
-    // Get payload timestamp and new timestamp.
-    const [oldTimestamp, newTimestamp] = await Promise.all([
-      this.get(key + '.timestamp')
-        .then((v) => v?.toString())
-        .then((v) => (v !== undefined ? JSON.parse(v) : undefined)),
-      timeFn().catch(() => null),
-    ]);
-
-    // Invalidate cache if needed.
-    if (!oldTimestamp || (newTimestamp && new Date(newTimestamp) > new Date(oldTimestamp))) {
-      await this.delete(key);
-    }
-
-    await this.set(key + '.timestamp', newTimestamp ?? null);
-
-    return this.getOrSet(key, setFn, ttl);
+    return this.redisClient.getOrSetWithTimestamp(key, timeFn as unknown as () => Promise<string>, setFn, ttl);
   }
 
   /**
@@ -138,56 +111,101 @@ export class RedisService extends BaseService {
    * @param {number} ttl Time to live in seconds (optional).
    **/
   async increment(key: string | any[], increment: number, ttl?: number): Promise<number> {
-    key = Array.isArray(key) ? this.createKey(...key) : key;
-
-    if (!this.isEnabled) {
-      return Promise.resolve(0);
+    if (!this.redisClient) {
+      return 0;
     }
+    return this.redisClient.increment(key, increment, ttl);
+  }
 
-    return this.client
-      .multi()
-      .incrBy(key, increment)
-      .expire(key, ttl ?? this.defaultTtl)
-      .exec()
-      .then((result) => {
-        if (Array.isArray(result)) {
-          return result[0] as unknown as number;
-        }
-        return 0;
-      });
+  /**
+   * Atomically increment a fixed-window counter: the TTL is set only when the counter is created.
+   * @return {Promise<number | null>} New value, or null if redis is disabled.
+   **/
+  async incrementWindow(key: string | any[], windowSeconds: number): Promise<number | null> {
+    const raw = this.rawClient();
+    if (!raw) {
+      return null;
+    }
+    const resolvedKey = Array.isArray(key) ? this.createKey(...key) : key;
+    return Number(await raw.eval(INCREMENT_WINDOW_SCRIPT, { keys: [resolvedKey], arguments: [String(windowSeconds)] }));
   }
 
   /**
    * Set data to redis.
    */
-  async set(key: string | any[], data: any, ttl: number = this.defaultTtl): Promise<string | null> {
-    key = Array.isArray(key) ? this.createKey(...key) : key;
-    if (typeof data === 'object') data = JSON.stringify(data);
-    if (this.client) {
-      return this.client.set(key, data, { EX: ttl });
+  async set(key: string | any[], data: any, ttl?: number): Promise<string | null> {
+    if (!this.redisClient) {
+      return null;
     }
-    return null;
+    return this.redisClient.set(key, data, ttl);
   }
 
   /**
    * Get data from redis.
    */
   async get(key: string | any[]): Promise<string | null> {
-    key = Array.isArray(key) ? this.createKey(...key) : key;
-    if (this.client) {
-      return this.client.get(key);
+    if (!this.redisClient) {
+      return null;
     }
-    return null;
+    return this.redisClient.get(key);
   }
 
   /**
    * Delete data from redis.
    */
   async delete(key: string | any[]): Promise<number> {
-    key = Array.isArray(key) ? this.createKey(...key) : key;
-    if (this.client) {
-      return this.client.del(key);
+    if (!this.redisClient) {
+      return 0;
     }
-    return 0;
+    return this.redisClient.delete(key);
+  }
+
+  /**
+   * Try to take a lock (SET NX with a TTL).
+   * @param {string} name Lock name.
+   * @param {number} ttl Time to live in seconds.
+   * @return {Promise<string | null>} Lock token to release or extend the lock with, or null if the lock is held by someone else or redis is disabled.
+   **/
+  async acquireLock(name: string, ttl: number): Promise<string | null> {
+    const raw = this.rawClient();
+    if (!raw) {
+      return null;
+    }
+    const token = crypto.randomUUID();
+    const result = await raw.set(this.createKey('lock', name), token, { NX: true, EX: ttl });
+    return result === 'OK' ? token : null;
+  }
+
+  /**
+   * Extend a lock that is still held with this token.
+   * @return {Promise<boolean>} False if the lock has expired or belongs to someone else.
+   **/
+  async extendLock(name: string, token: string, ttl: number): Promise<boolean> {
+    const raw = this.rawClient();
+    if (!raw) {
+      return false;
+    }
+    const result = await raw.eval(EXTEND_LOCK_SCRIPT, { keys: [this.createKey('lock', name)], arguments: [token, String(ttl)] });
+    return Number(result) === 1;
+  }
+
+  /**
+   * Release a lock, only if it is still held with this token.
+   * @return {Promise<boolean>} False if the lock has expired or belongs to someone else.
+   **/
+  async releaseLock(name: string, token: string): Promise<boolean> {
+    const raw = this.rawClient();
+    if (!raw) {
+      return false;
+    }
+    const result = await raw.eval(RELEASE_LOCK_SCRIPT, { keys: [this.createKey('lock', name)], arguments: [token] });
+    return Number(result) === 1;
+  }
+
+  private rawClient(): RawRedisClient | undefined {
+    if (!this.isEnabled) {
+      return undefined;
+    }
+    return (this.redisClient as unknown as { client?: RawRedisClient }).client;
   }
 }

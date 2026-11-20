@@ -7,24 +7,24 @@ const DEFAULT_API_URL = 'http://openenvironment.itl-dev.com:3003';
 const DEFAULT_API_METHODS = {
   getData: {
     requestType: 'GET',
-    urlSuffix: '/api/documents/{id}'
+    urlSuffix: '/api/documents/{id}',
   },
   createData: {
     requestType: 'POST',
-    urlSuffix: '/api/documents'
+    urlSuffix: '/api/documents',
   },
   updateData: {
     requestType: 'PUT',
-    urlSuffix: '/api/documents'
+    urlSuffix: '/api/documents',
   },
   deleteData: {
     requestType: 'POST',
-    urlSuffix: '/api/documents/revoke'
-  }
+    urlSuffix: '/api/documents/revoke',
+  },
 };
 const DEFAULT_HEADERS = {
   Accept: 'application/json',
-  'Content-Type': 'application/json'
+  'Content-Type': 'application/json',
 };
 
 /**
@@ -73,13 +73,13 @@ export default class HyperledgerFabricBlockchainProvider extends BlockchainProvi
       url: `${this.apiUrl}${this.apiMethods.getData.urlSuffix.replace(URL_DATA_ID_KEY, blockchainDataId)}`,
       method: this.apiMethods.getData.requestType,
       headers: this.headers,
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request.
     let blockchainData;
     try {
-      blockchainData = await HttpRequest.send(requestOptions);
+      blockchainData = await HttpRequest.send({ ...requestOptions, tls: this.config.tls });
       this.log.save('blockchain-get-data-response', { id, response: blockchainData });
     } catch (error) {
       this.log.save('blockchain-get-data-error', { error: error && error.message, params: { id } });
@@ -110,15 +110,15 @@ export default class HyperledgerFabricBlockchainProvider extends BlockchainProvi
         id: blockchainDataId,
         name: blockchainDataName,
         issuerId: userId,
-        documentData: data
+        documentData: data,
       }),
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request.
     let blockchainData;
     try {
-      blockchainData = await HttpRequest.send(requestOptions);
+      blockchainData = await HttpRequest.send({ ...requestOptions, tls: this.config.tls });
       this.log.save('blockchain-create-data-response', { id, response: blockchainData });
     } catch (error) {
       this.log.save('blockchain-create-data-error', { error: error && error.message, params: { id } });
@@ -149,15 +149,15 @@ export default class HyperledgerFabricBlockchainProvider extends BlockchainProvi
         id: blockchainDataId,
         name: blockchainDataName,
         issuerId: userId,
-        documentData: data
+        documentData: data,
       }),
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request.
     let blockchainData;
     try {
-      blockchainData = await HttpRequest.send(requestOptions);
+      blockchainData = await HttpRequest.send({ ...requestOptions, tls: this.config.tls });
       this.log.save('blockchain-update-data-response', { id, response: blockchainData });
     } catch (error) {
       this.log.save('blockchain-update-data-error', { error: error && error.message, params: { id } });
@@ -184,15 +184,15 @@ export default class HyperledgerFabricBlockchainProvider extends BlockchainProvi
       headers: this.headers,
       body: JSON.stringify({
         id: blockchainDataId,
-        revokeReason: userId
+        revokeReason: userId,
       }),
-      timeout: this.timeout
+      timeout: this.timeout,
     };
 
     // Do request.
     let blockchainData;
     try {
-      blockchainData = await HttpRequest.send(requestOptions);
+      blockchainData = await HttpRequest.send({ ...requestOptions, tls: this.config.tls });
       this.log.save('blockchain-delete-data-response', { id, response: blockchainData });
     } catch (error) {
       this.log.save('blockchain-delete-data-error', { error: error && error.message, params: { id } });

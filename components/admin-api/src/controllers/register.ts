@@ -1,10 +1,10 @@
 import { matchedData } from 'express-validator';
-import axios from 'axios';
 
 import { Controller } from './controller';
 import { Stream } from '../lib/stream';
 import { RegisterBusiness } from '../businesses/register';
 import { TaskService } from '../services/task';
+import { PublicError } from '../lib/public_error';
 
 /**
  * Register controller.
@@ -148,7 +148,7 @@ export class RegisterController extends Controller {
 
       const currentRegisterState = await this.registerBusiness.findRegisterById(id);
       if (!currentRegisterState) {
-        throw new Error('Register not found.');
+        throw new PublicError('Register not found.');
       }
       register = await this.registerBusiness.updateRegisterById(
         id,
@@ -319,7 +319,7 @@ export class RegisterController extends Controller {
       // Update register updatedByPerson.
       const currentRegisterState = await this.registerBusiness.findRegisterById(body.registerId);
       if (!currentRegisterState) {
-        throw new Error('Register not found.');
+        throw new PublicError('Register not found.');
       }
       await this.registerBusiness.updateRegisterById(
         body.registerId,
@@ -372,7 +372,7 @@ export class RegisterController extends Controller {
       // Check if the key is personal and strict access is disabled.
       const isStrictAccessEnabled = unitAccess?.some((item) => item?.data?.strictAccess?.keys.includes(parseInt(key_id)));
       if (isStrictAccessEnabled) {
-        return this.responseError(res, new Error('Cannot set the key as personal when strict access is enabled.'));
+        return this.responseError(res, new PublicError('Cannot set the key as personal when strict access is enabled.'));
       }
     }
 
@@ -388,7 +388,7 @@ export class RegisterController extends Controller {
       // Update register updatedByPerson.
       const currentRegisterState = await this.registerBusiness.findRegisterById(body.registerId);
       if (!currentRegisterState) {
-        throw new Error('Register not found.');
+        throw new PublicError('Register not found.');
       }
       await this.registerBusiness.updateRegisterById(
         body.registerId,
@@ -404,7 +404,7 @@ export class RegisterController extends Controller {
 
       const currentKeyState = await this.registerBusiness.findKeyById(key_id);
       if (!currentKeyState) {
-        throw new Error('Key not found.');
+        throw new PublicError('Key not found.');
       }
       key = await this.registerBusiness.updateKeyById(
         key_id,
@@ -446,11 +446,11 @@ export class RegisterController extends Controller {
       // Update register updatedByPerson.
       const currentKeyState = await this.registerBusiness.findKeyById(key_id);
       if (!currentKeyState) {
-        throw new Error('Key not found.');
+        throw new PublicError('Key not found.');
       }
       const currentRegisterState = await this.registerBusiness.findRegisterById(currentKeyState.registerId);
       if (!currentRegisterState) {
-        throw new Error('Register not found.');
+        throw new PublicError('Register not found.');
       }
 
       await this.registerBusiness.updateRegisterById(
@@ -605,13 +605,7 @@ export class RegisterController extends Controller {
     try {
       register = await this.registerBusiness.export(id, { withData, file });
       if (file) {
-        const response = await axios({
-          method: register.method,
-          url: register.url,
-          headers: register.headers,
-          responseType: 'stream',
-        });
-        return response.data.pipe(res);
+        return register.stream.pipe(res);
       }
       if (!register) {
         return this.responseError(res, 'Not found.', 404);
@@ -647,16 +641,10 @@ export class RegisterController extends Controller {
             addData,
             file,
           },
-          undefined,
+          req,
           accessInfo,
         );
-        const response = await axios({
-          method: register.method,
-          url: register.url,
-          headers: register.headers,
-          responseType: 'stream',
-        });
-        return req.pipe(response.data).pipe(res);
+        return register.stream.pipe(res);
       } else {
         let fileContentBuffer;
         let chunks = [];
@@ -700,13 +688,7 @@ export class RegisterController extends Controller {
     try {
       register = await this.registerBusiness.export(id, { withData, file, keyIds });
       if (file) {
-        const response = await axios({
-          method: register.method,
-          url: register.url,
-          headers: register.headers,
-          responseType: 'stream',
-        });
-        return response.data.pipe(res);
+        return register.stream.pipe(res);
       }
       if (!register) {
         return this.responseError(res, 'Not found.', 404);
@@ -729,14 +711,8 @@ export class RegisterController extends Controller {
     const { clear_records: clearRecords = false } = matchedData(req, { locations: ['query'] });
     try {
       const accessInfo = this.getRequestAccessInfo(req);
-      const register = await this.registerBusiness.streamImport(clearRecords, accessInfo);
-      const response = await axios({
-        method: register.method,
-        url: register.url,
-        headers: register.headers,
-        responseType: 'stream',
-      });
-      return req.pipe(response.data).pipe(res);
+      const register = await this.registerBusiness.streamImport(clearRecords, req, accessInfo);
+      return register.stream.pipe(res);
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode, error.details);
     }
@@ -765,12 +741,12 @@ export class RegisterController extends Controller {
       // Update register updatedByPerson.
       const currentRegisterState = await this.registerBusiness.findRegisterById(registerId);
       if (!currentRegisterState) {
-        throw new Error('Register not found.');
+        throw new PublicError('Register not found.');
       }
       // Update key updatedByPerson.
       const currentKeyState = await this.registerBusiness.findKeyById(keyId);
       if (!currentKeyState) {
-        throw new Error('Key not found.');
+        throw new PublicError('Key not found.');
       }
 
       let data;

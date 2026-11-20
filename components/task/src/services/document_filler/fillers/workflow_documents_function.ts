@@ -1,6 +1,6 @@
-
 import { Filler } from './filler';
 import { TaskModel } from '../../../models/task';
+import { getLog } from '../../../lib/context';
 
 /**
  * Workflow documents function filler.
@@ -49,18 +49,16 @@ export class WorkflowDocumentsFunctionFiller extends Filler {
       let valueToSet;
       try {
         // Process string function.
-        valueToSet = this.sandbox.evalWithArgs(
-          itemSchema.documentFunction,
-          [itemSchema.isCurrentOnly === false ? allProcessDocuments : documents],
-          { meta: { fn: 'WorkflowDocumentsFunctionFiller.fill.documentFunction', workflowId } },
-        );
+        valueToSet = this.sandbox.evalWithArgs(itemSchema.documentFunction, [itemSchema.isCurrentOnly === false ? allProcessDocuments : documents], {
+          meta: { fn: 'WorkflowDocumentsFunctionFiller.fill.documentFunction', workflowId },
+        });
 
         // Check.
         if (valueToSet === null && !itemSchema.allowNull) {
           valueToSet = undefined;
         }
       } catch (error) {
-        global.log.save('workflow-documents-function-field-filling-error', error, 'warn');
+        getLog().save('workflow-documents-function-field-filling-error', error, 'warn');
       }
 
       // Return value to set.
@@ -71,4 +69,3 @@ export class WorkflowDocumentsFunctionFiller extends Filler {
     return objectToFill;
   }
 }
-

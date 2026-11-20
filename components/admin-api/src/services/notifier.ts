@@ -1,7 +1,10 @@
 import querystring from 'querystring';
 
-import { HttpRequest } from '../lib/http_request';
 import { getTraceId } from '@liquio/back-core';
+
+import { HttpRequest } from '../lib/http_request';
+import { getInternalHttpsAgent } from '../lib/internal_transport';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * Notifier service.
@@ -23,17 +26,17 @@ export class NotifierService {
   constructor() {
     // Define singleton.
     if (!NotifierService.singleton) {
-      this.server = global.config.notifier.server;
-      this.port = global.config.notifier.port;
-      this.user = global.config.notifier.user;
-      this.routes = global.config.notifier.routes;
-      this.password = global.config.notifier.password;
+      this.server = getConfig().notifier.server;
+      this.port = getConfig().notifier.port;
+      this.user = getConfig().notifier.user;
+      this.routes = getConfig().notifier.routes;
+      this.password = getConfig().notifier.password;
       this.headers = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
         Authorization: `Basic ${Buffer.from(`${this.user}:${this.password}`, 'utf8').toString('base64')}`,
       };
-      this.timeout = global.config.notifier.timeout || 30000;
+      this.timeout = getConfig().notifier.timeout || 30000;
       NotifierService.singleton = this;
     }
 
@@ -52,6 +55,7 @@ export class NotifierService {
     };
 
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.toAll}`,
       method: HttpRequest.Methods.POST,
       headers: this.getHeadersWithTraceId(),
@@ -59,7 +63,7 @@ export class NotifierService {
       timeout: this.timeout,
       json: true,
     });
-    global.log.save('send-message-to-all-notifier-service-response', response);
+    getLog().save('send-message-to-all-notifier-service-response', response);
 
     return response;
   }
@@ -71,12 +75,13 @@ export class NotifierService {
    */
   async getMessagesForAllUsers(start, count) {
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.toAll}?start=${start}&count=${count}`,
       method: HttpRequest.Methods.GET,
       headers: this.getHeadersWithTraceId(),
       timeout: this.timeout,
     });
-    global.log.save('get-message-for-all-notifier-service-response', response);
+    getLog().save('get-message-for-all-notifier-service-response', response);
 
     return response;
   }
@@ -87,12 +92,13 @@ export class NotifierService {
    */
   async deleteMessagesForAllUsers(messageId) {
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.toAll}/${messageId}`,
       method: HttpRequest.Methods.DELETE,
       headers: this.getHeadersWithTraceId(),
       timeout: this.timeout,
     });
-    global.log.save('delete-message-for-all-notifier-service-response', response);
+    getLog().save('delete-message-for-all-notifier-service-response', response);
 
     return response;
   }
@@ -107,6 +113,7 @@ export class NotifierService {
     try {
       let responseData = await HttpRequest.send(
         {
+          httpsAgent: getInternalHttpsAgent(),
           url: `${this.server}:${this.port}${this.routes.ping}_with_auth`,
           method: HttpRequest.Methods.GET,
           headers: this.getHeadersWithTraceId(),
@@ -123,13 +130,14 @@ export class NotifierService {
 
       return { version, customer, environment, body };
     } catch (error) {
-      global.log.save('send-ping-request-to-notify', error.message);
+      getLog().save('send-ping-request-to-notify', error.message);
     }
   }
 
   async getMessageTemplates(params?) {
     const query = params ? this.queryParamsToString(params) : '';
     return HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}/template?${query}`,
       method: HttpRequest.Methods.GET,
       headers: { 'x-trace-id': getTraceId() },
@@ -138,6 +146,7 @@ export class NotifierService {
 
   async createMessageTemplate(dto) {
     return HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}/template`,
       method: HttpRequest.Methods.POST,
       body: JSON.stringify(dto),
@@ -147,6 +156,7 @@ export class NotifierService {
 
   async updateMessageTemplate(id, dto) {
     return HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}/template/${id}`,
       method: HttpRequest.Methods.PUT,
       body: JSON.stringify(dto),
@@ -157,12 +167,13 @@ export class NotifierService {
   async deleteMessageTemplate(id) {
     try {
       await HttpRequest.send({
+        httpsAgent: getInternalHttpsAgent(),
         url: `${this.server}:${this.port}/template/${id}`,
         method: HttpRequest.Methods.DELETE,
         headers: this.getHeadersWithTraceId(),
       });
     } catch (error) {
-      global.log.save('delete-message-template-error', { error: error.message || error.toString(), id }, 'error');
+      getLog().save('delete-message-template-error', { error: error.message || error.toString(), id }, 'error');
       throw error;
     }
   }
@@ -175,6 +186,7 @@ export class NotifierService {
     };
 
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.sendToUserEmails}`,
       method: HttpRequest.Methods.POST,
       headers: this.getHeadersWithTraceId(),
@@ -182,7 +194,7 @@ export class NotifierService {
       timeout: this.timeout,
       json: true,
     });
-    global.log.save('send-message-by-emails-notifier-service-response', response);
+    getLog().save('send-message-by-emails-notifier-service-response', response);
 
     return response;
   }
@@ -195,6 +207,7 @@ export class NotifierService {
     };
 
     const response = await HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}${this.routes.sendToUserList}`,
       method: HttpRequest.Methods.POST,
       headers: this.getHeadersWithTraceId(),
@@ -202,13 +215,14 @@ export class NotifierService {
       timeout: this.timeout,
       json: true,
     });
-    global.log.save('send-message-by-user-ids-notifier-service-response', response);
+    getLog().save('send-message-by-user-ids-notifier-service-response', response);
 
     return response;
   }
 
   async importMessageTemplates({ dataToImport, rewriteTemplateIds }) {
     return HttpRequest.send({
+      httpsAgent: getInternalHttpsAgent(),
       url: `${this.server}:${this.port}/import/template`,
       method: HttpRequest.Methods.POST,
       body: JSON.stringify({ dataToImport, rewriteTemplateIds }),

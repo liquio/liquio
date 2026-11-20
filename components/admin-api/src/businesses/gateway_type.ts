@@ -1,3 +1,5 @@
+import { getModels } from '../lib/context';
+
 /**
  * Gateway type business.
  */
@@ -26,6 +28,6 @@ export class GatewayTypeBusiness {
    * @returns {Promise<GatewayTypeEntity[]>}
    */
   async getAll() {
-    return await global.models.gatewayType.getAll();
+    return await getModels().gatewayType.getAll();
   }
 }

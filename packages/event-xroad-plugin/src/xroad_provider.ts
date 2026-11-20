@@ -1,16 +1,31 @@
 import axios from "axios";
 import * as xml2js from "xml2js";
-
-const PropByPath = require("prop-by-path");
-
 import {
   EventExternalServiceProvider,
   ExternalServiceSendResult,
   ExternalServiceSendContext,
 } from "@liquio/plugin-sdk";
+
 import { XroadOptions, XroadServiceConfig, XroadTrembitaHeader } from "./types";
 
+const PropByPath = require("prop-by-path");
+
 const MAX_LOG_LENGTH = 100e3 - 1000;
+
+/**
+ * Strips userinfo and query string from a URL so it is safe to log.
+ */
+const urlForLog = (value: string): string => {
+  try {
+    const u = new URL(value);
+    u.username = "";
+    u.password = "";
+    u.search = "";
+    return u.toString();
+  } catch {
+    return "[invalid-url]";
+  }
+};
 
 /**
  * Shape of the `data` argument that `TrembitaProvider#send` used to receive
@@ -104,7 +119,11 @@ export class XroadProvider extends EventExternalServiceProvider<XroadOptions> {
 
     this.context.log.save("send-to-trembita|request-options", {
       requestOptions: {
-        ...requestOptions,
+        url: urlForLog(trembitaUrl),
+        method: "POST",
+        soapAction: trembitaConfig.serviceConfig.soapAction,
+        timeout,
+        requestBodySizeInMB: requestOptions.requestBodySizeInMB,
         data: debug ? soapMessageCutToLog : soapMessageForLog,
       },
       sendFileFromEventKeyName: sendFileFromEventKeyName || "",

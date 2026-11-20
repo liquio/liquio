@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 
 export class UnitRulesModel extends Model {
@@ -20,8 +21,8 @@ export class UnitRulesModel extends Model {
           tableName: 'unit_rules',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       UnitRulesModel.singleton = this;
@@ -32,13 +33,12 @@ export class UnitRulesModel extends Model {
 
   /**
    * Get all rules by type.
-   * @param {string} ruleType Unit rule type. 
+   * @param {string} ruleType Unit rule type.
    */
   async getAllByType(ruleType) {
     const whereClause = { unit_rule_type: ruleType };
     const unitRulesRaw = await this.model.findAll({ where: whereClause });
     const unitRules = unitRulesRaw[0];
-    return unitRules && unitRules.rule_schema && unitRules.rule_schema.list || [];
+    return (unitRules && unitRules.rule_schema && unitRules.rule_schema.list) || [];
   }
 }
-

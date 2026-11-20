@@ -3,7 +3,6 @@
  * Created by lomaka on 27.03.17.
  */
 
-const basicAuthToken = process.env.BASIC_AUTH || 'test:test';
 
 angular.module('admin').controller('list', function ($scope, $http,$rootScope) {
 
@@ -60,10 +59,7 @@ angular.module('admin').controller('list', function ($scope, $http,$rootScope) {
     $rootScope.loading = true;
     $http({
       method: 'POST',
-      url: '/message/phonesList',
-      headers: {
-        Authorization: `Basic ${basicAuthToken}`
-      },
+      url: '/admin/api/message/phonesList',
       data: {
         list_phone: ['+38'+$scope.testMessage.code+$scope.testMessage.number],
         short_message: $scope.useTranslit?$scope.short_text:'',
@@ -85,10 +81,7 @@ angular.module('admin').controller('list', function ($scope, $http,$rootScope) {
     $rootScope.loading = true;
     $http({
       method: 'POST',
-      url: '/message/eventId',
-      headers: {
-        Authorization: `Basic ${basicAuthToken}`
-      },
+      url: '/admin/api/message/eventId',
       data: {
         event_id: $scope.data.eventSelected,
         short_message: $scope.short_text,

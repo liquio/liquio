@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { WorkflowHistoryEntity } from '../entities/workflow_history';
+import { getModels } from '../lib/context';
 
 export class WorkflowHistoryModel extends Model {
   static singleton: WorkflowHistoryModel;
@@ -58,7 +59,7 @@ export class WorkflowHistoryModel extends Model {
     const entity = this.prepareEntity(createdWorkflowHistory);
 
     const { workflowTemplateId, updatedAt } = entity;
-    await global.models.workflowTemplate.setUpdatedAt(workflowTemplateId, updatedAt, transaction);
+    await getModels().workflowTemplate.setUpdatedAt(workflowTemplateId, updatedAt, transaction);
 
     return entity;
   }

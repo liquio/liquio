@@ -71,7 +71,7 @@ export default class KeyEntity extends Entity {
     is_encrypted,
     to_export,
     created_at,
-    updated_at
+    updated_at,
   }) {
     super();
 

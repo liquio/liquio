@@ -1,4 +1,5 @@
 import { ElasticService } from '../services/elastic';
+import { getLog } from '../lib/context';
 
 /**
  * Elastic business.
@@ -44,7 +45,7 @@ export class ElasticBusiness {
       if (acknowledged) this.isSearchTemplateUpdated = true;
     } catch (error) {
       reason = `Error: ${error?.message}`;
-      global.log.save('elactic-update-search-template-error', { error: error?.message, templateName });
+      getLog().save('elactic-update-search-template-error', { error: error?.message, templateName });
     }
     return { templateName, isSearchTemplateUpdated: this.isSearchTemplateUpdated, reason };
   }

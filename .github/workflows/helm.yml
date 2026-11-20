@@ -6,6 +6,13 @@ on:
       - main
     paths:
       - 'helm-chart/**'
+  workflow_call:
+    inputs:
+      release:
+        description: 'Also package and push the chart to GHCR'
+        required: false
+        type: boolean
+        default: false
 
 env:
   HELM_VERSION: v4.1.4
@@ -17,7 +24,7 @@ env:
 jobs:
   helm-lint:
     if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
 
@@ -55,8 +62,8 @@ jobs:
 
   helm-release:
     needs: helm-lint
-    if: needs.helm-lint.result == 'success'
-    runs-on: ubuntu-latest
+    if: inputs.release == true
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write

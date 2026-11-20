@@ -1,11 +1,18 @@
 import debugFactory from 'debug';
-const debug = debugFactory('test:log');
+import { Sandbox } from '@liquio/back-core';
 
 import { Provider } from './provider';
+import { setAppContext } from '../../../lib/context';
 
-global.log = {
-  save: jest.fn().mockImplementation(debug),
-} as any;
+const debug = debugFactory('test:log');
+
+new Sandbox();
+
+setAppContext({
+  log: {
+    save: jest.fn().mockImplementation(debug),
+  } as any,
+});
 
 const OVERRIDE_ERROR_MESSAGE = 'Method must be override for a specific provider.';
 
@@ -245,7 +252,7 @@ describe('Provider', () => {
 
     it('parses a numeric string with a comma decimal separator', () => {
       const provider = new Provider();
-      expect(provider.parseAmount('12,50')).toBe(12.50);
+      expect(provider.parseAmount('12,50')).toBe(12.5);
     });
 
     it('throws on a malformed string', () => {

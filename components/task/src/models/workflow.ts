@@ -2,10 +2,12 @@ import Sequelize from 'sequelize';
 import SqlString from 'sequelize/lib/sql-string';
 import _ from 'lodash';
 import moment from 'moment';
+
 import { Model } from './model';
 import { Entity } from '../entities/entity';
 import { WorkflowEntity } from '../entities/workflow';
 import { RedisClient } from '../lib/redis_client';
+import { getConfig, getModels } from '../lib/context';
 
 const GET_ALL_BY_USER_ID_CACHE_TTL = 600; // 10 minutes
 
@@ -25,11 +27,11 @@ export class WorkflowModel extends Model {
           parent_id: {
             type: Sequelize.UUIDV1,
             allowNull: true,
-            references: { model: 'workflows', key: 'id' }
+            references: { model: 'workflows', key: 'id' },
           },
           workflow_template_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'workflow_templates', key: 'id' }
+            references: { model: 'workflow_templates', key: 'id' },
           },
           name: Sequelize.STRING,
           is_final: Sequelize.BOOLEAN,
@@ -48,14 +50,14 @@ export class WorkflowModel extends Model {
           created_by_units: Sequelize.ARRAY(Sequelize.INTEGER),
           observer_units: Sequelize.ARRAY(Sequelize.INTEGER),
           is_personal: Sequelize.BOOLEAN,
-          statuses: Sequelize.JSONB
+          statuses: Sequelize.JSONB,
         },
         {
           tableName: 'workflows',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.paginate = this.paginate;
@@ -72,34 +74,31 @@ export class WorkflowModel extends Model {
    * @param {object} options Options.
    * @returns {Promise<WorkflowEntity[]>}
    */
-  async getAllByUserId(
-    userId,
-    { userUnitIds, currentPage, perPage, filters, sort, with: relations, onboardingWorkflowTemplateIds }
-  ) {
+  async getAllByUserId(userId, { userUnitIds, currentPage, perPage, filters, sort, with: relations, onboardingWorkflowTemplateIds }) {
     const sequelizeOptions: any = {
       currentPage,
       perPage,
       filters: {
         ..._.pick(filters, ['is_final', 'workflow_status_id']),
-        [Sequelize.Op.and]: []
-      }
+        [Sequelize.Op.and]: [],
+      },
     };
 
     const sequelizeOptionsAndFilter: any = {
       [Sequelize.Op.or]: {
         [Sequelize.Op.and]: {
           created_by: userId,
-          is_personal: true
+          is_personal: true,
         },
-      }
+      },
     };
 
-    const defaultUnits = global.config.auth.defaultUnits || [];
-    const userUnitsAll = userUnitIds.all.filter(v => !defaultUnits.includes(v));
-    const userUnitsHead = userUnitIds.head.filter(v => !defaultUnits.includes(v));
+    const defaultUnits = getConfig().auth.defaultUnits || [];
+    const userUnitsAll = userUnitIds.all.filter((v) => !defaultUnits.includes(v));
+    const userUnitsHead = userUnitIds.head.filter((v) => !defaultUnits.includes(v));
 
     // Filter by created by units only if enabled.
-    if (global.config.filters?.workflowCreatedByUnits) {
+    if (getConfig().filters?.workflowCreatedByUnits) {
       if (userUnitsAll.length > 0) {
         sequelizeOptionsAndFilter[Sequelize.Op.or].created_by_units = { [Sequelize.Op.overlap]: userUnitsAll };
       }
@@ -108,7 +107,7 @@ export class WorkflowModel extends Model {
       }
     }
 
-    if (global.config.modules.main && global.config.modules.main.observerUnits && userUnitsAll.length > 0) {
+    if (getConfig().modules.main && getConfig().modules.main.observerUnits && userUnitsAll.length > 0) {
       sequelizeOptionsAndFilter[Sequelize.Op.or].observer_units = { [Sequelize.Op.overlap]: userUnitsAll };
     }
     sequelizeOptions.filters[Sequelize.Op.and].push(sequelizeOptionsAndFilter);
@@ -117,15 +116,15 @@ export class WorkflowModel extends Model {
       sequelizeOptions.filters[Sequelize.Op.and].push({
         [Sequelize.Op.or]: {
           name: {
-            [Sequelize.Op.iLike]: `%${filters.name}%`
+            [Sequelize.Op.iLike]: `%${filters.name}%`,
           },
           '$workflowTemplate.name$': {
-            [Sequelize.Op.iLike]: `%${filters.name}%`
+            [Sequelize.Op.iLike]: `%${filters.name}%`,
           },
           number: {
-            [Sequelize.Op.iLike]: `%${filters.name}%`
-          }
-        }
+            [Sequelize.Op.iLike]: `%${filters.name}%`,
+          },
+        },
       });
     }
 
@@ -133,55 +132,50 @@ export class WorkflowModel extends Model {
       sequelizeOptions.filters[Sequelize.Op.and].push({
         [Sequelize.Op.or]: {
           name: {
-            [Sequelize.Op.iLike]: `%${filters.search}%`
+            [Sequelize.Op.iLike]: `%${filters.search}%`,
           },
           '$workflowTemplate.name$': {
-            [Sequelize.Op.iLike]: `%${filters.search}%`
+            [Sequelize.Op.iLike]: `%${filters.search}%`,
           },
           number: {
-            [Sequelize.Op.iLike]: `%${filters.search}%`
+            [Sequelize.Op.iLike]: `%${filters.search}%`,
           },
-        }
+        },
       });
     }
 
     if (onboardingWorkflowTemplateIds) {
       sequelizeOptions.filters.workflow_template_id = {
-        [Sequelize.Op.notIn]: onboardingWorkflowTemplateIds
+        [Sequelize.Op.notIn]: onboardingWorkflowTemplateIds,
       };
     }
 
     if (typeof filters.workflow_template_id !== 'undefined') {
       sequelizeOptions.filters[Sequelize.Op.and].push({
-        workflow_template_id: filters.workflow_template_id
+        workflow_template_id: filters.workflow_template_id,
       });
     }
 
-    sequelizeOptions.include = [
-      { model: global.models.workflowTemplate.model, required: true, attributes: ['data'] }
-    ];
+    sequelizeOptions.include = [{ model: getModels().workflowTemplate.model, required: true, attributes: ['data'] }];
 
     const taskModel = {
-      model: global.models.task.model,
+      model: getModels().task.model,
       required: true,
       attributes: ['id', 'is_entry', 'finished', 'finished_at', 'updated_at'],
       duplicating: false,
       where: {
-        is_entry: true
+        is_entry: true,
       },
       include: [
         {
-          model: global.models.document.model,
+          model: getModels().document.model,
           required: true,
-          attributes: ['id', 'created_at', 'updated_at', 'external_id']
-        }
-      ]
+          attributes: ['id', 'created_at', 'updated_at', 'external_id'],
+        },
+      ],
     };
 
-    if (
-      typeof filters['tasks'] !== 'undefined' &&
-      typeof filters['tasks']['deleted'] !== 'undefined'
-    ) {
+    if (typeof filters['tasks'] !== 'undefined' && typeof filters['tasks']['deleted'] !== 'undefined') {
       if (filters['tasks']['deleted'] === true) {
         taskModel.where['deleted'] = true;
       } else if (filters['tasks']['deleted'] === false) {
@@ -192,20 +186,16 @@ export class WorkflowModel extends Model {
     if (typeof filters['is_draft'] !== 'undefined') {
       if (filters['is_draft'] === true) {
         taskModel.where['finished_at'] = {
-          [Sequelize.Op.eq]: null
+          [Sequelize.Op.eq]: null,
         };
-
       } else if (filters['is_draft'] === false) {
         taskModel.where['finished_at'] = {
-          [Sequelize.Op.not]: null
+          [Sequelize.Op.not]: null,
         };
       }
     }
 
-    if (
-      typeof filters['tasks'] !== 'undefined' &&
-      typeof filters['tasks']['is_system'] !== 'undefined'
-    ) {
+    if (typeof filters['tasks'] !== 'undefined' && typeof filters['tasks']['is_system'] !== 'undefined') {
       if (filters['tasks']['is_system'] === true) {
         taskModel.where['is_system'] = true;
       } else if (filters['tasks']['is_system'] === false) {
@@ -220,12 +210,7 @@ export class WorkflowModel extends Model {
 
     if (sort.documents) {
       sequelizeOptions.sort = [
-        [
-          { model: global.models.task.model },
-          { model: global.models.document.model },
-          'updated_at',
-          sort.documents['updated_at']
-        ]
+        [{ model: getModels().task.model }, { model: getModels().document.model }, 'updated_at', sort.documents['updated_at']],
       ];
     } else {
       sort = this.prepareSort(sort);
@@ -234,10 +219,15 @@ export class WorkflowModel extends Model {
       }
     }
 
-    const cacheKey = RedisClient.createKey(
-      'workflows', 'getAllByUserId', userId,
-      { userUnitIds, currentPage, perPage, filters, sort, with: relations, onboardingWorkflowTemplateIds },
-    );
+    const cacheKey = RedisClient.createKey('workflows', 'getAllByUserId', userId, {
+      userUnitIds,
+      currentPage,
+      perPage,
+      filters,
+      sort,
+      with: relations,
+      onboardingWorkflowTemplateIds,
+    });
 
     const { data: workflows } = await RedisClient.getOrSetWithTimestamp(
       cacheKey,
@@ -246,19 +236,19 @@ export class WorkflowModel extends Model {
       GET_ALL_BY_USER_ID_CACHE_TTL,
     );
 
-    const promises = workflows.data.map(async item => {
+    const promises = workflows.data.map(async (item) => {
       let workflowEntity = this.prepareEntity(item);
 
-      workflowEntity.workflowTemplate = global.models.workflowTemplate.prepareEntity(item.workflowTemplate);
+      workflowEntity.workflowTemplate = getModels().workflowTemplate.prepareEntity(item.workflowTemplate);
 
-      const tasks = item.tasks.map(taskModel => global.models.task.prepareEntity(taskModel));
+      const tasks = item.tasks.map((taskModel) => getModels().task.prepareEntity(taskModel));
 
-      const entryTask = tasks.find(v => v.isEntry === true);
+      const entryTask = tasks.find((v) => v.isEntry === true);
       if (entryTask) {
         const entryDocument = entryTask.document;
         if (entryDocument) {
           workflowEntity.entryTask = {
-            document: entryDocument
+            document: entryDocument,
           };
         }
 
@@ -274,15 +264,15 @@ export class WorkflowModel extends Model {
         workflowEntity.lastEntryTaskFinishedAt = lastEntryTask?.finishedAt;
       }
 
-      const externalIds = item.tasks.map(v => v.document.external_id);
+      const externalIds = item.tasks.map((v) => v.document.external_id);
 
-      workflowEntity.externalIds = externalIds.filter(v => !!v);
+      workflowEntity.externalIds = externalIds.filter((v) => !!v);
 
       if (relations) {
         workflowEntity = await this.getEntitiesByRelations({
           relations,
           sequelizeModel: item,
-          entity: workflowEntity
+          entity: workflowEntity,
         });
       }
 
@@ -304,16 +294,16 @@ export class WorkflowModel extends Model {
       filters: {},
       currentPage,
       perPage,
-      sort: [['created_at', 'desc']]
+      sort: [['created_at', 'desc']],
     };
 
     sequelizeOptions.include = [
       {
-        model: global.models.workflowTemplate.model,
+        model: getModels().workflowTemplate.model,
         required: true,
         attributes: ['id', 'workflow_template_category_id', 'name', 'description', 'data'],
-        include: [{ model: global.models.workflowTemplateCategory.model }]
-      }
+        include: [{ model: getModels().workflowTemplateCategory.model }],
+      },
     ];
 
     if (workflowTemplateId) {
@@ -330,7 +320,7 @@ export class WorkflowModel extends Model {
 
     const workflows = await this.model.paginate(sequelizeOptions);
 
-    const promises = workflows.data.map(async item => {
+    const promises = workflows.data.map(async (item) => {
       const workflowEntity = this.prepareEntity(item);
 
       const workflowTemplateEntity = item.workflowTemplate.prepareEntity(item.workflowTemplate);
@@ -339,14 +329,9 @@ export class WorkflowModel extends Model {
 
       if (item.workflowTemplate && item.workflowTemplate.workflowTemplateCategory) {
         const workflowTemplateCategory = item.workflowTemplate.workflowTemplateCategory;
-        const workflowTemplateCategoryEntity = item.workflowTemplate.workflowTemplateCategory.prepareEntity(
-          workflowTemplateCategory
-        );
+        const workflowTemplateCategoryEntity = item.workflowTemplate.workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
 
-        workflowEntity.workflowTemplate.workflowTemplateCategory = Entity.filterResponse(
-          workflowTemplateCategoryEntity,
-          true
-        );
+        workflowEntity.workflowTemplate.workflowTemplateCategory = Entity.filterResponse(workflowTemplateCategoryEntity, true);
       }
 
       return workflowEntity;
@@ -365,7 +350,7 @@ export class WorkflowModel extends Model {
    */
   async findById(id, options: any = {}) {
     const workflow = await this.model.findByPk(id, {
-      include: [{ model: global.models.workflowTemplate.model, required: true }]
+      include: [{ model: getModels().workflowTemplate.model, required: true }],
     });
 
     if (!workflow) {
@@ -374,15 +359,13 @@ export class WorkflowModel extends Model {
 
     let workflowEntity = this.prepareEntity(workflow);
 
-    workflowEntity.workflowTemplate = workflow.workflowTemplate.prepareEntity(
-      workflow.workflowTemplate
-    );
+    workflowEntity.workflowTemplate = workflow.workflowTemplate.prepareEntity(workflow.workflowTemplate);
 
     if (options.with) {
       workflowEntity = await this.getEntitiesByRelations({
         relations: options.with,
         sequelizeModel: workflow,
-        entity: workflowEntity
+        entity: workflowEntity,
       });
     }
 
@@ -432,7 +415,7 @@ export class WorkflowModel extends Model {
     createdByUnitHeads = [],
     createdByUnits = [],
     observerUnits = [],
-    isPersonal = true
+    isPersonal = true,
   }) {
     // Prepare workflow record.
     const workflow = this.prepareForModel({
@@ -449,7 +432,7 @@ export class WorkflowModel extends Model {
       createdByUnitHeads,
       createdByUnits,
       observerUnits,
-      isPersonal
+      isPersonal,
     });
 
     // Create and return workflow.
@@ -519,8 +502,8 @@ export class WorkflowModel extends Model {
    * @returns {Promise<object[]>}
    */
   async getWorkflowsByUpdatedAt({ date, workflowTemplateId, currentPage = 1, perPage = 15, sort }) {
-    if (perPage > global.config.model.pagination.limitPerPage) {
-      perPage = global.config.model.pagination.limitPerPage;
+    if (perPage > getConfig().model.pagination.limitPerPage) {
+      perPage = getConfig().model.pagination.limitPerPage;
     }
 
     if (currentPage < 1) {
@@ -541,7 +524,10 @@ export class WorkflowModel extends Model {
       replacements.workflowTemplateId = workflowTemplateId;
     }
 
-    const count = parseInt((await this.db.query(`
+    const count = parseInt(
+      (
+        await this.db.query(
+          `
       select
         count(distinct a.workflow_id)
       from (
@@ -555,10 +541,13 @@ export class WorkflowModel extends Model {
       ) a
       inner join workflows as workflow on workflow.id = a.workflow_id
       ${whereClause}`,
-    { replacements, plain: true, type: Sequelize.QueryTypes.SELECT }
-    )).count);
+          { replacements, plain: true, type: Sequelize.QueryTypes.SELECT },
+        )
+      ).count,
+    );
 
-    const rows = await this.db.query(`
+    const rows = await this.db.query(
+      `
       select
         b.updated_at,
         "workflow"."id",
@@ -606,17 +595,17 @@ export class WorkflowModel extends Model {
       ${workflowTemplateId ? 'where workflow_template_id = :workflowTemplateId' : ''}
       order by b.updated_at ${SqlString.escape(orderByUpdatedAt)}
       limit :limit offset :offset`,
-    {
-      replacements: {
-        updatedAt: updatedAt,
-        workflowTemplateId,
-        orderByUpdatedAt: orderByUpdatedAt,
-        offset: (currentPage - 1) * perPage,
-        limit: perPage
+      {
+        replacements: {
+          updatedAt: updatedAt,
+          workflowTemplateId,
+          orderByUpdatedAt: orderByUpdatedAt,
+          offset: (currentPage - 1) * perPage,
+          limit: perPage,
+        },
+        nest: true,
+        type: Sequelize.QueryTypes.SELECT,
       },
-      nest: true,
-      type: Sequelize.QueryTypes.SELECT
-    }
     );
 
     const workflows = {
@@ -624,28 +613,23 @@ export class WorkflowModel extends Model {
         total: count,
         perPage: perPage,
         currentPage: currentPage,
-        lastPage: Math.max(Math.ceil(count / perPage), 1)
+        lastPage: Math.max(Math.ceil(count / perPage), 1),
       },
-      data: rows
+      data: rows,
     };
 
-    const promises = workflows.data.map(async item => {
+    const promises = workflows.data.map(async (item) => {
       const workflowEntity = this.prepareEntity(item);
 
-      const workflowTemplateEntity = global.models.workflowTemplate.prepareEntity(item.workflowTemplate);
+      const workflowTemplateEntity = getModels().workflowTemplate.prepareEntity(item.workflowTemplate);
 
       workflowEntity.workflowTemplate = workflowTemplateEntity;
 
       if (item.workflowTemplate && item.workflowTemplate.workflowTemplateCategory) {
         const workflowTemplateCategory = item.workflowTemplate.workflowTemplateCategory;
-        const workflowTemplateCategoryEntity = global.models.workflowTemplateCategory.prepareEntity(
-          workflowTemplateCategory
-        );
+        const workflowTemplateCategoryEntity = getModels().workflowTemplateCategory.prepareEntity(workflowTemplateCategory);
 
-        workflowEntity.workflowTemplate.workflowTemplateCategory = Entity.filterResponse(
-          workflowTemplateCategoryEntity,
-          true
-        );
+        workflowEntity.workflowTemplate.workflowTemplateCategory = Entity.filterResponse(workflowTemplateCategoryEntity, true);
       }
 
       return workflowEntity;
@@ -671,9 +655,9 @@ export class WorkflowModel extends Model {
   async getIdsByTemplateId(workflowTemplateId) {
     const ids = await this.model.findAll({
       where: { workflow_template_id: workflowTemplateId },
-      attributes: ['id']
+      attributes: ['id'],
     });
-    return ids.map(v => v.id);
+    return ids.map((v) => v.id);
   }
 
   /**
@@ -694,7 +678,7 @@ export class WorkflowModel extends Model {
         created_by: createdBy,
         created_by_ipn: null,
       },
-      { where: { created_by_ipn: createdByIpn }, returning: true }
+      { where: { created_by_ipn: createdByIpn }, returning: true },
     );
   }
 
@@ -739,7 +723,7 @@ export class WorkflowModel extends Model {
       {
         replacements: { userId },
         type: Sequelize.QueryTypes.SELECT,
-      }
+      },
     );
 
     return [wmax, emax, tmax, dmax].reduce((acc, cur) => (cur > acc ? cur : acc), 0);
@@ -762,7 +746,7 @@ export class WorkflowModel extends Model {
       {
         replacements: { taskId },
         type: Sequelize.QueryTypes.SELECT,
-      }
+      },
     );
 
     // Note: returns undefined if task/workflow not found.
@@ -797,7 +781,7 @@ export class WorkflowModel extends Model {
       createdByUnits: item.created_by_units,
       observerUnits: item.observer_units,
       isPersonal: item.is_personal,
-      statuses: item.statuses
+      statuses: item.statuses,
     });
   }
 
@@ -829,8 +813,7 @@ export class WorkflowModel extends Model {
       created_by_units: item.createdByUnits,
       observer_units: item.observerUnits,
       is_personal: item.isPersonal,
-      statuses: item.statuses
+      statuses: item.statuses,
     };
   }
 }
-

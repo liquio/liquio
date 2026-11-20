@@ -5,6 +5,9 @@ import { Controller } from './controller';
 import { WorkflowBusiness } from '../businesses/workflow';
 import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { WorkflowTemplateEntity } from '../entities/workflow_template';
+import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
+import { getLog } from '../lib/context';
 
 const MAX_TAGS_PER_WORKFLOW_TEMPLATE = 10;
 
@@ -56,7 +59,7 @@ export class WorkflowController extends Controller {
       savedWorkflowTemplateEntity = await this.workflowBusiness.create(workflowTemplateEntity);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-created-workflow', { user, data: savedWorkflowTemplateEntity });
+      await getLog().save('user-created-workflow', { user: toLogUser(user), data: savedWorkflowTemplateEntity });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -90,7 +93,7 @@ export class WorkflowController extends Controller {
       const lastWorkflowHistoryIdHeader = req.headers['last-workflow-history-id'];
 
       if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
-        const error = new Error('Header Last-Workflow-History-Id expired.');
+        const error = new PublicError('Header Last-Workflow-History-Id expired.');
         (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
         throw error;
       }
@@ -109,7 +112,7 @@ export class WorkflowController extends Controller {
 
       savedWorkflowTemplateEntity = await this.workflowBusiness.update(workflowTemplateEntity);
 
-      await global.log.save('user-updated-workflow', { user, data: savedWorkflowTemplateEntity });
+      await getLog().save('user-updated-workflow', { user: toLogUser(user), data: savedWorkflowTemplateEntity });
 
       // Auto save workflow process.
       const workflowHistory = await this.bpmnWorkflowBusiness.autoSaveVersion(id, { user });
@@ -216,7 +219,7 @@ export class WorkflowController extends Controller {
       await this.workflowBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-workflow', { user, data: { id } });
+      await getLog().save('user-deleted-workflow', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }

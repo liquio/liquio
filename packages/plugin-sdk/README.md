@@ -72,7 +72,7 @@ Implement `send()`. See [`@liquio/event-xroad-plugin`](../event-xroad-plugin) fo
 A full payment gateway integration. Implement all of:
 
 ```ts
-calculatePayment(data: unknown): Promise<unknown>
+calculatePayment(data: TaskPaymentData): Promise<unknown>
 handleStatus(data, providerOptions, status: string, queryParamsObject, headersObject, checkPrevTransaction?: boolean): Promise<unknown>
 confirmBySmsCode(providerOptions, calculatedData, smsCode: string): Promise<unknown>
 cancelOrder(providerOptions, orderId: string, transactionId: string, sessionId: string): Promise<unknown>
@@ -84,9 +84,16 @@ getWithdrawalFundsStatus(args: { paymentSystemParams; orderId }): Promise<unknow
 sendCheckRequest(providerOptions: unknown): Promise<unknown>
 ```
 
+`TaskPaymentData` supports both a single resolved payment (`amount`, `orderId`,
+and related fields) and the resolved `recipients` list form used by task payment
+controls. Providers that create one checkout from a recipient list are
+responsible for applying their gateway's aggregation rules.
+
 ### `ExternalReaderProvider`
 
-A registry pattern rather than a fixed method set — register whichever read methods your plugin exposes:
+A registry pattern rather than a fixed method set — register whichever read methods your plugin exposes.
+
+> **`userFilter` is caller-asserted.** external-reader has no user authentication of its own: the task service builds `userFilter` from the authenticated user, but anyone holding the external-reader Basic token can send any value. Don't use it as the only authorization for cross-user data, and keep external-reader reachable only from task.
 
 ```ts
 export type ProviderMethod = (args: ProviderMethodArgs) => Promise<unknown>;

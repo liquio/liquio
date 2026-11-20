@@ -1,6 +1,8 @@
 import _ from 'lodash';
 import type { Model as SequelizeModel } from 'sequelize';
 
+import { getConfig, getDb, getLog } from '../lib/context';
+
 export interface PaginationParams {
   currentPage?: number;
   perPage?: number;
@@ -26,10 +28,10 @@ export interface PaginatedResult<T> {
  * Base model.
  */
 export default class Model {
-  db: typeof global.db;
+  db: ReturnType<typeof getDb>;
 
   constructor() {
-    this.db = global.db;
+    this.db = getDb();
   }
 
   /**
@@ -42,8 +44,8 @@ export default class Model {
       order: [],
     };
 
-    if (perPage > global.config.model.pagination.limitPerPage) {
-      perPage = global.config.model.pagination.limitPerPage;
+    if (perPage > getConfig().model.pagination.limitPerPage) {
+      perPage = getConfig().model.pagination.limitPerPage;
     }
 
     if (currentPage < 1) {
@@ -122,7 +124,7 @@ export default class Model {
         }
       }
     } catch (error) {
-      global.log.save('relation-error', error, 'error');
+      getLog().save('relation-error', error, 'error');
       throw error;
     }
 

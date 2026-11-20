@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -73,4 +72,3 @@ export class WorkflowTemplateEntity extends Entity {
     return this.getFilterProperties();
   }
 }
-

@@ -1,7 +1,8 @@
-import axios from 'axios';
-import bodyParser from 'body-parser';
 import http from 'node:http';
 import https from 'node:https';
+
+import axios from 'axios';
+import bodyParser from 'body-parser';
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';
@@ -109,12 +110,8 @@ export class HttpRequest {
       // Return parsed body object - only the data part to avoid circular refs
       return parseBody(response.data);
     } catch (error) {
-      // Handle axios errors
-      if (error.response) {
-        // Server responded with error status - only return the data part
-        return parseBody(error.response.data);
-      }
-      // Network or other errors - throw a clean error message
+      // Every rejection is rethrown, including failures after the headers arrived (body timeout, aborted stream).
+      // Non-2xx responses never reach here because validateStatus accepts all statuses.
       const wrappedError = new Error(error.message || 'Network error');
       (wrappedError as any).cause = error;
       throw wrappedError;

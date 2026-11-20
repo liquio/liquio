@@ -1,15 +1,23 @@
-const SmsQueueModel = require('../sms_queue');
-const IncommingMessagesModel = require('../incomming_messages');
+let Readable = require('stream').Readable;
+
 const axios = require('axios');
-let { conf } = global;
 const builder = require('xmlbuilder');
 let XmlStream = require('xml-stream');
-let Readable = require('stream').Readable;
 const request = require('request');
+const cron = require('node-cron');
+
+const SmsQueueModel = require('../sms_queue');
+const IncommingMessagesModel = require('../incomming_messages');
+const getConf = () => {
+  const conf = require('../../lib/context').getConf();
+  if (!conf.gmsuServer) {
+    conf.gmsuServer = {};
+  }
+  return conf;
+};
 const SmsQueue = new SmsQueueModel().SmsQueue;
 const AllMessage = new IncommingMessagesModel().IncommingMessages;
 SmsQueue.belongsTo(AllMessage, { foreignKey: 'message_id' });
-const cron = require('node-cron');
 Set.prototype.splice = function (count) {
   let arr = [...this];
   let r = arr.splice(count);
@@ -21,9 +29,6 @@ Set.prototype.splice = function (count) {
 };
 let smsQueueArray = new Set();
 let waitingSmsQueueArray = new Set();
-if (!!conf.gmsuServer == false) {
-  conf.gmsuServer = {};
-}
 
 const scheduler = (start = true) => {
   if (start == true) {
@@ -101,7 +106,7 @@ const scheduleSend = cron.schedule(
   async () => {
     if (smsQueueArray.size == 0) return schedulerSender(false);
 
-    let sms = smsQueueArray.splice(conf.gmsuServer.messagesCountTick);
+    let sms = smsQueueArray.splice(getConf().gmsuServer.messagesCountTick);
 
     let DST_MSISDN = sms.map((v) => {
       return {
@@ -113,7 +118,7 @@ const scheduleSend = cron.schedule(
     let objX = {
       SEND_SMS: {
         VERSION: '1.0',
-        SENDER: conf.gmsuServer.senderName,
+        SENDER: getConf().gmsuServer.senderName,
         SEPARATOP: ':',
         TM_LIST: {
           TM: {
@@ -131,7 +136,7 @@ const scheduleSend = cron.schedule(
     };
     let xml = builder.create(objX).end({ pretty: true });
     let obj = {
-      url: `${conf.gmsuServer.url}/sms.php`,
+      url: `${getConf().gmsuServer.url}/sms.php`,
       method: 'POST',
       body: xml,
       headers: {
@@ -139,8 +144,8 @@ const scheduleSend = cron.schedule(
         'Content-Length': xml.length,
       },
       auth: {
-        user: conf.gmsuServer.login,
-        pass: conf.gmsuServer.password,
+        user: getConf().gmsuServer.login,
+        pass: getConf().gmsuServer.password,
       },
     };
     await SmsQueue.update(
@@ -187,7 +192,7 @@ const scheduleCheck = cron.schedule(
     let xml = builder.create(objX).end({ pretty: true });
 
     let obj = {
-      url: `${conf.gmsuServer.url}/stat.php`,
+      url: `${getConf().gmsuServer.url}/stat.php`,
       method: 'POST',
       body: xml,
       headers: {
@@ -195,8 +200,8 @@ const scheduleCheck = cron.schedule(
         'Content-Length': xml.length,
       },
       auth: {
-        user: conf.gmsuServer.login,
-        pass: conf.gmsuServer.password,
+        user: getConf().gmsuServer.login,
+        pass: getConf().gmsuServer.password,
       },
     };
     request(obj, function (err, resp, _body) {

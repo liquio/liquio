@@ -7,13 +7,12 @@ import { BasicAuthGuard } from '@common/guards';
 import { ConfigurationModule } from '@components/configuration/configuration.module';
 import { ConfigurationService } from '@components/configuration/configuration.service';
 import { ObservabilityModule } from '@components/observability/observability.module';
-
 import { AuthModule } from './auth.module';
 
 const MockConfigurationService = {
   get: jest.fn((key: string) => {
     if (key === 'auth') {
-      return { basicAuthTokens: ['username:password'] };
+      return { basicAuthTokens: ['reader:s3cretvalue'] };
     }
     return null;
   }),
@@ -40,12 +39,11 @@ describe('AuthModule', () => {
           provide: APP_GUARD,
           useClass: BasicAuthGuard,
         },
-        {
-          provide: ConfigurationService,
-          useValue: MockConfigurationService,
-        },
       ],
-    }).compile();
+    })
+      .overrideProvider(ConfigurationService)
+      .useValue(MockConfigurationService)
+      .compile();
   });
 
   it('should be defined', () => {
@@ -61,7 +59,7 @@ describe('AuthModule', () => {
     const app = module.createNestApplication();
     await app.init();
 
-    const response = await supertest(app.getHttpServer()).get('/test').auth('username', 'password');
+    const response = await supertest(app.getHttpServer()).get('/test').auth('reader', 's3cretvalue');
 
     expect(response.status).toBe(200);
     expect(response.text).toBe('Auth module is working');

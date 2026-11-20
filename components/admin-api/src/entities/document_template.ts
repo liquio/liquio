@@ -1,3 +1,4 @@
+import { getConfig } from '../lib/context';
 import { Entity } from './entity';
 
 interface DocumentTemplateEntityOptions {
@@ -45,7 +46,7 @@ export class DocumentTemplateEntity extends Entity<DocumentTemplateEntityOptions
     }
 
     // Separate by delimiter and return.
-    const { htmlTemplateDelimiter } = global.config.file_generator;
+    const { htmlTemplateDelimiter } = getConfig().file_generator;
     const htmlTemplates = this.htmlTemplate.split(htmlTemplateDelimiter);
     return htmlTemplates;
   }

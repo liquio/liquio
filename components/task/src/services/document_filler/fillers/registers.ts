@@ -1,13 +1,14 @@
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
 
 import { Filler } from './filler';
-import { RegisterService } from '../../register';
+import { getLog } from '../../../lib/context';
 
 /**
  * Registers filler.
  */
 export class RegistersFiller extends Filler {
   private static singleton: RegistersFiller;
-  registerService: any;
+  private readonly registerService: RegisterApiClient;
 
   /**
    * Registers filler constructor.
@@ -17,7 +18,7 @@ export class RegistersFiller extends Filler {
       // Init parent constructor.
       super();
 
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       RegistersFiller.singleton = this;
     }
     return RegistersFiller.singleton;
@@ -38,8 +39,9 @@ export class RegistersFiller extends Filler {
     // Handle all schema object pages.
     await this.handleAllElements(schemaObject, objectToFill, async (item, itemSchema) => {
       // Check current element shoudn't be defined.
-      if (!itemSchema || typeof itemSchema.value !== 'string'
-        || !itemSchema.value.startsWith('registers.keys.')) { return; }
+      if (!itemSchema || typeof itemSchema.value !== 'string' || !itemSchema.value.startsWith('registers.keys.')) {
+        return;
+      }
 
       // Define current value.
       // Sample: "registers.keys.11".
@@ -53,7 +55,7 @@ export class RegistersFiller extends Filler {
         searchLike2: searchFunctionLike2,
         searchLike3: searchFunctionLike3,
         ignoreEmptyFilters = false,
-        sortBy
+        sortBy,
       } = itemSchema;
 
       // Define registers key ID.
@@ -69,21 +71,21 @@ export class RegistersFiller extends Filler {
         try {
           searchEqual = this.sandbox.evalWithArgs(searchFunction, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-equal-1-eval-error', { error: error && error.message || error }, 'error');
+          getLog().save('registers-field-filling|search-equal-1-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
       if (searchFunction2) {
         try {
           searchEqual2 = this.sandbox.evalWithArgs(searchFunction2, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-equal-2-eval-error', { error: error && error.message || error }, 'error');
+          getLog().save('registers-field-filling|search-equal-2-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
       if (searchFunction3) {
         try {
           searchEqual3 = this.sandbox.evalWithArgs(searchFunction3, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-equal-3-eval-error', { error: error && error.message || error }, 'error');
+          getLog().save('registers-field-filling|search-equal-3-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
 
@@ -95,63 +97,67 @@ export class RegistersFiller extends Filler {
         try {
           searchLike = this.sandbox.evalWithArgs(searchFunctionLike, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-like-1-eval-error', { error: error && error.message || error }, 'error');
+          getLog().save('registers-field-filling|search-like-1-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
       if (searchFunctionLike2) {
         try {
           searchLike2 = this.sandbox.evalWithArgs(searchFunctionLike2, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-like-2-eval-error', { error: error && error.message || error }, 'error');
+          getLog().save('registers-field-filling|search-like-2-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
       if (searchFunctionLike3) {
         try {
           searchLike3 = this.sandbox.evalWithArgs(searchFunctionLike3, [objectToFill, userInfo]);
         } catch (error) {
-          global.log.save('registers-field-filling|search-like-3-eval-error', { error: error && error.message || error }, 'error');  
+          getLog().save('registers-field-filling|search-like-3-eval-error', { error: (error && error.message) || error }, 'error');
         }
       }
 
       // Define registers key filters.
       // Format filters if exists.
       const filtersObject = {};
-      if (filters) for (const filter of filters) {
-        // Filter value container.
-        let filterValue = filter.value;
+      if (filters)
+        for (const filter of filters) {
+          // Filter value container.
+          let filterValue = filter.value;
 
-        // Define for "user.".
-        if (typeof filter.value === 'string' && filter.value.startsWith('user.')) {
-          if (!userInfo) { return; }
-          filterValue = this.sandbox.evalWithArgs(
-            `user => ${filter.value}`,
-            [userInfo],
-            { meta: { fn: 'RegistersFiller.fill.filters', filterName: filter.name } },
-          );
+          // Define for "user.".
+          if (typeof filter.value === 'string' && filter.value.startsWith('user.')) {
+            if (!userInfo) {
+              return;
+            }
+            filterValue = this.sandbox.evalWithArgs(`user => ${filter.value}`, [userInfo], {
+              meta: { fn: 'RegistersFiller.fill.filters', filterName: filter.name },
+            });
+          }
+
+          // Define for "({". Sample: "({users, units}) => { return ((units && units.all || []).find(v => (v.basedOn || []).includes(21)) || {}).id; }".
+          if (typeof filter.value === 'string' && filter.value.startsWith('({')) {
+            if (!userInfo) {
+              return;
+            }
+            filterValue = this.sandbox.evalWithArgs(`${filter.value}`, [{ user: userInfo, units: userUnitsEntities, documentData: objectToFill }], {
+              meta: { fn: 'RegistersFiller.fill.filters', filterName: filter.name },
+            });
+          }
+
+          // Check if no need to save filter.
+          if (ignoreEmptyFilters && typeof filterValue === 'undefined') {
+            continue;
+          }
+
+          // Append filter.
+          filtersObject[filter.name] = filterValue;
         }
-
-        // Define for "({". Sample: "({users, units}) => { return ((units && units.all || []).find(v => (v.basedOn || []).includes(21)) || {}).id; }".
-        if (typeof filter.value === 'string' && filter.value.startsWith('({')) {
-          if (!userInfo) { return; }
-          filterValue = this.sandbox.evalWithArgs(
-            `${filter.value}`,
-            [{ user: userInfo, units: userUnitsEntities, documentData: objectToFill }],
-            { meta: { fn: 'RegistersFiller.fill.filters', filterName: filter.name } },
-          );
-        }
-
-        // Check if no need to save filter.
-        if (ignoreEmptyFilters && typeof filterValue === 'undefined') { continue; }
-
-        // Append filter.
-        filtersObject[filter.name] = filterValue;
-      }
 
       // Format sorting if exists.
       const sort = {};
-      if (sortBy && typeof sortBy === 'object') for (const [sortKey, sortValue] of Object.entries(sortBy)) {
-        sort[sortKey] = sortValue;
-      }
+      if (sortBy && typeof sortBy === 'object')
+        for (const [sortKey, sortValue] of Object.entries(sortBy)) {
+          sort[sortKey] = sortValue;
+        }
 
       // Fill current element.
       let valueToSet;
@@ -175,9 +181,11 @@ export class RegistersFiller extends Filler {
 
         // Define value to set.
         if (Array.isArray(records.data)) {
-          valueToSet = records.data.map(v => ({ ...v.data, registerId: v.registerId, keyId: v.keyId, recordId: v.id }));
+          valueToSet = records.data.map((v) => ({ ...v.data, registerId: v.registerId, keyId: v.keyId, recordId: v.id }));
         }
-      } catch (error) { global.log.save('registers-field-filling-error', { error: error && error.message || error }, 'warn'); }
+      } catch (error) {
+        getLog().save('registers-field-filling-error', { error: (error && error.message) || error }, 'warn');
+      }
 
       // Return value to set.
       return valueToSet;
@@ -187,4 +195,3 @@ export class RegistersFiller extends Filler {
     return objectToFill;
   }
 }
-

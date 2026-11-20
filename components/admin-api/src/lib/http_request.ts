@@ -54,6 +54,7 @@ export class HttpRequest {
    * @param {object} [requestOptions.headers] Headers in format {"key": "value"}.
    * @param {string} [requestOptions.body] Body string.
    * @param {number} [requestOptions.timeout] Connection timeout.
+   * @param {https.Agent} [requestOptions.httpsAgent] Optional HTTPS agent (internal CA / client certificate).
    * @param {boolean} [withFullResponse] Whether to return full response or only body.
    * @returns {Promise<object>}
    */
@@ -66,6 +67,9 @@ export class HttpRequest {
         timeout: requestOptions.timeout,
         validateStatus: () => true, // Don't throw on any status code
       };
+      if (requestOptions.httpsAgent) {
+        axiosConfig.httpsAgent = requestOptions.httpsAgent;
+      }
 
       // Add data for POST, PUT requests
       if (requestOptions.body) {
@@ -95,17 +99,12 @@ export class HttpRequest {
       }
       return body;
     } catch (error) {
-      // Handle axios errors
-      if (error.response) {
-        // Server responded with error status - only return the data part
-        const body = parseBody(error.response.data);
-        if (withFullResponse) {
-          return { response: createSerializableResponse(error.response), body };
-        }
-        return body;
-      }
+      // axios only rejects here for transport failures (connect/timeout/aborted or broken body stream),
+      // including ones after headers arrived, so a partial response must not be returned as a result.
       // Network or other errors - throw a clean error message
-      throw new Error(error.message || 'Network error');
+      const wrapped = new Error(error.message || 'Network error');
+      (wrapped as any).cause = error;
+      throw wrapped;
     }
   }
 

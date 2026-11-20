@@ -1,5 +1,6 @@
 import { Controller } from './controller';
 import { ContainerModel } from '../models/container';
+import { getLog } from '../lib/context';
 
 /**
  * Containers controller.
@@ -45,7 +46,7 @@ export class ContainersController extends Controller {
         filter,
       });
     } catch (error) {
-      global.log.save('get-containers-error', { error: error && error.message });
+      getLog().save('get-containers-error', { error: error && error.message });
     }
     const { data: containers, meta } = containersModelResponse || {};
 
@@ -67,7 +68,7 @@ export class ContainersController extends Controller {
     try {
       containerModelResponse = await this.containerModel.findById(parseInt(id));
     } catch (error) {
-      global.log.save('get-container-by-id-error', { error: error && error.message });
+      getLog().save('get-container-by-id-error', { error: error && error.message });
     }
     const { data: container } = containerModelResponse || {};
 
@@ -95,7 +96,7 @@ export class ContainersController extends Controller {
     try {
       containerModelResponse = await this.containerModel.create({ name, description, parentId, meta, user });
     } catch (error) {
-      global.log.save('create-container-error', { error: error && error.message });
+      getLog().save('create-container-error', { error: error && error.message });
     }
     const { data: container } = containerModelResponse || {};
 
@@ -124,7 +125,7 @@ export class ContainersController extends Controller {
     try {
       containerModelResponse = await this.containerModel.update(parseInt(id), { name, description, parentId, meta, user });
     } catch (error) {
-      global.log.save('update-container-error', { error: error && error.message });
+      getLog().save('update-container-error', { error: error && error.message });
     }
     const { data: container } = containerModelResponse || {};
 
@@ -151,7 +152,7 @@ export class ContainersController extends Controller {
     try {
       deletedRowsCountModelResponse = await this.containerModel.delete(parseInt(id));
     } catch (error) {
-      global.log.save('delete-container-error', { error: error && error.message });
+      getLog().save('delete-container-error', { error: error && error.message });
     }
     const { data: deletedRowsCount } = deletedRowsCountModelResponse || {};
 

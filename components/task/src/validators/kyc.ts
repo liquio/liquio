@@ -16,7 +16,7 @@ export class KycValidator extends Validator {
     super(validationConfig);
 
     // Define singleton.
-    return KycValidator.singleton || ( KycValidator.singleton = this );
+    return KycValidator.singleton || (KycValidator.singleton = this);
   }
 
   createSession() {
@@ -58,4 +58,3 @@ export class KycValidator extends Validator {
     });
   }
 }
-

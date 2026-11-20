@@ -25,4 +25,3 @@ export class WorkflowLoggerRecordEntity {
     this.updatedAt = updatedAt;
   }
 }
-

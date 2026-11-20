@@ -5,6 +5,7 @@ import { WorkflowTemplateEntity } from '../entities/workflow_template';
 import { WorkflowTemplateCategoryModel } from './workflow_template_category';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig, getModels } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -25,7 +26,7 @@ export class WorkflowTemplateModel extends Model {
         {
           workflow_template_category_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'document_template_categories', key: 'id' }
+            references: { model: 'document_template_categories', key: 'id' },
           },
           name: Sequelize.STRING,
           description: Sequelize.STRING,
@@ -35,15 +36,15 @@ export class WorkflowTemplateModel extends Model {
           errors_subscribers: {
             allowNull: false,
             type: Sequelize.ARRAY(Sequelize.JSONB),
-            defaultValue: []
-          }
+            defaultValue: [],
+          },
         },
         {
           tableName: 'workflow_templates',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -52,8 +53,8 @@ export class WorkflowTemplateModel extends Model {
       PgPubSub.getInstance().subscribe('workflow_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config.cache.workflowTemplate?.findById || DEFAULT_CACHE_TTL,
-        getAll: global.config.cache.workflowTemplate?.getAll || DEFAULT_CACHE_TTL
+        findById: getConfig().cache.workflowTemplate?.findById || DEFAULT_CACHE_TTL,
+        getAll: getConfig().cache.workflowTemplate?.getAll || DEFAULT_CACHE_TTL,
       };
 
       WorkflowTemplateModel.singleton = this;
@@ -69,9 +70,9 @@ export class WorkflowTemplateModel extends Model {
   async getAll({ templateCategoryIds = [] }: any = {}) {
     const options: any = {
       attributes: {
-        exclude: ['xml_bpmn_schema']
+        exclude: ['xml_bpmn_schema'],
       },
-      include: [{ model: global.models.workflowTemplateCategory.model }],
+      include: [{ model: getModels().workflowTemplateCategory.model }],
       order: [['created_at', 'asc']],
     };
 
@@ -85,21 +86,19 @@ export class WorkflowTemplateModel extends Model {
       this.cacheTtl.getAll,
     );
 
-    let workflowTemplatesEntities = workflowTemplates.map(item => {
+    let workflowTemplatesEntities = workflowTemplates.map((item) => {
       const workflowTemplateEntity = this.prepareEntity(item);
       workflowTemplateEntity.workflowTemplateCategory = null;
 
       if (item.workflowTemplateCategory) {
-        workflowTemplateEntity.workflowTemplateCategory = this.workflowTemplateCategoryModel.prepareEntity(
-          item.workflowTemplateCategory
-        );
+        workflowTemplateEntity.workflowTemplateCategory = this.workflowTemplateCategoryModel.prepareEntity(item.workflowTemplateCategory);
       }
 
       return workflowTemplateEntity;
     });
 
     // Sort.
-    const { workflowTemplates: workflowTemplatesOrder } = global.config.sort || {};
+    const { workflowTemplates: workflowTemplatesOrder } = getConfig().sort || {};
     if (workflowTemplatesOrder && Array.isArray(workflowTemplatesEntities)) {
       workflowTemplatesEntities = workflowTemplatesEntities.sort((a, b) => {
         const o = [...workflowTemplatesOrder].reverse();
@@ -122,9 +121,21 @@ export class WorkflowTemplateModel extends Model {
       this.cacheTtl.findById,
     );
 
-    if (!workflowTemplate) { return; }
+    if (!workflowTemplate) {
+      return;
+    }
 
     return this.prepareEntity(workflowTemplate);
+  }
+
+  /**
+   * Find XML BPMN schema by ID.
+   * @param {number} id Workflow template ID.
+   * @returns {Promise<string|undefined>} XML BPMN schema.
+   */
+  async findXmlBpmnSchemaById(id) {
+    const workflowTemplate = await this.model.findByPk(id, { attributes: ['id', 'xml_bpmn_schema'] });
+    return workflowTemplate?.xml_bpmn_schema;
   }
 
   async getLatestUpdatedAt() {
@@ -133,10 +144,7 @@ export class WorkflowTemplateModel extends Model {
   }
 
   async getUpdatedAtById(id) {
-    const [row] = await this.db.query(
-      'SELECT updated_at FROM workflow_templates WHERE id = :id',
-      { replacements: { id } }
-    );
+    const [row] = await this.db.query('SELECT updated_at FROM workflow_templates WHERE id = :id', { replacements: { id } });
     return row?.updated_at;
   }
 
@@ -154,7 +162,7 @@ export class WorkflowTemplateModel extends Model {
       xmlBpmnSchema: item.xml_bpmn_schema,
       data: item.data,
       isActive: item.is_active,
-      errorsSubscribers: item.errors_subscribers
+      errorsSubscribers: item.errors_subscribers,
     });
   }
 
@@ -170,7 +178,7 @@ export class WorkflowTemplateModel extends Model {
       description: item.description,
       xml_bpmn_schema: item.xmlBpmnSchema,
       data: item.data,
-      errors_subscribers: item.errorsSubscribers
+      errors_subscribers: item.errorsSubscribers,
     };
   }
 
@@ -193,4 +201,3 @@ export class WorkflowTemplateModel extends Model {
     }
   }
 }
-

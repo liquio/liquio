@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 
 export class FavoritesModel extends Model {
@@ -27,8 +28,8 @@ export class FavoritesModel extends Model {
           tableName: 'favorites',
           underscored: true,
           created_at: 'created_at',
-          updated_at: 'updated_at'
-        }
+          updated_at: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = (this as any).prepareEntity;
@@ -38,6 +39,4 @@ export class FavoritesModel extends Model {
 
     return FavoritesModel.singleton;
   }
-
 }
-

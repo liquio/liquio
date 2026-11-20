@@ -6,10 +6,40 @@ import RecordEntity from '../entities/record';
 import deepFind from '../lib/deepFind';
 import HistoryModel from './history';
 import { BasicFilter, ModelListResponse, ModelListWithMetaResponse, ModelItemResponse, ModelUpdateResponse } from '../lib/interfaces';
+import { getAfterhandler, getEncryption } from '../lib/context';
 
-const ERROR_ORDER_FIELD_VALIDATION = 'Order field path is not valid.';
-const DB_FIELD_NAME_REGEX = '[a-zA-Z0-9_-]+';
+const SORTABLE_COLUMNS = [
+  'id',
+  'register_id',
+  'key_id',
+  'created_at',
+  'updated_at',
+  'created_by',
+  'updated_by',
+  'search_string',
+  'search_string_2',
+  'search_string_3',
+];
+const SORT_JSON_ROOT = 'data';
+const SORT_PATH_SEGMENT_REGEX = /^[a-zA-Z0-9_-]+$/;
+const MAX_SORT_ENTRIES = 20;
 const ENCRYPTED_FIELD_NAME = '$encrypted';
+const JOIN_FIELD_REGEX = /^[a-zA-Z0-9_-]+$/;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Patched record data failed the key JSON schema. */
+export class PatchValidationError extends Error {
+  constructor(public readonly validatorErrors: any[]) {
+    super('JSON schema validation error.');
+  }
+}
+
+/** The `sort` parameter has an unknown column, an invalid path or an invalid shape. */
+export class InvalidSortError extends Error {
+  constructor(public readonly field?: string) {
+    super('Invalid sort parameter.');
+  }
+}
 
 /**
  * Record model.
@@ -34,17 +64,17 @@ export default class RecordModel extends Model {
             allowNull: false,
             primaryKey: true,
             type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV1
+            defaultValue: Sequelize.UUIDV1,
           },
           register_id: {
             type: Sequelize.INTEGER,
             allowNull: false,
-            references: { model: 'registers', key: 'id' }
+            references: { model: 'registers', key: 'id' },
           },
           key_id: {
             type: Sequelize.INTEGER,
             allowNull: false,
-            references: { model: 'keys', key: 'id' }
+            references: { model: 'keys', key: 'id' },
           },
           data: {
             allowNull: false,
@@ -54,51 +84,51 @@ export default class RecordModel extends Model {
               const rawData = this.getDataValue('data');
               if (rawData && rawData[ENCRYPTED_FIELD_NAME]) {
                 try {
-                  return JSON.parse(global.encryption.decrypt(rawData[ENCRYPTED_FIELD_NAME]));
+                  return JSON.parse(getEncryption().decrypt(rawData[ENCRYPTED_FIELD_NAME]));
                 } catch {
                   return rawData;
                 }
               } else {
                 return rawData;
               }
-            }
+            },
           },
           meta: {
             allowNull: false,
             type: Sequelize.JSON,
-            defaultValue: {}
+            defaultValue: {},
           },
           allow_tokens: {
             allowNull: false,
             type: Sequelize.ARRAY(Sequelize.STRING),
-            defaultValue: []
+            defaultValue: [],
           },
           search_string: {
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           search_string_2: {
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           search_string_3: {
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           signature: {
             allowNull: true,
-            type: Sequelize.TEXT
+            type: Sequelize.TEXT,
           },
           is_encrypted: {
             allowNull: false,
             type: Sequelize.BOOLEAN,
-            defaultValue: false
+            defaultValue: false,
           },
           created_by: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           updated_by: {
             allowNull: false,
-            type: Sequelize.STRING
-          }
+            type: Sequelize.STRING,
+          },
         },
         {
           tableName: 'records',
@@ -108,16 +138,14 @@ export default class RecordModel extends Model {
           hooks: {
             beforeSave: (record: any) => {
               if (record.is_encrypted && record.data && !record.data[ENCRYPTED_FIELD_NAME]) {
-                try {
-                  const encryptedData = global.encryption.encrypt(JSON.stringify(record.data));
-                  record.data = { [ENCRYPTED_FIELD_NAME]: encryptedData };
-                } catch {
-                  // Do nothing to prevent saving record with invalid data
-                }
+                // Let encryption error fail saving: otherwise record of encrypted key is stored as plain text
+                // (e.g. when encryption key is not configured).
+                const encryptedData = getEncryption().encrypt(JSON.stringify(record.data));
+                record.data = { [ENCRYPTED_FIELD_NAME]: encryptedData };
               }
-            }
-          }
-        }
+            },
+          },
+        },
       );
       RecordModel.singleton = this;
     }
@@ -130,16 +158,18 @@ export default class RecordModel extends Model {
   }
 
   // Get all records.
-  async getAll(options: BasicFilter & { changedFrom?: string; changedTo?: string } = {}): Promise<ModelListWithMetaResponse<RecordEntity>> {
+  async getAll(
+    options: BasicFilter & { changedFrom?: string; changedTo?: string; stableOrder?: boolean } = {},
+  ): Promise<ModelListWithMetaResponse<RecordEntity>> {
     // Handle options.
-    const { filter = {}, offset, limit, sort = {}, joinBy, changedFrom, changedTo } = { offset: 0, limit: 2, ...options } as any;
+    const { filter = {}, offset, limit, sort = {}, joinBy, changedFrom, changedTo, stableOrder } = { offset: 0, limit: 2, ...options } as any;
     if (typeof filter.allow_tokens !== 'undefined') {
       if (filter.filters_type === 'or') {
         // OR filters type.
         filter[Sequelize.Op.and] = [
           {
-            [Sequelize.Op.or]: [{ allow_tokens: { [Sequelize.Op.overlap]: [filter.allow_tokens] } }, { allow_tokens: [] }]
-          }
+            [Sequelize.Op.or]: [{ allow_tokens: { [Sequelize.Op.overlap]: [filter.allow_tokens] } }, { allow_tokens: [] }],
+          },
         ];
       } else {
         // AND filters type (default).
@@ -177,7 +207,7 @@ export default class RecordModel extends Model {
       Array.isArray as any,
       ((value, path) => {
         objectPath.set(filter.data, path, { [Sequelize.Op.or]: value });
-      }) as any
+      }) as any,
     );
 
     deepFind(
@@ -185,7 +215,7 @@ export default class RecordModel extends Model {
       ((value) => value === 'null') as any,
       ((value, path) => {
         objectPath.set(filter.data, path, null);
-      }) as any
+      }) as any,
     );
 
     let attributes, replacements, order;
@@ -203,78 +233,55 @@ export default class RecordModel extends Model {
       order = [['last_changed_at', 'asc']];
     }
 
-    const additionalOrder = limit <= 100 && sort !== 'null' ? [['id', 'asc']] : [];
+    // `stableOrder` adds the id tiebreaker for large pages too, so offset paging over a sort with ties is deterministic.
+    const additionalOrder = (limit <= 100 || stableOrder) && sort !== 'null' ? [['id', 'asc']] : [];
     order = order ?? [...(await this.getSortEntriesAsArray(sort)), ...additionalOrder];
 
     const queryOptions: FindAndCountOptions = { order, where: filter, offset, limit, attributes, replacements };
-
-    if (joinBy) {
-      // Form where query part.
-      let wherePart = '';
-      for (const opt in queryOptions.where) {
-        const optValue = queryOptions.where[opt];
-        if (typeof optValue === 'object') {
-          if (Object.keys(optValue).length === 0) continue;
-          if (wherePart !== '') {
-            wherePart += ' and ';
-          }
-          const nestedObjWherePart = this.formWhereQueryForObjects(optValue, '');
-          wherePart += nestedObjWherePart ? nestedObjWherePart : '';
-        } else {
-          if (wherePart !== '') {
-            wherePart += ' and ';
-          }
-          wherePart += `r1.${opt} = ${optValue}`;
-        }
-      }
-
-      const createdAt = queryOptions.where?.['created_at'];
-      if (createdAt) {
-        const createdAtWherePart = this.formCreateUpdateDateQuery(createdAt);
-        wherePart += createdAtWherePart;
-      }
-
-      // Select data with left join.
-      const results = await this.model.sequelize.query(
-        `
-        select r1.data as data1, r2.id idr2, r2.data as data2
-        from records r1
-        left join records r2 on r2.id::text = r1.data->>:joinBy
-        where ${wherePart} limit :limit offset :offset`,
-        { type: Sequelize.QueryTypes.SELECT, replacements: { joinBy, limit: +queryOptions.limit, offset: +queryOptions.offset } }
-      );
-
-      // Count data with left join.
-      const resultsCount = await this.model.sequelize.query(
-        `
-        select count(1)
-        from records r1
-        left join records r2 on r2.id::text = r1.data->>:joinBy
-        where ${wherePart}`,
-        { type: Sequelize.QueryTypes.SELECT, replacements: { joinBy } }
-      );
-
-      const { count } = (resultsCount && resultsCount[0]) || {};
-      const response = { data: results, meta: { count, offset, limit } };
-      return response;
-    }
 
     // DB query.
     const { count, rows: recordsRaw } = await this.model.findAndCountAll(queryOptions);
     const recordsEntities = recordsRaw.map((recordRaw) => new RecordEntity(recordRaw));
 
+    if (joinBy) {
+      // Batched read of linked records (no raw SQL): the main page keeps all Sequelize filters, incl. allow_tokens.
+      if (!JOIN_FIELD_REGEX.test(joinBy)) throw new Error('Invalid join field.');
+      const joinedIds = [
+        ...new Set(recordsEntities.map((entity) => (entity.data as any)?.[joinBy]).filter((v) => typeof v === 'string' && UUID_REGEX.test(v))),
+      ];
+      const joinedRows = joinedIds.length ? await this.model.findAll({ where: { id: { [Sequelize.Op.in]: joinedIds } } }) : [];
+      const joinedById = new Map<string, any>(joinedRows.map((row: any) => [row.id, row]));
+      for (const entity of recordsEntities) {
+        const joinedRow = joinedById.get((entity.data as any)?.[joinBy]);
+        (entity as any).joined = joinedRow ? new RecordEntity(joinedRow) : null;
+      }
+      // The count keeps the string type that the former raw SQL count returned.
+      return { data: recordsEntities, meta: { count: String(count) as any, offset, limit } };
+    }
+
     return { data: recordsEntities, meta: { count, offset, limit } };
   }
 
   // Search records.
-  async search(keyId: string, searchKey: string, textList: string[], limit = 10, offset = 0): Promise<ModelListWithMetaResponse<RecordEntity>> {
+  async search(
+    keyId: string,
+    searchKey: string,
+    textList: string[],
+    limit = 10,
+    offset = 0,
+    allowTokens?: string[],
+  ): Promise<ModelListWithMetaResponse<RecordEntity>> {
     // Prepare DB query.
     const order = [[searchKey, 'asc']];
     const likeOperator = searchKey === 'search_string' ? Sequelize.Op.like : Sequelize.Op.iLike;
-    const where = {
+    const where: any = {
       key_id: keyId,
-      [Sequelize.Op.and]: textList.map((v) => ({ [searchKey]: { [likeOperator]: `%${v}%` } }))
+      [Sequelize.Op.and]: textList.map((v) => ({ [searchKey]: { [likeOperator]: `%${v}%` } })),
     };
+    // Row-level security: when tokens are given, count and paging only see public rows or rows sharing a token.
+    if (allowTokens) {
+      where[Sequelize.Op.or] = [{ allow_tokens: [] }, { allow_tokens: { [Sequelize.Op.overlap]: allowTokens } }];
+    }
     const queryOptions = { order, where, limit, offset };
 
     // DB query.
@@ -316,8 +323,8 @@ export default class RecordModel extends Model {
     const where: any = {
       key_id: keyId,
       data: {
-        [Sequelize.Op.or]: filters
-      }
+        [Sequelize.Op.or]: filters,
+      },
     };
     if (recordIdToRemove) where.id = { [Sequelize.Op.ne]: recordIdToRemove };
     const count = await this.model.count({ where });
@@ -331,7 +338,7 @@ export default class RecordModel extends Model {
     // DB query.
     const recordsRaw = await this.model.findAll({
       ...queryOptions,
-      where: { key_id: keyId }
+      where: { key_id: keyId },
     });
     const recordEntities = recordsRaw.map((recordRaw: any) => new RecordEntity(recordRaw, withSearchStrings));
 
@@ -345,10 +352,10 @@ export default class RecordModel extends Model {
       where: { key_id: keyId },
       order: [
         ['created_at', 'asc'],
-        ['id', 'asc']
+        ['id', 'asc'],
       ],
       offset,
-      limit
+      limit,
     });
     const recordEntities = recordsRaw.map((recordRaw) => new RecordEntity(recordRaw));
 
@@ -370,10 +377,10 @@ export default class RecordModel extends Model {
       searchString3,
       person,
       signature,
-      isEncrypted
+      isEncrypted,
     }: Partial<RecordCreateRaw>,
     _addToHistory = true,
-    historyMeta?: any
+    historyMeta?: any,
   ): Promise<ModelItemResponse<RecordEntity>> {
     // Prepare RAW.
     const recordToCreateRaw: any = {
@@ -388,12 +395,12 @@ export default class RecordModel extends Model {
       created_by: user,
       updated_by: user,
       signature: signature,
-      is_encrypted: isEncrypted
+      is_encrypted: isEncrypted,
     };
 
     if (id) recordToCreateRaw.id = id;
 
-    await global.afterhandler.validateRecord(recordToCreateRaw, 'create');
+    await getAfterhandler().validateRecord(recordToCreateRaw, 'create');
 
     // DB query.
     const createdRecordRaw = await this.model.create(recordToCreateRaw);
@@ -422,7 +429,7 @@ export default class RecordModel extends Model {
         search_string_3: this.normalizeSearchString(searchString3),
         created_by: user,
         updated_by: user,
-        is_encrypted: isEncrypted
+        is_encrypted: isEncrypted,
       };
 
       if (id) recordToCreateRaw.id = id;
@@ -430,11 +437,28 @@ export default class RecordModel extends Model {
     });
 
     // DB query.
-    const bulkCreateRecords = await this.model.bulkCreate(recordsToCreateRaw, { individualHooks: !isDisableHooks });
+    // Hooks perform encryption, so they can be skipped only when no record is encrypted.
+    const hasEncryptedRecords = recordsToCreateRaw.some((record) => record.is_encrypted);
+    const bulkCreateRecords = await this.model.bulkCreate(recordsToCreateRaw, { individualHooks: hasEncryptedRecords || !isDisableHooks });
     const bulkCreateRecordsCount = (Array.isArray(bulkCreateRecords) && bulkCreateRecords.length) || 0;
 
     // Return records count.
     return isReturnCreatedRecords ? bulkCreateRecords.map((recordRaw) => new RecordEntity(recordRaw)) : bulkCreateRecordsCount;
+  }
+
+  /**
+   * Row-token condition for writes. Rows that are public (`allow_tokens = []`) or share a token with the caller match.
+   * Empty condition when `allowTokens` is not given, so the behaviour is unchanged.
+   */
+  private allowTokensWhere(allowTokens?: string[]): { [Sequelize.Op.or]?: any[] } {
+    if (!allowTokens) return {};
+    return { [Sequelize.Op.or]: [{ allow_tokens: [] }, { allow_tokens: { [Sequelize.Op.overlap]: allowTokens } }] };
+  }
+
+  // Check that a row exists and the caller's tokens allow writing it.
+  async isWritableById(id: string, allowTokens: string[]): Promise<boolean> {
+    const record = await this.model.findOne({ where: { id, ...this.allowTokensWhere(allowTokens) }, attributes: ['id'] });
+    return !!record;
   }
 
   // Update a record
@@ -452,13 +476,14 @@ export default class RecordModel extends Model {
       person,
       signature,
       isEncrypted,
-      allowTokens
+      allowTokens,
     }: Partial<RecordCreateRaw>,
     _addToHistory?: boolean,
     historyMeta?: {
       accessInfo?: { userId?: string; userName?: string };
     },
-    isSkipDataUpdating: boolean = false
+    isSkipDataUpdating: boolean = false,
+    writeAllowTokens?: string[],
   ): Promise<ModelUpdateResponse<RecordEntity>> {
     // Prepare RAW.
     const recordToUpdateRaw = this.removeUndefinedProperties({
@@ -472,21 +497,26 @@ export default class RecordModel extends Model {
       search_string_3: this.normalizeSearchString(searchString3),
       is_encrypted: isEncrypted,
       signature: signature,
-      allow_tokens: allowTokens
+      allow_tokens: allowTokens,
     });
 
-    await global.afterhandler.validateRecord(recordToUpdateRaw, 'update');
+    await getAfterhandler().validateRecord(recordToUpdateRaw, 'update');
 
     if (isSkipDataUpdating) {
       delete recordToUpdateRaw.data; // Do not update record data. For example: it is possible that record will be updated by user at the time of indexation, and we will roll back changes.
     }
 
     // DB query.
+    // With `writeAllowTokens` the row check is part of the write itself, so a foreign or missing row changes nothing.
+    // New row tokens must keep every token the row carries (they cannot be dropped by a restricted caller).
+    const keepTokensWhere = writeAllowTokens && allowTokens ? { allow_tokens: { [Sequelize.Op.contained]: allowTokens } } : {};
     const [updatedRowsCount, [updatedRecordRaw]] = await this.model.update(recordToUpdateRaw, {
-      where: { id },
+      where: { id, ...keepTokensWhere, ...this.allowTokensWhere(writeAllowTokens) },
       returning: true,
-      individualHooks: true
+      individualHooks: true,
     });
+    // Nothing was written: no history row exists, so do not create afterhandlers.
+    if (writeAllowTokens && !updatedRecordRaw) return { data: undefined, updating: { rowsCount: 0 } };
     const updatedRecordEntity = new RecordEntity(updatedRecordRaw);
 
     // Saving to history occurs through a SQL trigger.
@@ -498,20 +528,24 @@ export default class RecordModel extends Model {
   }
 
   // Update record properties.
+  // `validate` gets the patched (not yet saved) data and returns validation errors; any error aborts the write.
+  // It runs on the row read under the token filter, right before the save.
   async updatePatch(
     id: string,
     keyId: number,
-    properties: Array<{ path: string; previousValue: any; value: any }>
+    properties: Array<{ path: string; previousValue: any; value: any }>,
+    allowTokens?: string[],
+    validate?: (data: any, recordId: string) => Promise<any[]>,
   ): Promise<RecordEntity | undefined> {
-    const where = isNaN(+id) ? { id } : { key_id: keyId, search_string: id.toString() };
+    const where: any = { ...(isNaN(+id) ? { id } : { key_id: keyId, search_string: id.toString() }), ...this.allowTokensWhere(allowTokens) };
     const record = await this.model.findOne({
-      where
+      where,
     });
     if (!record) return;
     const searchStrings = {
       search_string: record.search_string,
       search_string_2: record.search_string_2,
-      search_string_3: record.search_string_3
+      search_string_3: record.search_string_3,
     };
     for (const { path, previousValue, value } of properties) {
       // Update prop
@@ -529,11 +563,19 @@ export default class RecordModel extends Model {
       });
     }
 
+    if (validate) {
+      const validatorErrors = await validate(JSON.parse(JSON.stringify(record.data ?? {})), record.id);
+      if (validatorErrors.length > 0) throw new PatchValidationError(validatorErrors);
+    }
+
     return new RecordEntity(await record.save());
   }
 
   // Update a record data field.
-  async updateByDataField({ keyId, registerId, record, dataFieldName, dataFieldValue }): Promise<ModelUpdateResponse<RecordEntity>> {
+  async updateByDataField(
+    { keyId, registerId, record, dataFieldName, dataFieldValue },
+    writeAllowTokens?: string[],
+  ): Promise<ModelUpdateResponse<RecordEntity>> {
     // Prepare RAW.
     const recordToUpdateRaw = this.removeUndefinedProperties({
       register_id: registerId,
@@ -544,17 +586,18 @@ export default class RecordModel extends Model {
       search_string: this.normalizeSearchString(record.searchString),
       search_string_2: this.normalizeSearchString(record.searchString2),
       search_string_3: this.normalizeSearchString(record.searchString3),
-      signature: record.signature
+      signature: record.signature,
     });
 
-    await global.afterhandler.validateRecord(recordToUpdateRaw, 'update');
+    await getAfterhandler().validateRecord(recordToUpdateRaw, 'update');
 
     // DB query.
     const [updatedRowsCount, [updatedRecordRaw]] = await this.model.update(recordToUpdateRaw, {
-      where: { key_id: keyId, register_id: registerId, data: { [dataFieldName]: dataFieldValue } },
+      where: { key_id: keyId, register_id: registerId, data: { [dataFieldName]: dataFieldValue }, ...this.allowTokensWhere(writeAllowTokens) },
       returning: true,
-      individualHooks: true
+      individualHooks: true,
     });
+    if (writeAllowTokens && !updatedRecordRaw) return { data: undefined, updating: { rowsCount: 0 } };
     const updatedRecordEntity = new RecordEntity(updatedRecordRaw);
 
     // Create afterhandlers.
@@ -568,7 +611,7 @@ export default class RecordModel extends Model {
     // Find existing record that should be deleted.
     const recordToDeleteRaw = await this.findById(id);
 
-    await global.afterhandler.validateRecord(recordToDeleteRaw, 'delete');
+    await getAfterhandler().validateRecord(recordToDeleteRaw, 'delete');
 
     const { data: recordToDeleteEntity } = recordToDeleteRaw;
 
@@ -578,8 +621,8 @@ export default class RecordModel extends Model {
       {
         where: { id },
         returning: true,
-        individualHooks: true
-      }
+        individualHooks: true,
+      },
     );
     const updatedRecordEntity = new RecordEntity(updatedRecordRaw);
 
@@ -599,7 +642,7 @@ export default class RecordModel extends Model {
     removeCounterCb: (removedRecords: number) => void,
     user = 'system',
     person = { id: null, name: null },
-    historyMeta = { accessInfo: { userId: null, userName: null } }
+    historyMeta = { accessInfo: { userId: null, userName: null } },
   ): Promise<{ removedRecords: number; nonRemovedRecords: number }> {
     // Check filters.
     if (!filters.key_id) throw new Error('Key ID is required filter for bulk delete.');
@@ -627,7 +670,7 @@ export default class RecordModel extends Model {
 
     const result = await this.model.findAll({
       where: filter,
-      order: [['id', 'asc']]
+      order: [['id', 'asc']],
     });
 
     return result;
@@ -639,45 +682,60 @@ export default class RecordModel extends Model {
   }
 
   /**
-   * Build literal sort query for nested json number fields.
+   * Build sort entries for the Sequelize `order` option.
+   * Allowed fields: the whitelisted record columns and `data.<path>` JSON paths.
    * @param {Object} sort = { "data.sumGov": "asc", "created_at": "asc", ... }
-   * @return {Promise<[]>} = [ { "val": "\"record\".\"data\"->'sumGov' ASC" }, [ "created_at", "asc" ], ... ]
+   * @return {Promise<[]>} = [ { "val": "\"record\".\"data\"->'sumGov' ASC" }, [ "created_at", "ASC" ], ... ]
+   * @throws {InvalidSortError} When the sort has an unknown field, invalid path or invalid shape.
    */
   async getSortEntriesAsArray(sort: any) {
-    /** @var sortEntries = [ [ "data.sumGov", "asc" ], [ "created_at", "asc" ] , ... ]; */
-    const sortEntries = sort.constructor === Object ? Object.entries(sort) : sort;
-
-    if (sort === 'null') {
+    if (sort === 'null' || sort === undefined || sort === null) {
       return [];
     }
 
-    for (const entry in sortEntries) {
-      const orderFieldJsonPath = sortEntries[entry][0];
-      const orderValue = sortEntries[entry][1].toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-      const isNestedJsonField = orderFieldJsonPath.indexOf('.') >= 0;
-      if (isNestedJsonField) {
-        const orderFieldJsonPathParts = orderFieldJsonPath.split('.');
-
-        // Validate field name path
-        const pathIsValid = orderFieldJsonPathParts.every((fieldName) => {
-          const match = fieldName.match(DB_FIELD_NAME_REGEX);
-          return match && match[0] === fieldName;
-        });
-        if (!pathIsValid) {
-          throw new Error(ERROR_ORDER_FIELD_VALIDATION);
-        }
-
-        const databaseFieldName = orderFieldJsonPathParts.shift();
-
-        let orderFieldSqlPrepared = `"${this.model.name}"."${databaseFieldName}"`;
-        const sqlJsonPath = orderFieldJsonPathParts.map((element) => `'${element}'`).join('->');
-        if (sqlJsonPath) orderFieldSqlPrepared += `->${sqlJsonPath}`;
-        delete sort[orderFieldJsonPath];
-        sortEntries[entry] = Sequelize.literal(orderFieldSqlPrepared + ' ' + orderValue);
+    let entries: any[];
+    if (Object.prototype.toString.call(sort) === '[object Object]') {
+      entries = Object.entries(sort);
+    } else if (Array.isArray(sort)) {
+      if (!sort.every((entry) => Array.isArray(entry) && entry.length === 2)) {
+        throw new InvalidSortError();
       }
+      entries = sort;
+    } else {
+      throw new InvalidSortError();
     }
 
-    return sortEntries;
+    if (entries.length > MAX_SORT_ENTRIES) {
+      throw new InvalidSortError();
+    }
+
+    const result: any[] = [];
+    for (const [field, direction] of entries) {
+      if (typeof field !== 'string' || typeof direction !== 'string') {
+        throw new InvalidSortError(String(field));
+      }
+      const orderValue = direction.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+      if (field.indexOf('.') < 0) {
+        if (!SORTABLE_COLUMNS.includes(field)) {
+          throw new InvalidSortError(field);
+        }
+        result.push([field, orderValue]);
+        continue;
+      }
+
+      const parts = field.split('.');
+      if (parts[0] !== SORT_JSON_ROOT || parts.length < 2 || !parts.every((part) => SORT_PATH_SEGMENT_REGEX.test(part))) {
+        throw new InvalidSortError(field);
+      }
+      const sqlJsonPath = parts
+        .slice(1)
+        .map((element) => `'${element}'`)
+        .join('->');
+      result.push(Sequelize.literal(`"${this.model.name}"."${SORT_JSON_ROOT}"->${sqlJsonPath} ${orderValue}`));
+    }
+
+    return result;
   }
 
   /**
@@ -695,7 +753,7 @@ export default class RecordModel extends Model {
       const records = await this.model.findAll({
         where: { key_id: keyId, is_encrypted: !isEncrypted },
         limit,
-        transaction
+        transaction,
       });
 
       for (const record of records) {
@@ -713,39 +771,6 @@ export default class RecordModel extends Model {
     }
 
     return count;
-  }
-
-  /**
-   * Form where query for object.
-   * @param {object} obj
-   * @param {string} whereQueryString
-   */
-  private formWhereQueryForObjects(obj, whereQueryString) {
-    for (const key in obj) {
-      if (typeof obj[key] === 'object') {
-        whereQueryString += Object.values(obj[key]).some((v) => typeof v === 'object') ? `r1.data->'${key}'->` : `r1.data->'${key}'->>`;
-        return this.formWhereQueryForObjects(obj[key], whereQueryString);
-      } else {
-        if (whereQueryString) {
-          whereQueryString += ' and ';
-        }
-        whereQueryString += obj[key] === 'null' ? `r1.data->>'${key}' is ${obj[key]}` : `r1.data->>'${key}' = '${obj[key]}'`;
-      }
-    }
-    return whereQueryString;
-  }
-
-  /**
-   * Form create update at date query.
-   * @param {object} dateAtClause Date clause.
-   */
-  private formCreateUpdateDateQuery(dateAtClause) {
-    const { Op } = this.model.sequelize;
-    const lessAndEqualQuery = dateAtClause[Op.lte];
-    const greateAndEqualQuery = dateAtClause[Op.gte];
-    let whereClauseQuery = lessAndEqualQuery ? ` and r1.created_at <= '${new Date(lessAndEqualQuery).toISOString()}'` : '';
-    whereClauseQuery += greateAndEqualQuery ? ` and r1.created_at >= '${new Date(greateAndEqualQuery).toISOString()}'` : '';
-    return whereClauseQuery;
   }
 }
 

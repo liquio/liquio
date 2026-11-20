@@ -1,5 +1,7 @@
 # gateway
 
+[![e2e coverage](https://codecov.io/gh/liquio/liquio/branch/main/graph/badge.svg?flag=gateway)](https://app.codecov.io/gh/liquio/liquio?flags%5B0%5D=gateway)
+
 BPMN gateway node processor — evaluates parallel/exclusive gateway logic
 within workflow execution, consuming the `bpmn-gateway-incoming` RabbitMQ
 queue. Despite the name, it is not an API/WebSocket gateway. See the full
@@ -30,6 +32,13 @@ npm run test:e2e
 npm run migration-up
 npm run migration-clear
 ```
+
+## E2E infrastructure
+
+`npm run test:e2e` starts PostgreSQL and RabbitMQ with testcontainers (Docker required, or set `DB_HOST` to use an
+external database). The app is booted through `src/bootstrap.ts`, the same code path as `src/index.ts`. Coverage of
+`src` (except `index.ts`) is collected with the v8 provider and a global 80% statements/lines threshold is enforced
+(`jest.e2e.config.js`). Redis is disabled in tests.
 
 ## Service dependencies
 

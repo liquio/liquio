@@ -1,0 +1,300 @@
+import moment from 'moment';
+import { PluginLoader } from '@liquio/plugin-sdk';
+import { Log, ConsoleLogProvider, Sandbox, getRegisterApiClient } from '@liquio/back-core';
+
+import { Db } from './lib/db';
+import { PgPubSub } from './lib/pgpubsub';
+import { PaymentService } from './services/payment';
+import { freezeObjectPrototype } from './lib/freeze_object_prototype';
+import { RedisClient } from './lib/redis_client';
+import { Models } from './models';
+import { DictionaryModels as DictionariesModel } from './models/dictionaries';
+import { DocumentFillerService } from './services/document_filler';
+import { Businesses } from './businesses';
+import { RouterService } from './services/router';
+import { FileGeneratorService } from './services/file_generator';
+import { StorageService } from './services/storage';
+import { Commands } from './commands';
+import typeOf from './lib/type_of';
+import { HttpClient } from './lib/http_client';
+import { ExternalServicesStatusesDaemon } from './lib/external_services_statuses_daemon';
+import { loadConfig } from './lib/config';
+import type { TaskConfig } from './lib/config.types';
+import { buildSandboxConfig, findTestAuthWarnings } from './lib/config_validation';
+import * as JSONPath from './lib/jsonpath';
+import { Keywords } from './services/document_validator/keywords';
+import { initIdApiClient } from './lib/id_api';
+import { setAppContext, getModels, getConfig, getLog, getMessageBus, getRedisClient, getRedisClientCommonBpmn } from './lib/context';
+import {
+  createTaskMessageBus,
+  isPdfReadingEnabled,
+  recordHandlerFailure,
+  DESTINATION_TASK,
+  DESTINATION_TASK_PDF,
+  DESTINATION_TASK_DELAYED_AUTO_COMMIT,
+} from './lib/message_bus';
+import { registerShutdown } from './lib/shutdown';
+
+const CONFIG_PATH = process.env.CONFIG_PATH || '../config/task';
+
+// Constants.
+const DEFAULT_OPTIONS = {
+  processTitle: 'bpmn-task',
+  configPath: CONFIG_PATH,
+  customValidators: {},
+  customRoutes: {},
+  customDocumentFillers: [],
+  customModels: [],
+  customDictionaryModels: [],
+  customStorageProvider: undefined,
+};
+const JEST_ENV = 'jest';
+setAppContext({ JEST_ENV });
+
+/**
+ * BPMN Task core.
+ */
+export class BpmnTaskCore {
+  options: typeof DEFAULT_OPTIONS & Record<string, any>;
+  commands: any;
+  pgpubsub: any;
+  models: any;
+  routerService: any;
+  db: any;
+  prometheus: any;
+  sandbox: Sandbox;
+
+  /**
+   * BPMN Task core constructor.
+   * @param {object} [options] Options.
+   * @param {string} [options.processTitle] Process title.
+   * @param {string} [options.configPath] Config directory path as "./config".
+   * @param {object} [options.customValidators] Custom validators as { someValidatorName: SomeValidatorClass, anotherValidatorName: AnotherValidatorClass }.
+   * @param {object} [options.customRoutes] Custom routes as { 'GET /some_url': { middlewares: [{ name: 'someMiddleware', method: 'someMiddlewareMethod' }], controller: { name: 'someController', method: 'someControllerMethod' } } }.
+   * @param {object[]} [options.customDocumentFillers] Custom document fillers.
+   * @param {object[]} [options.customModels] Custom models.
+   * @param {object[]} [options.customDictionaryModels] Custom dictionary models.
+   * @param {object} [options.customStorageProvider] Custom storage provider.
+   */
+  constructor(options: Record<string, any> = {}) {
+    // Save options.
+    this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.commands = new Commands();
+  }
+
+  /**
+   * Core classes.
+   */
+  static get CoreClasses() {
+    return {
+      libs: { Log },
+      services: { RouterService, DocumentFillerService, StorageService },
+      models: { DictionaryModel: DictionariesModel.dictionaryBase },
+      controllers: RouterService.ControllersList,
+      businesses: Businesses.List,
+      documentFillers: DocumentFillerService.FillersList,
+    };
+  }
+
+  /**
+   * Init.
+   */
+  async init(disableRouter = false) {
+    // Define params.
+    const {
+      processTitle,
+      configPath,
+      customValidators,
+      customRoutes,
+      customDocumentFillers,
+      customModels,
+      customDictionaryModels,
+      customStorageProvider,
+    } = this.options;
+
+    // Set process title.
+    process.title = processTitle;
+
+    // Init config.
+    const config: TaskConfig = loadConfig(configPath);
+
+    setAppContext({ config });
+
+    findTestAuthWarnings(config).forEach((message) => console.warn(message));
+
+    this.sandbox = new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);
+    Keywords.init();
+
+    // Init global http client.
+    const httpClient = new HttpClient(config.http_client);
+    setAppContext({ httpClient });
+
+    // Init log.
+    const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, config.log);
+    let log;
+    if (process.env.NODE_ENV === JEST_ENV) {
+      log = new Log([consoleLogProvider], []);
+    } else {
+      log = new Log([consoleLogProvider], ['console']);
+    }
+    setAppContext({ log, typeOf });
+
+    // Init id-api client.
+    initIdApiClient({ ...config.auth?.LiquioId, authRedirectUrl: config.auth?.authRedirectUrl });
+    getRegisterApiClient({ ...config.register, getLog });
+
+    // Log unhandled rejections.
+    process.on('unhandledRejection', (error: any) => {
+      const { stack, message } = error || {};
+      log.save('unhandled-rejection', { stack, message }, 'error');
+      process.exit(1);
+    });
+
+    // Save moment global to use in eval.
+    setAppContext({ moment });
+
+    // Init DB.
+    const db = await Db.getInstance(config.db);
+    setAppContext({ db });
+    this.db = db;
+
+    // Init pgpubsub.
+    const pgpubsub = new PgPubSub(config.db);
+    await pgpubsub.connect();
+    this.pgpubsub = pgpubsub;
+
+    // Init document filler.
+    new DocumentFillerService(customDocumentFillers);
+
+    // Init models.
+    this.models = new Models(customModels);
+    setAppContext({ models: this.models.models });
+    new DictionariesModel(customDictionaryModels);
+
+    // Initialize sandbox.
+    await this.sandbox.init(this.models);
+
+    // Init plugins. `paymentTransactions` is the only capability a TaskPaymentProvider plugin
+    // gets besides logging/config - it never touches the models/db globals directly (see
+    // `TaskPaymentTransactionService`'s own JSDoc in `@liquio/plugin-sdk`).
+    const pluginsConfig = config.plugins;
+    let pluginRegistry;
+    if (pluginsConfig) {
+      const paymentTransactions = {
+        create: (data) => getModels().paymentTransactions.create(data),
+        resolve: async (id) => (await getModels().paymentTransactions.findById(id)) ?? undefined,
+      };
+      pluginRegistry = await new PluginLoader(log, undefined, { paymentTransactions }).load(pluginsConfig);
+    } else {
+      log.save('plugin-load-summary', { configured: 0, loaded: 0, plugins: [] });
+    }
+
+    // Pre-warm the PaymentService singleton with the plugin registry, so that when
+    // businesses/document.ts later constructs it (via `new PaymentService(config.payment)`,
+    // unaware of plugins), the singleton guard returns this already-plugin-aware instance.
+    new PaymentService(config.payment, pluginRegistry);
+
+    // Init businesses.
+    const businesses: any = new Businesses(config);
+    setAppContext({ businesses: businesses.businesses });
+
+    // Init BPMN Task redis.
+    const redisClient = config?.redis?.isEnabled
+      ? new RedisClient({
+          host: config.redis.host,
+          port: config.redis.port,
+          defaultTtl: config.redis.defaultTtl,
+        })
+      : undefined;
+    setAppContext({ redisClient });
+
+    // Init common BPMN redis.
+    const redisClientCommonBpmn = config?.redis?.redisCommonBpmn?.isEnabled
+      ? new RedisClient({
+          host: config.redis.redisCommonBpmn.host,
+          port: config.redis.redisCommonBpmn.port,
+          defaultTtl: config.redis.redisCommonBpmn.defaultTtl,
+        })
+      : undefined;
+    setAppContext({ redisClientCommonBpmn });
+
+    const taskBusiness = businesses.businesses.task;
+    const documentBusiness = businesses.businesses.document;
+
+    // Init message bus.
+    const mq = config.message_queue;
+    const messageBus = createTaskMessageBus(config);
+    const concurrency = mq.maxHandlingMessages || 1;
+    await messageBus.subscribe(DESTINATION_TASK, taskBusiness.createFromMessage.bind(taskBusiness), {
+      concurrency,
+      onFailure: recordHandlerFailure,
+    });
+    if (isPdfReadingEnabled(mq)) {
+      await messageBus.subscribe(DESTINATION_TASK_PDF, documentBusiness.files.createPdfFromMessage.bind(documentBusiness.files), {
+        concurrency: mq.maxHandlingGeneratingPdfMessages || 1,
+        onFailure: recordHandlerFailure,
+      });
+    }
+    if (Object.keys(mq.delayedAutoCommitQueues || {}).length) {
+      await messageBus.subscribe(DESTINATION_TASK_DELAYED_AUTO_COMMIT, taskBusiness.delayedAutoCommitFromMessage.bind(taskBusiness), {
+        concurrency,
+        onFailure: recordHandlerFailure,
+      });
+    }
+
+    setAppContext({ messageBus });
+
+    // Init file generator.
+    new FileGeneratorService();
+
+    // Init storage service.
+    new StorageService(customStorageProvider);
+
+    // Init router.
+    if (!disableRouter) {
+      this.routerService = new RouterService(config);
+      await this.routerService.init({ customValidators, customRoutes });
+    }
+
+    // Setup is complete: freeze Object.prototype before any input (queue messages, HTTP requests) is processed.
+    freezeObjectPrototype();
+
+    // Start consuming the message bus.
+    await messageBus.init();
+
+    // Start external service statuses daemon.
+    if (getConfig().external_services?.daemon?.isEnbaled) {
+      const externalServicesStatusesDaemon = new ExternalServicesStatusesDaemon(getConfig().external_services.daemon);
+      externalServicesStatusesDaemon.start();
+    }
+  }
+
+  async listen() {
+    return this.routerService.listen();
+  }
+
+  async stop(drainTimeoutMs: number = getConfig()?.message_queue?.shutdownDrainTimeoutMs ?? 25000) {
+    await this.routerService?.stop();
+    await getMessageBus()?.close({ drainTimeoutMs });
+    await this.db?.close();
+    await this.pgpubsub?.cleanup?.();
+    const redisClients = new Set([getRedisClient(), getRedisClientCommonBpmn()].filter(Boolean));
+    for (const client of redisClients) {
+      await client.close().catch((error) => getLog()?.save('redis-close-error', { error: error?.message }, 'warn'));
+    }
+    await this.prometheus?.stop();
+    JSONPath.cleanTimeouts();
+  }
+}
+
+export async function bootstrap(): Promise<void> {
+  // Init.
+  const bpmnTaskCore = new BpmnTaskCore();
+  await bpmnTaskCore.init();
+
+  // Start.
+  await bpmnTaskCore.listen();
+
+  // Drain in-flight work on termination signals.
+  registerShutdown({ core: bpmnTaskCore });
+}

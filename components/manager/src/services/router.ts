@@ -1,10 +1,12 @@
 import express from 'express';
+import { asyncLocalStorageMiddleware } from '@liquio/back-core';
 
 import { PingController } from '../controllers/ping';
 import { MonitorController } from '../controllers/monitor';
 import { AppIdentHeaders } from '../lib/app_ident_headers';
 import { Cors } from '../lib/cors';
-import { asyncLocalStorageMiddleware } from '@liquio/back-core';
+import { monitoringGuard } from '../lib/monitoring_guard';
+import { getConfig, getLog } from '../lib/context';
 
 /**
  * Router service.
@@ -41,10 +43,10 @@ export class RouterService {
     app.use(asyncLocalStorageMiddleware);
 
     // Save request info to log.
-    app.use(global.log.logRouter.bind(global.log));
+    app.use(getLog().logRouter.bind(getLog()));
 
     // App info in headers.
-    AppIdentHeaders.add(app, global.config);
+    AppIdentHeaders.add(app, getConfig());
 
     // Allow CORS.
     Cors.allow(app);
@@ -66,8 +68,10 @@ export class RouterService {
     const pingController = new PingController(this.config);
     const monitorController = new MonitorController(this.config);
 
-    app.get('/test/ping', pingController.ping.bind(pingController));
-    app.get('/monitors/system', monitorController.system.bind(monitorController));
+    // Diagnostic routes expose system info and run DB checks: closed unless explicitly enabled and token provided.
+    const guard = monitoringGuard(this.config);
+    app.get('/test/ping', guard, pingController.ping.bind(pingController));
+    app.get('/monitors/system', guard, monitorController.system.bind(monitorController));
 
     // Healthz controller.
     app.get('/healthz', pingController.healthz.bind(pingController));
@@ -84,14 +88,32 @@ export class RouterService {
    * @param {object} app Express app.
    */
   async listen(app) {
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       // Start server listening.
       const hostname = this.config.server.hostname;
       const port = this.config.server.port;
-      this.httpServer = app.listen(port, hostname, () => {
-        global.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
+      this.httpServer = app.listen(port, hostname, (error?: Error) => {
+        // Express 5 passes listen errors (e.g. EADDRINUSE) to the callback instead of throwing.
+        if (error) {
+          return reject(error);
+        }
+        getLog().save('server-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });
+    });
+  }
+
+  /**
+   * Stop accepting HTTP connections.
+   */
+  async stop() {
+    const server = this.httpServer;
+    if (!server?.listening) {
+      return;
+    }
+    await new Promise<void>((resolve, reject) => {
+      server.close((error?: Error) => (error ? reject(error) : resolve()));
+      server.closeIdleConnections?.();
     });
   }
 }

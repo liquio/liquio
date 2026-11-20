@@ -1,0 +1,130 @@
+import {
+  isUnsafeDataKey,
+  isUnsafePathSegment,
+  findUnsafeDataKeys,
+  isValidDocumentPath,
+  getPathSegments,
+  hasUnsafePathSegment,
+} from './document_data_keys';
+
+describe('document_data_keys', () => {
+  describe('isValidDocumentPath', () => {
+    it.each(['files.0', 'step.Поле_1.2', 'initData.attachmentsSignatures.3'])('accepts %s', (path) => {
+      expect(isValidDocumentPath(path)).toBe(true);
+    });
+
+    it.each(['', 'a..b', '[__proto__][x]', '__proto__.x', 'a.constructor.prototype.x', 'a.prototype', 'a-b', 'a[0]', 123, ['a'], {}, undefined])(
+      'rejects %p',
+      (path) => {
+        expect(isValidDocumentPath(path)).toBe(false);
+      },
+    );
+  });
+
+  describe('getPathSegments', () => {
+    it('normalises brackets and drops empty segments', () => {
+      expect(getPathSegments('a[b]c')).toEqual(['a', 'b', 'c']);
+      expect(getPathSegments('[__proto__][x]')).toEqual(['__proto__', 'x']);
+      expect(getPathSegments('a..b')).toEqual(['a', 'b']);
+    });
+  });
+
+  describe('hasUnsafePathSegment', () => {
+    it('detects raw-bracket, dotted and mixed forms', () => {
+      expect(hasUnsafePathSegment('[__proto__][x]')).toBe(true);
+      expect(hasUnsafePathSegment('a.constructor.prototype.x')).toBe(true);
+      expect(hasUnsafePathSegment('a[constructor].prototype')).toBe(true);
+      expect(hasUnsafePathSegment('files.0')).toBe(false);
+    });
+  });
+
+  describe('isUnsafePathSegment', () => {
+    it('detects prototype names only', () => {
+      expect(isUnsafePathSegment('__proto__')).toBe(true);
+      expect(isUnsafePathSegment('constructor')).toBe(true);
+      expect(isUnsafePathSegment('prototype')).toBe(true);
+      expect(isUnsafePathSegment('firstName')).toBe(false);
+    });
+  });
+
+  describe('isUnsafeDataKey', () => {
+    it.each([
+      '__proto__',
+      'constructor',
+      'prototype',
+      'a}|$|{b',
+      'a}|^|{b',
+      '{x}',
+      '<x>',
+      'a"b',
+      "a'b",
+      'a`b',
+      'a$b',
+      'a^b',
+      'a|b',
+      'a\\b',
+      'a\nb',
+      'a\u0000b',
+      'x'.repeat(257),
+    ])('rejects %j', (key) => {
+      expect(isUnsafeDataKey(key)).toBe(true);
+    });
+
+    it.each(['firstName', '_id', 'прізвище', 'item-1', '161011', 'x'.repeat(256), '', 'a.b', 'a b'])('accepts %j', (key) => {
+      expect(isUnsafeDataKey(key)).toBe(false);
+    });
+  });
+
+  describe('findUnsafeDataKeys', () => {
+    it('returns empty for primitives', () => {
+      expect(findUnsafeDataKeys('x', 'p')).toEqual([]);
+      expect(findUnsafeDataKeys(1, 'p')).toEqual([]);
+      expect(findUnsafeDataKeys(null, 'p')).toEqual([]);
+      expect(findUnsafeDataKeys(undefined, 'p')).toEqual([]);
+    });
+
+    it('detects a key with brace and pipe characters', () => {
+      expect(findUnsafeDataKeys({ 'a}|$|{b': '<iframe>' }, 'unknownStep')).toEqual(['unknownStep.a}|$|{b']);
+    });
+
+    it('walks objects in arrays', () => {
+      expect(findUnsafeDataKeys({ list: [{ ok: 1 }, { 'bad{': 1 }] }, 'step')).toEqual(['step.list.1.bad{']);
+      expect(findUnsafeDataKeys({ list: [{ 'bad{': 1 }] }, 'step')).toEqual(['step.list.0.bad{']);
+    });
+
+    it('detects own __proto__ from JSON.parse', () => {
+      expect(findUnsafeDataKeys(JSON.parse('{"__proto__":{"x":1}}'), 'p')).toEqual(['p.__proto__']);
+    });
+
+    it('reports too deep nesting once without throwing', () => {
+      let deep: any = { a: 1 };
+      for (let i = 0; i < 65; i++) deep = { a: deep };
+      const result = findUnsafeDataKeys(deep, 'p');
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatch(/\(too deep\)$/);
+    });
+
+    it('limits results', () => {
+      const obj: Record<string, number> = {};
+      for (let i = 0; i < 20; i++) obj[`bad{${i}`] = 1;
+      expect(findUnsafeDataKeys(obj, 'p')).toHaveLength(10);
+    });
+
+    it('never contains values and truncates long keys', () => {
+      const result = findUnsafeDataKeys({ 'x{': 'SECRET', ['y'.repeat(100) + '{']: 'SECRET' }, 'p');
+      expect(JSON.stringify(result)).not.toContain('SECRET');
+      expect(result[1].length).toBeLessThanOrEqual('p.'.length + 65);
+    });
+  });
+});
+
+describe('isUnsafeDataKey path segments', () => {
+  it('flags prototype segments inside keys', () => {
+    expect(isUnsafeDataKey('a.__proto__')).toBe(true);
+    expect(isUnsafeDataKey('[constructor]')).toBe(true);
+    expect(isUnsafeDataKey('x[prototype]')).toBe(true);
+    expect(isUnsafeDataKey('a.b')).toBe(false);
+    expect(isUnsafeDataKey('files[0]')).toBe(false);
+    expect(findUnsafeDataKeys({ 'a.__proto__': 1 }, 'p')).toEqual(['p.a.__proto__']);
+  });
+});

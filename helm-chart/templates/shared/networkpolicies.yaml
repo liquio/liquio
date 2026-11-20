@@ -54,6 +54,11 @@
 {{- include "liquio.networkPolicy.backendInternal" (dict "component" "task" "context" .) }}
 {{- end }}
 
+{{- /* ── Public persist-link (plink ingress) ──────────────────────────── */}}
+{{- if .Values.services.persistLink.enabled }}
+{{- include "liquio.networkPolicy.backend" (dict "component" "persist-link" "context" .) }}
+{{- end }}
+
 {{- /* ── Internal infrastructure (only when deployed in-cluster) ────── */}}
 {{- if .Values.postgresql.enabled }}
 {{- include "liquio.networkPolicy.infra" (dict "component" "postgresql" "context" .) }}

@@ -11,4 +11,3 @@ export class Checks {
     throw new Error('Method of Checks Class must be override for a specific check.');
   }
 }
-

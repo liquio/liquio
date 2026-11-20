@@ -1,15 +1,16 @@
 import _ from 'lodash';
 import axios from 'axios';
+import { Sandbox } from '@liquio/back-core';
 
 import { JSONPath } from '../lib/jsonpath';
 import { Business } from './business';
 import { XmlJsConverter } from '../lib/xml_js_converter';
 import { Eds } from '../lib/eds';
 import { StorageService } from '../services/storage';
-import { Sandbox } from '../lib/sandbox';
 import typeOf from '../lib/type_of';
 import { EvaluateSchemaFunctionError, NotFoundError, ForbiddenError } from '../lib/errors';
-import { ERROR_WORKFLOW_NOT_FOUND, ERROR_WORKFLOW_ACCESS } from '../constants/error';
+import { ErrorMessage } from '../constants/error';
+import { getBusinesses, getConfig, getLog, getModels } from '../lib/context';
 
 const ELASTIC_FIELDS_SEARCH_MAP = {
   number: 'selected_number',
@@ -67,7 +68,7 @@ export class WorkflowBusiness extends Business {
       this.xmlJsConverter = new XmlJsConverter();
       this.eds = new Eds(config.eds);
       this.storageService = new StorageService();
-      this.sandbox = new Sandbox({});
+      this.sandbox = Sandbox.getInstance();
       WorkflowBusiness.singleton = this;
     }
     return WorkflowBusiness.singleton;
@@ -80,7 +81,7 @@ export class WorkflowBusiness extends Business {
    * @returns {Promise<WorkflowEntity>} Workflow entity.
    */
   async getAllByUserId(userId, params) {
-    const workflows: any = await global.models.workflow.getAllByUserId(userId, {
+    const workflows: any = await getModels().workflow.getAllByUserId(userId, {
       ...params,
     });
 
@@ -89,8 +90,8 @@ export class WorkflowBusiness extends Business {
       workflow.lastStepLabel = name;
       workflow.lastStepDescription = description;
       if (!workflow.lastStepLabel && !workflow.lastStepDescription && !(workflow.statuses?.length > 0) && workflow.workflowStatusId !== null) {
-        workflow.events = await global.models.event.getEventsByWorkflowId(workflow.id);
-        workflow.documents = await (global.models.document.getAllByWorkflowId as any)({ workflowId: workflow.id });
+        workflow.events = await getModels().event.getEventsByWorkflowId(workflow.id);
+        workflow.documents = await (getModels().document.getAllByWorkflowId as any)({ workflowId: workflow.id });
         workflow.statuses = this.calculateReserveStatuses(workflow);
       }
     }
@@ -107,27 +108,27 @@ export class WorkflowBusiness extends Business {
    */
   async findById(id, userId, userUnitIds) {
     // Get workflow.
-    let workflow: any = await global.models.workflow.findById(id, { with: ['tasks', 'events'] });
+    let workflow: any = await getModels().workflow.findById(id, { with: ['tasks', 'events'] });
     if (!workflow) {
-      throw new NotFoundError(ERROR_WORKFLOW_NOT_FOUND);
+      throw new NotFoundError(ErrorMessage.WorkflowNotFound);
     }
 
     // Check access.
     const hasAccess = workflow.hasAccess(userId, userUnitIds);
     if (!hasAccess) {
-      throw new ForbiddenError(ERROR_WORKFLOW_ACCESS);
+      throw new ForbiddenError(ErrorMessage.WorkflowAccess);
     }
 
     // Append extra data to workflow.
     workflow = await this.appendEntryTaskInfo(workflow);
     workflow.timeline = await this.prepareTimeline(workflow);
     if (workflow.timeline.length === 0 && !(workflow.statuses?.length > 0) && workflow.workflowStatusId !== null) {
-      workflow.events = await global.models.event.getEventsByWorkflowId(workflow.id);
-      workflow.documents = await (global.models.document.getAllByWorkflowId as any)({ workflowId: workflow.id });
+      workflow.events = await getModels().event.getEventsByWorkflowId(workflow.id);
+      workflow.documents = await (getModels().document.getAllByWorkflowId as any)({ workflowId: workflow.id });
       workflow.statuses = this.calculateReserveStatuses(workflow);
     }
-    const allFiles = await global.businesses.document.getFilesToPreview(id, undefined, undefined, undefined, undefined, true);
-    const { workflowFilesFilter = '(item) => true' } = global.config.files_filter || {};
+    const allFiles = await getBusinesses().document.files.getFilesToPreview(id, undefined, undefined, undefined, undefined, true, userId);
+    const { workflowFilesFilter = '(item) => true' } = getConfig().files_filter || {};
     const workflowFilesFilterFunction = this.sandbox.eval(workflowFilesFilter);
     workflow.files = allFiles
       .filter(
@@ -147,7 +148,7 @@ export class WorkflowBusiness extends Business {
     workflow.info = await this.getWorkflowInfo(workflow);
     const files = workflow.files || [];
     const p7sMetadata = await this.storageService.provider.getP7sMetadata(files.map((v) => v.fileLink));
-    const documentSignaturesPromises = files.map((v) => (global.models.documentSignature.getByDocumentId as any)(v.documentId));
+    const documentSignaturesPromises = files.map((v) => (getModels().documentSignature.getByDocumentId as any)(v.documentId));
     const documentSignatures = await Promise.all(documentSignaturesPromises);
 
     // Add signer info.
@@ -160,7 +161,7 @@ export class WorkflowBusiness extends Business {
         const { signer, issuer, signTime } = await this.eds.getSignatureInfo(signature);
         files[i].signature = { signer, issuer, signTime };
       } catch (error) {
-        global.log.save('Can not get signature info', error, 'warn');
+        getLog().save('Can not get signature info', error, 'warn');
       }
     }
 
@@ -315,7 +316,7 @@ export class WorkflowBusiness extends Business {
    * @return {{messages: object[], steps: object[]}}
    */
   getTimelineStepsAndMessages(workflow) {
-    const workflowMessages = _.get(workflow, 'data.messages', []);
+    const workflowMessages = _.get(workflow, 'data.messages', []) as { type?: string; sequences?: { sourceRef?: string }[] }[];
     const steps = _.get(workflow.workflowTemplate, 'data.timeline.steps', []);
 
     if (!workflowMessages.length || !steps.length) {
@@ -481,7 +482,7 @@ export class WorkflowBusiness extends Business {
     }
 
     if (status.calculate) {
-      const { template, replace } = global.config.mapping?.taskBusiness?.frontUrl || {};
+      const { template, replace } = getConfig().mapping?.taskBusiness?.frontUrl || {};
       if (typeOf(template) === 'string' && typeOf(replace) === 'string') {
         status.calculate = status.calculate.replaceAll(template, replace);
       }
@@ -506,7 +507,7 @@ export class WorkflowBusiness extends Business {
           return false;
         })
       ) {
-        global.log.save('set-workflow-status|status-calculate-error', { workflowId, status });
+        getLog().save('set-workflow-status|status-calculate-error', { workflowId, status });
         throw new Error('Invalid status.');
       }
 
@@ -514,8 +515,8 @@ export class WorkflowBusiness extends Business {
       const nonTabedStatusesLength = nonTabedStatuses.length;
 
       if (nonTabedStatusesLength === 0) {
-        global.log.save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
-        throw new Error('Invalid status. Non tabed statuses don\'t exist.');
+        getLog().save('set-workflow-status|statusId-calculate-error|non-tabed-statuses-dont-exist', { workflowId, calculatedStatus });
+        throw new Error("Invalid status. Non tabed statuses don't exist.");
       }
 
       let statusId;
@@ -526,11 +527,11 @@ export class WorkflowBusiness extends Business {
       } else if (nonTabedStatuses[nonTabedStatusesLength - 1].type.toLowerCase() === 'rejected') {
         statusId = 3;
       }
-      await global.models.workflow.setStatus(workflowId, statusId, calculatedStatus);
-      global.log.save('set-workflow-status|status-defined', { workflowId, statusId, calculatedStatus, workflowTemplateId: workflowTemplate.id });
+      await getModels().workflow.setStatus(workflowId, statusId, calculatedStatus);
+      getLog().save('set-workflow-status|status-defined', { workflowId, statusId, calculatedStatus, workflowTemplateId: workflowTemplate.id });
     } else if (status.statusId) {
-      await (global.models.workflow.setStatus as any)(workflowId, status.statusId);
-      global.log.save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
+      await (getModels().workflow.setStatus as any)(workflowId, status.statusId);
+      getLog().save('set-workflow-status|status-defined', { workflowId, statusId: status.statusId, workflowTemplateId: workflowTemplate.id });
     }
   }
 
@@ -553,7 +554,7 @@ export class WorkflowBusiness extends Business {
       (message) => message?.type === 'in' && message?.sequences?.every((sequence) => /^(task|event)-[0-9]+$/.test(sequence.sourceRef)),
     );
 
-    const { template, replace } = global.config.mapping?.taskBusiness?.frontUrl || {};
+    const { template, replace } = getConfig().mapping?.taskBusiness?.frontUrl || {};
     const shouldReplaceFronUrl = typeOf(template) === 'string' && typeOf(replace) === 'string';
 
     let lastCalculetedStatuses = [];
@@ -614,4 +615,3 @@ export class WorkflowBusiness extends Business {
     return lastCalculetedStatuses;
   }
 }
-

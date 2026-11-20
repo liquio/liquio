@@ -1,9 +1,10 @@
-
 import axios from 'axios';
+
+import { getConfig, getLog } from './context';
 
 // Constants.
 const ROUTES = {
-  decrypt: '/decrypt'
+  decrypt: '/decrypt',
 };
 
 /**
@@ -23,7 +24,7 @@ export class Sign {
   constructor(config) {
     // Define singleton.
     if (!Sign.singleton) {
-      const { url, token, timeout = 10000 } = config || global.config.sign;
+      const { url, token, timeout = 10000 } = config || getConfig().sign;
       this.url = url;
       this.token = token;
       this.timeout = timeout;
@@ -45,19 +46,19 @@ export class Sign {
       method: 'POST',
       headers: { token: this.token },
       data: { data },
-      timeout: this.timeout
+      timeout: this.timeout,
     };
     try {
       const responseBody = (await axios(requestOptions))?.data;
       if (!responseBody?.data) {
-        global.log.save('sign-service-decrypt-empty-response-error', { responseBody });
+        getLog().save('sign-service-decrypt-empty-response-error', { responseBody });
         throw new Error('Sign.decrypt. Cannot get data from response.');
       }
       return responseBody.data;
     } catch (error) {
-      global.log.save('sign-service-decrypt-error', {
+      getLog().save('sign-service-decrypt-error', {
         error: error && error.message,
-        requestOptions: { ...requestOptions, body: '*****', headers: '*****' }
+        requestOptions: { ...requestOptions, body: '*****', headers: '*****' },
       });
       const wrapped: any = new Error(`Sign.decrypt. ${error?.toString()}`);
       wrapped.cause = error;
@@ -65,4 +66,3 @@ export class Sign {
     }
   }
 }
-

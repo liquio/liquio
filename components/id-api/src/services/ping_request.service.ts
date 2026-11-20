@@ -1,4 +1,5 @@
 import { HttpRequest } from '../lib/http_request';
+import { internalRequestOptions } from '../lib/internal_transport';
 import { BaseService } from './base_service';
 
 const NOTIFY_SERVICE_NAME = 'notify';
@@ -14,9 +15,11 @@ export class PingRequestService extends BaseService {
    */
   async sendPingRequest(serviceName: string) {
     let pingUrl: string;
+    let tls = {};
     switch (serviceName) {
       case NOTIFY_SERVICE_NAME: {
         pingUrl = this.config.pingRoutes!.notify + '_with_auth';
+        tls = internalRequestOptions(this.config);
         break;
       }
       case EDS_SERVICE_NAME: {
@@ -32,6 +35,7 @@ export class PingRequestService extends BaseService {
       url: pingUrl,
       method: HttpRequest.Methods.GET,
       headers: { Authorization: this.config.notify!.authorization },
+      ...tls,
     });
     const body: any = responseData?.data;
     const isCorrectConnection = body?.data?.message === ANSWER_MSG_PONG || body?.message === ANSWER_MSG_PONG;

@@ -1,7 +1,8 @@
-
 import * as crypto from 'node:crypto';
 import { randomUUID } from 'node:crypto';
+
 import { Filler } from './filler';
+import { getConfig } from '../../../lib/context';
 
 /**
  * Helpers filler.
@@ -30,8 +31,9 @@ export class HelpersFiller extends Filler {
     // Handle all schema object pages.
     await this.handleAllElements(schemaObject, objectToFill, async (item, itemSchema) => {
       // Check current element shoudn't be defined.
-      if (!itemSchema || typeof itemSchema.value !== 'string'
-        || !itemSchema.value.startsWith('helpers.')) { return; }
+      if (!itemSchema || typeof itemSchema.value !== 'string' || !itemSchema.value.startsWith('helpers.')) {
+        return;
+      }
 
       // Define current value.
       // Sample: "helpers.uuidv4".
@@ -46,12 +48,12 @@ export class HelpersFiller extends Filler {
         case 'helpers.deepLink':
           valueToSet = {
             method: itemSchema.method,
-            host: global.config.persist_link.qrFrontUrl,
+            host: getConfig().persist_link.qrFrontUrl,
             hash: crypto.randomBytes(16).toString('hex'),
           };
           break;
         case 'helpers.frontUrl':
-          valueToSet = global.config.auth.authRedirectUrl;
+          valueToSet = getConfig().auth.authRedirectUrl;
           break;
         default:
           valueToSet = undefined;
@@ -65,4 +67,3 @@ export class HelpersFiller extends Filler {
     return objectToFill;
   }
 }
-

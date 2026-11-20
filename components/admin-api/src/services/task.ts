@@ -1,7 +1,9 @@
 import querystring from 'querystring';
 
 import { AppInfo, getTraceId } from '@liquio/back-core';
+
 import { HttpRequest } from '../lib/http_request';
+import { getConfig, getLog } from '../lib/context';
 
 // Constants.
 const ROUTES = {
@@ -31,10 +33,10 @@ export class TaskService {
   constructor() {
     // Define singleton.
     if (!TaskService.singleton) {
-      this.server = global.config.task.server;
-      this.port = global.config.task.port;
-      this.token = global.config.task.token;
-      this.timeout = global.config.task.timeout || 15000;
+      this.server = getConfig().task.server;
+      this.port = getConfig().task.port;
+      this.token = getConfig().task.token;
+      this.timeout = getConfig().task.timeout || 15000;
       this.appInfo = new AppInfo();
 
       TaskService.singleton = this;
@@ -70,7 +72,7 @@ export class TaskService {
       timeout: this.timeout,
     });
 
-    global.log.save('task-service-elastic-response', response);
+    getLog().save('task-service-elastic-response', response);
 
     return response;
   }
@@ -264,7 +266,7 @@ export class TaskService {
         },
         fullResponse,
       );
-      global.log.save('send-ping-request-to-bpmn-task-id', responseData);
+      getLog().save('send-ping-request-to-bpmn-task-id', responseData);
 
       const version = responseData && responseData.response && responseData.response.headers && responseData.response.headers.version;
       const customer = responseData && responseData.response && responseData.response.headers && responseData.response.headers.customer;
@@ -272,7 +274,7 @@ export class TaskService {
       const body = responseData && responseData.response && JSON.parse(responseData.response.body || '{}');
       return { version, body, customer, environment };
     } catch (error) {
-      global.log.save('send-ping-request-to-bpmn-task-error', error.message);
+      getLog().save('send-ping-request-to-bpmn-task-error', error.message);
     }
   }
 
@@ -285,13 +287,13 @@ export class TaskService {
       let response = await HttpRequest.send({
         url: `${this.server}:${this.port}${ROUTES.pingServices}`,
         method: HttpRequest.Methods.GET,
-        headers: { ...this.headers },
+        headers: { ...this.headers, Authorization: this.token },
       });
-      global.log.save('task-request-send-ping-services', response);
+      getLog().save('task-request-send-ping-services', response);
 
       return response;
     } catch (error) {
-      global.log.save('task-request-send-ping-services-error', error.message);
+      getLog().save('task-request-send-ping-services-error', error.message);
     }
   }
 
@@ -322,7 +324,7 @@ export class TaskService {
       message = error;
     }
 
-    global.log.save(logName, message && ((message.error && message.error.message) || message));
+    getLog().save(logName, message && ((message.error && message.error.message) || message));
     if (message.error && message.error.message) {
       throw new Error(message.error.message);
     }

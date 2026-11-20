@@ -1,9 +1,12 @@
-
 import jwt from 'jsonwebtoken';
+
+import { ErrorMessage } from '../constants/error';
+import { checkDownloadTokenSecret } from './config_validation';
+import { ForbiddenError } from './errors';
 
 // Constants.
 const DEFAULT_CONFIG = {
-  lifetimeInSeconds: 3600
+  lifetimeInSeconds: 3600,
 };
 
 /**
@@ -27,6 +30,10 @@ export class DownloadToken {
       if (!jwtSecret) {
         throw new Error('JWT secret is required to create download token.');
       }
+      const secretProblem = checkDownloadTokenSecret(jwtSecret);
+      if (secretProblem) {
+        throw new Error(`Cannot create download token: ${secretProblem}`);
+      }
 
       this.jwtSecret = jwtSecret;
       this.lifetimeInSeconds = lifetimeInSeconds;
@@ -36,13 +43,18 @@ export class DownloadToken {
   }
 
   /**
-   * Generate JWT download token.
+   * Generate JWT download token bound to the user.
    * @param {string} fileId File ID.
+   * @param {string} userId ID of the user the token is issued to.
    * @returns {string} Download token.
    */
-  generate(fileId) {
+  generate(fileId: string, userId: string): string {
+    if (!fileId || !userId) {
+      throw new Error('fileId and userId are required to generate download token.');
+    }
+
     // Define token data.
-    const tokenData = { fileId };
+    const tokenData = { fileId, userId: String(userId) };
 
     // Return token.
     const token = jwt.sign(tokenData, this.jwtSecret, { expiresIn: this.lifetimeInSeconds });
@@ -50,15 +62,35 @@ export class DownloadToken {
   }
 
   /**
-   * Decrypt JWT download token.
+   * Decrypt JWT download token and check it was issued to the requesting user.
    * @param {string} token Download token.
+   * @param {string} userId ID of the requesting user.
    * @returns {string} File ID.
+   * @throws {ForbiddenError} On invalid, expired, legacy or foreign token.
    */
-  decrypt(token) {
-    // Get token data.
-    const tokenData = jwt.verify(token, this.jwtSecret);
-    const { fileId } = tokenData;
-    return fileId;
+  decrypt(token: string, userId: string): string {
+    let payload: any;
+    try {
+      payload = jwt.verify(token, this.jwtSecret);
+    } catch {
+      throw new ForbiddenError(ErrorMessage.DownloadTokenInvalid);
+    }
+
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      typeof payload.fileId !== 'string' ||
+      !payload.fileId ||
+      typeof payload.userId !== 'string' ||
+      !payload.userId
+    ) {
+      throw new ForbiddenError(ErrorMessage.DownloadTokenInvalid);
+    }
+
+    if (!userId || payload.userId !== String(userId)) {
+      throw new ForbiddenError(ErrorMessage.DownloadTokenInvalid);
+    }
+
+    return payload.fileId;
   }
 }
-

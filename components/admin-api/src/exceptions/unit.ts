@@ -2,6 +2,7 @@ const DEFAULT_MESSAGE = 'Unit.';
 
 export class UnitError extends Error {
   httpStatusCode: number;
+  isPublic = true;
   details: any;
 
   constructor(message?: string, details?: any, httpStatusCode: number = 500) {

@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -33,4 +32,3 @@ export class UIFilterEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-

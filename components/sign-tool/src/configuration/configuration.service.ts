@@ -1,53 +1,58 @@
 import { Injectable } from '@nestjs/common';
-import { existsSync } from 'fs';
+import { Config, ConfigValidationError } from '@liquio/back-core';
 
 import { LoggerService } from '../observability/logger.service';
+import { signToolConfigSchema } from './configuration.schema';
 
-// Use require() instead of ES6 import for CommonJS module
-const Multiconf = require('multiconf');
-
-export const CONFIG_PATH = process.env.CONFIG_PATH || '../config/sign-tool';
+export const CONFIG_PATH = process.env.CONFIG_PATH || '../../config/sign-tool';
 export const SECRET_PATH = process.env.SECRET_PATH;
-export const LIQUIO_CONFIG_PREFIX =
-  process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_SIGN_TOOL';
+export const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_SIGN_TOOL';
 
-export interface Configuration {
-  x509: {
-    caCerts: string[];
+export interface SignToolConfig {
+  x509?: {
+    caCerts?: string[];
   };
   server: {
-    host: string;
-    port: number;
-    isSwaggerEnabled: boolean;
-    acceptedBodySize: string;
+    host?: string;
+    port?: number | string;
+    isSwaggerEnabled?: boolean;
+    acceptedBodySize?: string;
+    tls?: {
+      enabled?: boolean;
+      certPath?: string;
+      keyPath?: string;
+      caPath?: string;
+    };
   };
 }
 
 @Injectable()
 export class ConfigurationService {
-  private readonly config: Configuration;
+  private readonly config: SignToolConfig;
 
   constructor(private readonly logger: LoggerService) {
     this.logger.setContext(ConfigurationService.name);
     try {
-      this.config = Multiconf.get(
-        [
-          CONFIG_PATH,
-          ...(SECRET_PATH && existsSync(SECRET_PATH) ? [SECRET_PATH] : []),
-        ],
-        `${LIQUIO_CONFIG_PREFIX}_`,
-      );
+      this.config = Config.load<SignToolConfig>({
+        configPath: CONFIG_PATH,
+        secretPath: SECRET_PATH ?? null,
+        envPrefix: `${LIQUIO_CONFIG_PREFIX}_`,
+        schema: signToolConfigSchema,
+      }).toObject();
     } catch (e) {
       const err = e instanceof Error ? e : new Error(String(e));
       this.logger.error('configuration-error', {
         error: err.message,
         stack: err.stack,
       });
+      if (e instanceof ConfigValidationError) {
+        throw e;
+      }
       throw new Error('Unable to load configuration');
     }
   }
 
-  get(key: keyof Configuration): any {
+  get(key: keyof SignToolConfig): any {
     return this.config[key];
   }
 }

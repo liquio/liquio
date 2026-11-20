@@ -1,12 +1,13 @@
 import axios from 'axios';
-import PropByPath from 'prop-by-path';
 import { matchedData } from 'express-validator';
 
+import PropByPath from '../lib/prop_by_path';
 import { Controller } from './controller';
 import { RegisterBusiness } from '../businesses/register';
 import { DocumentAttachmentModel } from '../models/document_attachment';
 import { StorageService } from '../services/storage';
 import { InvalidParamsError, ForbiddenError } from '../lib/errors';
+import { getLog } from '../lib/context';
 
 /**
  * Protected file controller.
@@ -40,10 +41,7 @@ export class ProtectedFileController extends Controller {
    */
   async open(req, res) {
     try {
-      const {
-        key_id: keyId,
-        record_id: recordId
-      } = matchedData(req, { locations: ['params'] });
+      const { key_id: keyId, record_id: recordId } = matchedData(req, { locations: ['params'] });
       const { preview, path, p7s } = matchedData(req, { locations: ['query'] });
 
       const userUnitIds = this.getRequestUserUnitIds(req);
@@ -51,22 +49,16 @@ export class ProtectedFileController extends Controller {
       const allowTokens = this.getRequestUserUnitAllowTokens(req);
 
       if (!keyId || !recordId || !path) {
-        global.log.save('protected-file-controller|invalid-parameters-error', { keyId, recordId, path });
+        getLog().save('protected-file-controller|invalid-parameters-error', { keyId, recordId, path });
         throw new InvalidParamsError('Missing required parameters: key_id, record_id, path.');
       }
 
-      const record = await this.registerBusiness.findRecordAndCheckAccess(
-        recordId,
-        keyId,
-        allowTokens,
-        userUnitIds,
-        accessInfo
-      );
+      const record = await this.registerBusiness.findRecordAndCheckAccess(recordId, keyId, allowTokens, userUnitIds, accessInfo);
 
       const attach = PropByPath.get(record || {}, path);
       const fileId = attach?.link;
       if (!fileId) {
-        global.log.save('protected-file-controller|file-id-not-found', { path });
+        getLog().save('protected-file-controller|file-id-not-found', { path });
         throw new ForbiddenError('You are not allowed to access this file.');
       }
 
@@ -74,7 +66,7 @@ export class ProtectedFileController extends Controller {
       const stream = await axios({ ...requestOptions, responseType: 'stream' });
       stream.data.pipe(res);
     } catch (error) {
-      global.log.save('protected-file-controller|open-error', error && error.message);
+      getLog().save('protected-file-controller|open-error', error && error.message);
       return this.responseError(res, error);
     }
   }
@@ -92,13 +84,7 @@ export class ProtectedFileController extends Controller {
     const contentLength = req.query.content_length || req.headers['content-length'];
 
     try {
-      const { id: fileId } = await this.storageService.provider.uploadFileFromStream(
-        req,
-        originalFileName,
-        undefined,
-        contentType,
-        contentLength
-      );
+      const { id: fileId } = await this.storageService.provider.uploadFileFromStream(req, originalFileName, undefined, contentType, contentLength);
 
       this.responseData(res, {
         link: fileId,
@@ -130,4 +116,3 @@ export class ProtectedFileController extends Controller {
     return this.storageService.provider.downloadFileRequestOptions(fileId);
   }
 }
-

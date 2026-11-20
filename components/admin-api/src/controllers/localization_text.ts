@@ -3,6 +3,7 @@ import { matchedData } from 'express-validator';
 import { Stream } from '../lib/stream';
 import { Controller } from './controller';
 import { LocalizationTextBusiness } from '../businesses/localization_text';
+import { getLog } from '../lib/context';
 
 /**
  * Localization text controller.
@@ -92,7 +93,7 @@ export class LocalizationTextController extends Controller {
         value,
       });
     } catch (error) {
-      global.log.save('localization-text-create-error|cannot-create-text', {
+      getLog().save('localization-text-create-error|cannot-create-text', {
         error: error.message,
         cause: error.cause,
         fieds: error.fieds,

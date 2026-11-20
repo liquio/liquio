@@ -1,8 +1,12 @@
+import type https from 'node:https';
+
 import axios from 'axios';
 
 import { Provider } from '../provider';
 import { Auth } from './auth';
+import { createHttpsAgent } from '../../lib/tls';
 import { HttpRequest } from '../../lib/http_request';
+import { getLog, getSilentUpload } from '../../lib/context';
 
 const PROVIDER_NAME = 'minio';
 const DEFAULT_ROUTES = {
@@ -14,6 +18,18 @@ const CONTAINER_BYTES_USED_HEADER = 'x-container-bytes-used';
 const CONTAINER_OBJECT_COUNT_HEADER = 'x-container-object-count';
 const BYTES_IN_GIGABYTES = 1000000000;
 const AUTH_CACHE_TTL = 30000;
+
+const urlForLog = (value: string): string => {
+  try {
+    const u = new URL(value);
+    u.username = '';
+    u.password = '';
+    u.search = '';
+    return u.toString();
+  } catch {
+    return '[invalid-url]';
+  }
+};
 
 /**
  * Minio.
@@ -32,6 +48,7 @@ export class Minio extends Provider {
   container: string;
   authCacheTtl: number;
   auth: Auth;
+  httpsAgent?: https.Agent;
 
   /**
    * Minio constructor.
@@ -47,6 +64,7 @@ export class Minio extends Provider {
       this.authVersion = minioConfig.authVersion || DEFAULT_AUTH_VERSION;
       this.routes = { ...DEFAULT_ROUTES, ...minioConfig.routes };
       this.timeout = minioConfig.timeout;
+      this.httpsAgent = createHttpsAgent(minioConfig.tls);
       this.tenantName = minioConfig.tenantName;
       this.account = minioConfig.account;
       this.container = minioConfig.container || DEFAULT_CONTAINER;
@@ -93,19 +111,18 @@ export class Minio extends Provider {
    */
   async downloadFileRequestOptions({ filePath, contentType }: any) {
     // Get info to handle file.
-    !global.silentUpload && global.log.save('minio-file-downloading', { filePath });
+    !getSilentUpload() && getLog().save('minio-file-downloading', { filePath });
     const infoToHandleFile = await this.getInfoToHandleFile({ filePath, contentType, method: HttpRequest.Methods.GET });
     const { url, headers } = infoToHandleFile;
 
     // Get and return request options.
-    !global.silentUpload &&
-      global.log.save('minio-file-downloading|request-options', {
-        url,
-        headers,
+    !getSilentUpload() &&
+      getLog().save('minio-file-downloading|request-options', {
+        url: urlForLog(url),
         method: HttpRequest.Methods.GET,
         timeout: this.timeout,
       });
-    
+
     return { url, headers, method: HttpRequest.Methods.GET, timeout: this.timeout };
   }
 
@@ -124,6 +141,7 @@ export class Minio extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
+      httpsAgent: this.httpsAgent,
       responseType: 'stream',
     };
 
@@ -147,6 +165,7 @@ export class Minio extends Provider {
       url: requestOptions.url,
       headers: requestOptions.headers,
       timeout: requestOptions.timeout,
+      httpsAgent: this.httpsAgent,
       responseType: 'arraybuffer',
     };
 
@@ -165,16 +184,15 @@ export class Minio extends Provider {
    */
   async uploadFileRequestOptions(filePath, contentType, fileContent) {
     // Get info to handle file.
-    !global.silentUpload && global.log.save('minio-file-uploading', { filePath, contentType });
+    !getSilentUpload() && getLog().save('minio-file-uploading', { filePath, contentType });
     const { url, headers } = await this.getInfoToHandleFile({ filePath, contentType, method: HttpRequest.Methods.PUT });
     // headers['Content-Type'] = contentType;
     const body = fileContent;
 
     // Get and return request options.
-    !global.silentUpload &&
-      global.log.save('minio-file-uploading|request-options', {
-        url,
-        headers,
+    !getSilentUpload() &&
+      getLog().save('minio-file-uploading|request-options', {
+        url: urlForLog(url),
         method: HttpRequest.Methods.PUT,
         body: '***',
         timeout: this.timeout,
@@ -202,6 +220,7 @@ export class Minio extends Provider {
         headers: requestOptions.headers,
         data: requestOptions.body,
         timeout: requestOptions.timeout,
+        httpsAgent: this.httpsAgent,
         validateStatus: (status) => status === 200,
       };
 
@@ -209,9 +228,14 @@ export class Minio extends Provider {
       const response = await axios(axiosConfig);
 
       // Check responsed body.
-      const requestOptionsToLog = { ...requestOptions, body: '***' };
-      !global.silentUpload &&
-        global.log.save('minio-uploading-file-response', {
+      const requestOptionsToLog = {
+        url: urlForLog(requestOptions.url),
+        method: requestOptions.method,
+        timeout: requestOptions.timeout,
+        body: '***',
+      };
+      !getSilentUpload() &&
+        getLog().save('minio-uploading-file-response', {
           requestOptions: requestOptionsToLog,
           filePath,
           body: response.data,
@@ -225,7 +249,7 @@ export class Minio extends Provider {
       return uploadedFileInfo;
     } catch (error) {
       // Handle error.
-      !global.silentUpload && global.log.save('minio-uploading-error', { error: error.message, filePath });
+      !getSilentUpload() && getLog().save('minio-uploading-error', { error: error.message, filePath });
       throw error;
     }
   }
@@ -238,13 +262,27 @@ export class Minio extends Provider {
    */
   async deleteFile(filePath, containerName = this.container) {
     // Get info to handle file.
-    !global.silentUpload && global.log.save('minio-file-deleting', { filePath });
+    !getSilentUpload() && getLog().save('minio-file-deleting', { filePath });
     const infoToHandleFile = await this.getInfoToHandleFile({ filePath, containerName, method: HttpRequest.Methods.DELETE });
     const { url, headers } = infoToHandleFile;
 
     // Delete file.
-    const deletingResult = await HttpRequest.send({ url, headers, method: HttpRequest.Methods.DELETE, timeout: this.timeout });
-    !global.silentUpload && global.log.save('minio-file-deleting-result', deletingResult);
+    const { body: deletingResult, rawResponse } = await HttpRequest.sendDetailed({
+      url,
+      headers,
+      method: HttpRequest.Methods.DELETE,
+      timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
+    });
+    !getSilentUpload() && getLog().save('minio-file-deleting-result', deletingResult);
+
+    // 404 means object is already absent - not an error. Other error statuses must not be silent.
+    const status = rawResponse?.status;
+    if (status >= 400 && status !== 404) {
+      const error: any = new Error(`MinIO file deleting failed with status ${status}.`);
+      error.statusCode = status;
+      throw error;
+    }
 
     return deletingResult;
   }
@@ -273,20 +311,21 @@ export class Minio extends Provider {
       headers,
       method: HttpRequest.Methods.HEAD,
       timeout: this.timeout,
+      httpsAgent: this.httpsAgent,
     });
-    !global.silentUpload && global.log.save('container-metadata', { containerMetadata });
+    !getSilentUpload() && getLog().save('container-metadata', { containerMetadata });
     const containerMetadataHeaders = containerMetadata.headers;
-    !global.silentUpload && global.log.save('container-metadata-headers', { containerMetadataHeaders });
+    !getSilentUpload() && getLog().save('container-metadata-headers', { containerMetadataHeaders });
 
     const bytesUsedCount = containerMetadataHeaders[CONTAINER_BYTES_USED_HEADER];
     const objectCount = containerMetadataHeaders[CONTAINER_OBJECT_COUNT_HEADER];
-    !global.silentUpload && global.log.save('bytes-used-count', { bytesUsedCount });
+    !getSilentUpload() && getLog().save('bytes-used-count', { bytesUsedCount });
 
     let bytesUsedCountNumber;
     try {
       bytesUsedCountNumber = Number(bytesUsedCount);
     } catch (error) {
-      !global.silentUpload && global.log.save('get-minio-bytes-used-count-error', { bytesUsedCount, error });
+      !getSilentUpload() && getLog().save('get-minio-bytes-used-count-error', { bytesUsedCount, error });
       const wrappedError = new Error(error);
       (wrappedError as any).cause = error;
       throw wrappedError;
@@ -296,10 +335,10 @@ export class Minio extends Provider {
 
     return showObjectCount === 'true'
       ? {
-        gigabytesUsedCount,
-        gigabytesUsedCountRound,
-        objectCount,
-      }
+          gigabytesUsedCount,
+          gigabytesUsedCountRound,
+          objectCount,
+        }
       : { gigabytesUsedCount, gigabytesUsedCountRound };
   }
 

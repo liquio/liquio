@@ -46,7 +46,7 @@ export default class Models {
       record: RecordModel,
       history: HistoryModel,
       afterhandler: AfterhandlerModel,
-      accessLog: AccessLogModel
+      accessLog: AccessLogModel,
     };
 
     // Init models.
@@ -59,9 +59,9 @@ export default class Models {
             const n = {};
             n[v[0] as any] = v[1];
             return n;
-          })()
+          })(),
         }),
-        {}
+        {},
       ) as ModelMap;
 
     // Init models references.

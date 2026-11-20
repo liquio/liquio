@@ -136,6 +136,8 @@ Usage: {{ include "liquio.initContainer.pluginInstaller" (dict "component" "task
       value: "/var/www/config"
     - name: PLUGINS_INSTALL_DIR
       value: "/var/www/plugins"
+    - name: SECRET_PATH
+      value: {{ .Values.secrets.secretConfigPath | quote }}
     # npm's default cache dir is $HOME/.npm, which is not writable once
     # readOnlyRootFilesystem is set above - redirect it into the writable tmp mount.
     - name: npm_config_cache
@@ -147,6 +149,9 @@ Usage: {{ include "liquio.initContainer.pluginInstaller" (dict "component" "task
   volumeMounts:
     - name: config
       mountPath: /var/www/config
+      readOnly: true
+    - name: secret-config
+      mountPath: {{ .Values.secrets.secretConfigPath }}
       readOnly: true
     - name: plugins
       mountPath: /var/www/plugins

@@ -1,11 +1,5 @@
 import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
-import {
-  ApiCreatedResponse,
-  ApiOperation,
-  ApiProperty,
-  ApiPropertyOptional,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 
 import { X509Service } from './x509.service';
 
@@ -13,6 +7,9 @@ import { X509Service } from './x509.service';
 class GetSignatureInfoDto {
   @ApiProperty({ description: 'Base64-encoded CMS/PKCS#7 signature' })
   sign: string;
+
+  @ApiPropertyOptional({ description: 'Base64-encoded signed content, for detached signatures' })
+  content?: string;
 }
 
 class GetSignatureInfoSigner {
@@ -116,15 +113,13 @@ export class X509Controller {
     description: 'Signature information package has been successfully created',
     type: GetSignatureInfoResponse,
   })
-  async getSignatureInfo(
-    @Body() { sign }: GetSignatureInfoDto,
-  ): Promise<GetSignatureInfoResponse> {
+  async getSignatureInfo(@Body() { sign, content }: GetSignatureInfoDto): Promise<GetSignatureInfoResponse> {
     if (!sign) {
       throw new BadRequestException('Sign is required');
     }
     try {
       // Service method will be implemented to use pkijs/asn1js
-      return await this.x509.getSignatureInfo(sign);
+      return await this.x509.getSignatureInfo(sign, content);
     } catch (e) {
       throw new BadRequestException('Invalid signature data', {
         cause: e.message,
@@ -141,9 +136,7 @@ export class X509Controller {
     description: 'Hash has been successfully verified',
     type: Boolean,
   })
-  async verifyHash(
-    @Body() { hash, sign }: VerifyHashDto,
-  ): Promise<{ result: boolean }> {
+  async verifyHash(@Body() { hash, sign }: VerifyHashDto): Promise<{ result: boolean }> {
     let result = false;
     try {
       result = Boolean(await this.x509.verifyHash(hash, sign));
@@ -162,19 +155,14 @@ export class X509Controller {
     description: 'Data has been successfully hashed',
     type: String,
   })
-  async hashData(
-    @Body() { data, isReturnAsBase64 }: HashDataDto,
-  ): Promise<string> {
+  async hashData(@Body() { data, isReturnAsBase64 }: HashDataDto): Promise<string> {
     if (!data) {
       throw new BadRequestException('Data is required');
     }
     try {
       return await this.x509.hashData(data, isReturnAsBase64);
     } catch (e) {
-      throw new BadRequestException(
-        'Invalid data, expected base64-encoded string',
-        { cause: e.message },
-      );
+      throw new BadRequestException('Invalid data, expected base64-encoded string', { cause: e.message });
     }
   }
 
@@ -187,9 +175,7 @@ export class X509Controller {
     description: 'Hash has been successfully converted to internal signature',
     type: String,
   })
-  async hashToInternalSignature(
-    @Body() { hash, content }: HashToInternalSignatureDto,
-  ): Promise<string> {
+  async hashToInternalSignature(@Body() { hash, content }: HashToInternalSignatureDto): Promise<string> {
     if (!hash) {
       throw new BadRequestException('Hash is required');
     }

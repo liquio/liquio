@@ -1,15 +1,17 @@
+import crypto from 'node:crypto';
 
 import _ from 'lodash';
-import crypto from 'node:crypto';
+import { getIdApiClient, IdApiClient, IdApiError, IdApiUserInfo } from '@liquio/back-core';
+
 import { Controller } from './controller';
 import { UnitModel } from '../models/unit';
-import { AuthService as Auth } from '../services/auth';
+import { getConfig, getLog, getRedisClient } from '../lib/context';
 
 export class UserController extends Controller {
   private static singleton: UserController;
 
   unitModel: any;
-  auth: any;
+  idApiClient: IdApiClient;
 
   /**
    * User controller constructor.
@@ -21,7 +23,7 @@ export class UserController extends Controller {
       // Set params.
       super(config);
       this.unitModel = new UnitModel();
-      this.auth = new Auth().provider;
+      this.idApiClient = getIdApiClient();
 
       // Define singleton.
       UserController.singleton = this;
@@ -36,7 +38,7 @@ export class UserController extends Controller {
    */
   async search(req, res) {
     // Define params.
-    // eslint-disable-next-line prefer-const -- unitIds is reassigned below; the rest of this destructuring isn't.
+
     let { userIds = [], unitIds = [], ids = [], codes = [], code, search } = req.body;
     if (code) {
       codes.push(code);
@@ -49,7 +51,7 @@ export class UserController extends Controller {
     let units;
     try {
       const allUnits = await this.unitModel.getAll();
-      units = allUnits.filter(v => unitIds.includes(v.id));
+      units = allUnits.filter((v) => unitIds.includes(v.id));
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -63,24 +65,26 @@ export class UserController extends Controller {
 
     // Define all needed users data.
     const withPrivateProps = false;
-    let allNeededUsers = await this.auth.getUsersByIds(allNeededUsersIds, withPrivateProps);
+    let allNeededUsers: Array<Partial<IdApiUserInfo>> = await this.idApiClient.getUsersByIds(allNeededUsersIds, {
+      withPrivateProps,
+    });
 
     for (const code of codes) {
-      const user = await this.auth.getUserByCode(code);
+      const user = await this.idApiClient.getUserByCode(code);
       if (user) {
-        allNeededUsers.push(await this.auth.getUserByCode(code));
+        allNeededUsers.push((await this.idApiClient.getUserByCode(code)) as IdApiUserInfo);
       }
     }
     if (search) {
-      const foundUsers = await this.auth.searchUsers(search);
+      const foundUsers = await this.idApiClient.searchUsers(search);
       if (Array.isArray(foundUsers) && foundUsers.length > 0) {
-        allNeededUsers = [...allNeededUsers, ...(foundUsers).map(v => ({ name: v.name, userId: v.userId }))];
+        allNeededUsers = [...allNeededUsers, ...foundUsers.map((v) => ({ name: v.name, userId: v.userId }))];
       }
     }
     allNeededUsers = _.uniqBy(allNeededUsers, 'userId');
 
     // Prepare users data to response.
-    const preparedUsersData = (allNeededUsers || []).map(v => ({
+    const preparedUsersData = (allNeededUsers || []).map((v) => ({
       userId: v.userId,
       name: v.name,
       companyName: v.companyName,
@@ -89,7 +93,7 @@ export class UserController extends Controller {
       isIndividualEntrepreneur: v.isIndividualEntrepreneur,
       email: v.email,
       phone: v.phone,
-      avaUrl: v.avaUrl
+      avaUrl: v.avaUrl,
     }));
 
     this.responseData(res, preparedUsersData);
@@ -125,7 +129,7 @@ export class UserController extends Controller {
       idCardIssueDate,
       idCardIssuedBy,
       idCardExpiryDate,
-      isPrivateHouse
+      isPrivateHouse,
     } = req.body;
     const updateOptions: any = {
       gender,
@@ -150,7 +154,7 @@ export class UserController extends Controller {
       idCardIssueDate,
       idCardIssuedBy,
       idCardExpiryDate,
-      isPrivateHouse
+      isPrivateHouse,
     };
     const userId = this.getRequestUserId(req);
     const accessToken = this.getRequestUserAccessToken(req);
@@ -159,9 +163,9 @@ export class UserController extends Controller {
     const existingEmail = userInfo.email;
 
     // Check gender.
-    const allowedGenders = global.config.user?.allowedGenders || ['male', 'female'];
+    const allowedGenders = getConfig().user?.allowedGenders || ['male', 'female'];
     if (gender && !allowedGenders.includes(gender)) {
-      return this.responseError(res, `Can't set gender ${gender}. Allowed list: ${allowedGenders.map(v => `"${v}"`).join(', ')}.`);
+      return this.responseError(res, `Can't set gender ${gender}. Allowed list: ${allowedGenders.map((v) => `"${v}"`).join(', ')}.`);
     }
 
     // Check phone.
@@ -170,7 +174,7 @@ export class UserController extends Controller {
       delete updateOptions.phone;
     } else {
       if (!this.config.user.allowSetUnconfirmedPhone && phone) {
-        return this.responseError(res, 'Can\'t set unconfirmed phone. Verify it first.');
+        return this.responseError(res, "Can't set unconfirmed phone. Verify it first.");
       }
       // Set validation indicator to `false` if phone should be changed.
       updateOptions.valid = { phone: false };
@@ -183,7 +187,7 @@ export class UserController extends Controller {
       delete updateOptions.email;
     } else {
       if (!this.config.user.allowSetUnconfirmedEmail && email) {
-        return this.responseError(res, 'Can\'t set unconfirmed email. Verify it first.');
+        return this.responseError(res, "Can't set unconfirmed email. Verify it first.");
       }
       // Set validation indicator to `false` if email should be changed.
       updateOptions.valid = { email: false };
@@ -191,35 +195,30 @@ export class UserController extends Controller {
     }
 
     // Check if legal person try to change individual entrepreneur indicator to "true".
-    const isIndividualEntrepreneurTurningOnRequested = [true, 'true', 1].includes(
-      isIndividualEntrepreneur
-    );
+    const isIndividualEntrepreneurTurningOnRequested = [true, 'true', 1].includes(isIndividualEntrepreneur);
     const isLegalRequestedUser = userInfo.isLegal;
     if (isIndividualEntrepreneurTurningOnRequested && isLegalRequestedUser) {
-      return this.responseError(
-        res,
-        'Legal person can\'t turn on individual entrepreneur indicator.'
-      );
+      return this.responseError(res, "Legal person can't turn on individual entrepreneur indicator.");
     }
 
     // Update.
     let isUpdated;
     try {
-      isUpdated = await this.auth.updateUser(userId, accessToken, updateOptions);
+      isUpdated = await this.idApiClient.updateUser(userId, accessToken, updateOptions);
     } catch (error) {
       return this.responseError(res, error);
     }
     if (!isUpdated) {
-      return this.responseError(res, 'Can\'t update user info.');
+      return this.responseError(res, "Can't update user info.");
     }
 
     // Clear user info cache.
-    if (global.redisClient) {
+    if (getRedisClient()) {
       try {
-        const sha1AccessToken = this.getSha1Hash(accessToken);
-        await global.redisClient.delete(`token.${sha1AccessToken}`);
+        const sha256AccessToken = this.getSha256Hash(accessToken);
+        await getRedisClient().delete(`token.${sha256AccessToken}`);
       } catch (error) {
-        global.log.save('user-controller|update-info|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
+        getLog().save('user-controller|update-info|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
       }
     }
 
@@ -246,23 +245,46 @@ export class UserController extends Controller {
    */
   async setTwoFactorAuth(req, res) {
     // Define params.
-    const { useTwoFactorAuth, twoFactorType } = req.body;
-    const updateOptions = {
-      useTwoFactorAuth: useTwoFactorAuth ? 'true' : 'false',
-      twoFactorType,
-    };
+    const { useTwoFactorAuth, twoFactorType, code } = req.body;
+    const enable = !!useTwoFactorAuth;
     const userId = this.getRequestUserId(req);
     const accessToken = this.getRequestUserAccessToken(req);
+    const userInfo = this.getRequestUserInfo(req) || {};
+    const currentType = userInfo.twoFactorType;
+    const currentEnabled = !!userInfo.useTwoFactorAuth;
+    const auditBase = { userId, enable, previousEnabled: currentEnabled, previousType: currentType, requestedType: twoFactorType };
+    const reject = (reason: string, message: string) => {
+      getLog().save('user-controller|two-factor-auth|rejected', { ...auditBase, reason }, 'warn');
+      return this.responseError(res, message);
+    };
 
-    // Update.
-    let isUpdated;
+    // TOTP is managed by its own endpoints that ask for a current code; this route manages phone 2FA only.
+    if (twoFactorType !== undefined && twoFactorType !== null && twoFactorType !== 'phone') {
+      return reject('unsupported-type', 'Only phone two factor auth can be set here.');
+    }
+
+    // Id-api decides: a verified phone to enable, a fresh SMS code to disable, no change while TOTP is active.
+    // It consumes the code, so it must not be verified here beforehand.
+    let result;
     try {
-      isUpdated = await this.auth.updateUser(userId, accessToken, updateOptions);
+      result = await this.idApiClient.setTwoFactorAuth(accessToken, { useTwoFactorAuth: enable, code });
     } catch (error) {
       return this.responseError(res, error);
     }
-    if (!isUpdated) {
-      return this.responseError(res, 'Can\'t set two factor auth.');
+    if (!result.success) {
+      return reject('refused-by-id-api', result.error || "Can't set two factor auth.");
+    }
+
+    // Audit. No codes or secrets here.
+    getLog().save('user-controller|two-factor-auth|changed', { ...auditBase, nextType: enable ? 'phone' : currentType });
+
+    // Clear user info cache, so the next read shows the new state.
+    if (getRedisClient()) {
+      try {
+        await getRedisClient().delete(`token.${this.getSha256Hash(accessToken)}`);
+      } catch (error) {
+        getLog().save('user-controller|two-factor-auth|clear-user-info-from-cache-error', { error: error && error.message }, 'error');
+      }
     }
 
     this.responseThatAccepted(res);
@@ -280,12 +302,13 @@ export class UserController extends Controller {
     // Search users.
     let users;
     try {
-      users = await this.auth.getUsersByIds(userId);
+      users = await this.idApiClient.getUsersByIds(userId);
     } catch (err) {
       return this.responseError(res, err);
     }
 
-    this.responseData(res, { user: users && users[0] });
+    // The client always returns the IPN and EDRPOU, which this public lookup never exposed.
+    this.responseData(res, { user: users && users[0] && _.omit(users[0], ['ipn', 'edrpou']) });
   }
 
   /**
@@ -297,8 +320,8 @@ export class UserController extends Controller {
     const userInfo = this.getRequestUserInfo(req);
 
     if (!userInfo || !userInfo.valid || typeof userInfo.valid.phone === 'undefined') {
-      global.log.save('userinfo-property-phone', 'Phone status does\'t exist.', 'error');
-      return this.responseError(res, 'Phone status does\'t exist.');
+      getLog().save('userinfo-property-phone', "Phone status does't exist.", 'error');
+      return this.responseError(res, "Phone status does't exist.");
     }
 
     this.responseData(res, { exists: userInfo.valid.phone });
@@ -316,9 +339,9 @@ export class UserController extends Controller {
     // Check phone existing info.
     let phoneExistingInfo;
     try {
-      phoneExistingInfo = await this.auth.checkPhoneExist(phone);
+      phoneExistingInfo = await this.idApiClient.checkPhoneExist(phone);
     } catch {
-      return this.responseError(res, 'Can\'t check phone existing info.');
+      return this.responseError(res, "Can't check phone existing info.");
     }
 
     // Define and response phone existing info.
@@ -337,19 +360,20 @@ export class UserController extends Controller {
     const userInfo = this.getRequestUserInfo(req);
     const existingPhone = userInfo.phone;
     const phone = newPhone || existingPhone;
+    const accessToken = this.getRequestUserAccessToken(req);
 
     // Check phone.
     if (!phone) {
-      global.log.save('userinfo-property-phone', { newPhone, existingPhone }, 'error');
-      return this.responseError(res, 'Phone does\'t exist.');
+      getLog().save('userinfo-property-phone', { newPhone, existingPhone }, 'error');
+      return this.responseError(res, "Phone does't exist.");
     }
 
-    // Send SMS.
+    // Send SMS. The code is bound to the user by the access token, so it can be verified by the same user only.
     try {
-      await this.auth.sendSms(phone);
+      await this.idApiClient.sendSms(phone, accessToken);
     } catch (error) {
-      global.log.save('can-not-send-sms', { error: error && error.message }, 'error');
-      return this.responseError(res, 'Can\'t send sms.');
+      getLog().save('can-not-send-sms', { error: error && error.message }, 'error');
+      return this.responseError(res, "Can't send sms.");
     }
 
     this.responseThatAccepted(res);
@@ -371,40 +395,46 @@ export class UserController extends Controller {
 
     // Check phone.
     if (!phone) {
-      global.log.save('phone-verification-wrong-params', { newPhone, existingPhone }, 'error');
-      return this.responseError(res, 'Phone does\'t exist.');
+      getLog().save('phone-verification-wrong-params', { newPhone, existingPhone }, 'error');
+      return this.responseError(res, "Phone does't exist.");
     }
 
     // Try to verify phone.
     let response;
     try {
-      response = await this.auth.verifyPhoneAndSet(phone, code, accessToken);
-    } catch {
-      global.log.save('phone-verification-exception', { response, phone, code, accessToken }, 'error');
-      return this.responseError(res, 'Can\'t verity phone.');
+      response = await this.idApiClient.verifyPhoneAndSet(phone, code, accessToken);
+    } catch (error) {
+      // Id-api answers a rejected code with an error status and `{ error: { message } }`, keep sending that message.
+      const idApiErrorMessage = error instanceof IdApiError ? error.body?.error?.message : undefined;
+      if (idApiErrorMessage) {
+        getLog().save('phone-verification-error', { phone, code, error: error.body.error }, 'error');
+        return this.responseError(res, idApiErrorMessage);
+      }
+      getLog().save('phone-verification-exception', { response, phone, code }, 'error');
+      return this.responseError(res, "Can't verity phone.");
     }
 
     // Check response.
     if (!response) {
-      global.log.save('phone-verification-without-court-id-response', { phone, code }, 'error');
+      getLog().save('phone-verification-without-court-id-response', { phone, code }, 'error');
       return this.responseError(res, 'Court ID response not exist.');
     }
     if (response.error) {
-      global.log.save('phone-verification-error', { phone, code, error: response.error }, 'error');
+      getLog().save('phone-verification-error', { phone, code, error: response.error }, 'error');
       return this.responseError(res, response.error && response.error.message);
     }
     if (!response.data) {
-      global.log.save('phone-verification-without-data', { phone, code }, 'error');
+      getLog().save('phone-verification-without-data', { phone, code }, 'error');
       return this.responseError(res, 'Court ID response do not contain data.');
     }
 
     // Clear user phone info cache.
-    if (global.redisClient) {
+    if (getRedisClient()) {
       try {
-        const sha1AccessToken = this.getSha1Hash(accessToken);
-        await global.redisClient.delete(`token.${sha1AccessToken}`);
+        const sha256AccessToken = this.getSha256Hash(accessToken);
+        await getRedisClient().delete(`token.${sha256AccessToken}`);
       } catch (error) {
-        global.log.save('user-controller|verify-phone|clear-user-phone-from-cache-error', { error: error && error.message }, 'error');
+        getLog().save('user-controller|verify-phone|clear-user-phone-from-cache-error', { error: error && error.message }, 'error');
       }
     }
 
@@ -422,10 +452,10 @@ export class UserController extends Controller {
 
     // Send Email.
     try {
-      await this.auth.changeEmail(email);
+      await this.idApiClient.changeEmail(email);
     } catch (error) {
-      global.log.save('can-not-send-email-code', { error: error && error.message }, 'error');
-      return this.responseError(res, 'Can\'t send email code.');
+      getLog().save('can-not-send-email-code', { error: error && error.message }, 'error');
+      return this.responseError(res, "Can't send email code.");
     }
 
     this.responseThatAccepted(res);
@@ -444,19 +474,19 @@ export class UserController extends Controller {
 
     // Confirm new email.
     try {
-      await this.auth.confirmChangeEmail(email, code, accessToken);
+      await this.idApiClient.confirmChangeEmail(email, code, accessToken);
     } catch (error) {
-      global.log.save('can-not-confirm-change-email', { error: error && error.message }, 'error');
-      return this.responseError(res, 'Can\'t confirm change email.');
+      getLog().save('can-not-confirm-change-email', { error: error && error.message }, 'error');
+      return this.responseError(res, "Can't confirm change email.");
     }
 
     // Clear user email info cache.
-    if (global.redisClient) {
+    if (getRedisClient()) {
       try {
-        const sha1AccessToken = this.getSha1Hash(accessToken);
-        await global.redisClient.delete(`token.${sha1AccessToken}`);
+        const sha256AccessToken = this.getSha256Hash(accessToken);
+        await getRedisClient().delete(`token.${sha256AccessToken}`);
       } catch (error) {
-        global.log.save('user-controller|confirm-change-email|clear-user-email-from-cache-error', { error: error && error.message }, 'error');
+        getLog().save('user-controller|confirm-change-email|clear-user-email-from-cache-error', { error: error && error.message }, 'error');
       }
     }
 
@@ -476,10 +506,10 @@ export class UserController extends Controller {
 
     // Confirm email confirmation code.
     try {
-      await this.auth.checkEmailConfirmationCode(email, code, accessToken);
+      await this.idApiClient.checkEmailConfirmationCode(email, code, accessToken);
     } catch (error) {
-      global.log.save('user-controller|check-email-confirmation-code|error', { error: error && error.message }, 'error');
-      return this.responseError(res, 'Can\'t check email confirmaiton code.');
+      getLog().save('user-controller|check-email-confirmation-code|error', { error: error && error.message }, 'error');
+      return this.responseError(res, "Can't check email confirmaiton code.");
     }
 
     this.responseThatAccepted(res);
@@ -497,22 +527,21 @@ export class UserController extends Controller {
     // Check existence.
     let isExist;
     try {
-      isExist = await this.auth.checkEmail(email);
+      isExist = await this.idApiClient.checkEmail(email);
     } catch (error) {
-      global.log.save('can-not-define-email-existance', { error: error && error.message, email }, 'error');
-      return this.responseError(res, 'Can\'t define email existence status.');
+      getLog().save('can-not-define-email-existance', { error: error && error.message, email }, 'error');
+      return this.responseError(res, "Can't define email existence status.");
     }
 
     this.responseData(res, { isExist });
   }
 
   /**
-   * Generate and return sha1 hash.
+   * Generate and return sha256 hash.
    * @param {string} data.
    * @return {string}
    */
-  getSha1Hash(data) {
-    return crypto.createHash('sha1').update(data).digest('hex');
+  getSha256Hash(data) {
+    return crypto.createHash('sha256').update(data).digest('hex');
   }
 }
-

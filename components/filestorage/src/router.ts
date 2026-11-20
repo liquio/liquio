@@ -1,13 +1,15 @@
 import path from 'node:path';
+
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
+import { asyncLocalStorageMiddleware } from '@liquio/back-core';
 
 import { Cors } from './lib/cors';
 import { AppIdentHeaders } from './lib/app_ident_headers';
 import { HttpRequest } from './lib/http_request';
 import { Controllers } from './controllers';
 import swaggerDocument from '../swagger.json';
-import { asyncLocalStorageMiddleware } from '@liquio/back-core';
+import { getLog } from './lib/context';
 
 /**
  * Router.
@@ -48,7 +50,7 @@ export class Router {
     app.use(asyncLocalStorageMiddleware);
 
     // Save request info to log.
-    app.use(global.log.logRouter.bind(global.log));
+    app.use(getLog().logRouter.bind(getLog()));
 
     // App info in headers.
     AppIdentHeaders.add(app, this.config);
@@ -83,8 +85,8 @@ export class Router {
 
     // Test controller.
     app.get('/test/ping', getHandler('test', 'ping'));
-    app.get('/test/ping_with_auth', getHandler('auth', 'basicAuth'), getHandler('test', 'ping'));
-    app.get('/test/file_provider', getHandler('test', 'checkOpenstackProvider'));
+    app.get('/test/ping_with_auth', getHandler('auth', 'basicAuth'), getHandler('test', 'pingWithAuth'));
+    app.get('/test/file_provider', getHandler('auth', 'basicAuth'), getHandler('test', 'checkOpenstackProvider'));
 
     // Containers controller.
     app.get('/containers', getHandler('auth', 'basicAuth'), getHandler('containers', 'getAll'));
@@ -140,11 +142,15 @@ export class Router {
    * @param {object} app Express app.
    */
   async listen(app) {
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       // Start server listening.
       const { hostname, port } = this.config.server;
-      this.httpServer = app.listen(port, hostname, () => {
-        global.log.save('server-listening-started', { url: `http://${hostname}:${port}` });
+      this.httpServer = app.listen(port, hostname, (error?: Error) => {
+        // Express 5 passes listen errors (e.g. EADDRINUSE) to the callback instead of throwing.
+        if (error) {
+          return reject(error);
+        }
+        getLog().save('server-listening-started', { url: `http://${hostname}:${port}` });
         resolve();
       });
     });

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+
 import { CommunicationModel } from '../models/communications';
 import { UserSubscribesModel } from '../models/user_subscribes';
 import { SettingsModel } from '../models/settings';

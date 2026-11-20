@@ -20,7 +20,9 @@
     "sourceType": "module",
     "ecmaVersion": 2022,
     "babelOptions": {
-      "presets": ["@babel/preset-react"]
+      "presets": [
+        "@babel/preset-react"
+      ]
     },
     "ecmaFeatures": {
       "experimentalObjectRestSpread": true,
@@ -205,5 +207,40 @@
     "jsx-a11y/no-static-element-interactions": 0,
     "jsx-a11y/click-events-have-key-events": 0,
     "jsx-a11y/no-noninteractive-element-interactions": 0
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.ts",
+        "**/*.tsx"
+      ],
+      "parser": "@typescript-eslint/parser",
+      "plugins": [
+        "@typescript-eslint"
+      ],
+      "parserOptions": {
+        "ecmaVersion": 2022,
+        "sourceType": "module"
+      },
+      "rules": {
+        "no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": [
+          "warn",
+          {
+            "argsIgnorePattern": "^_"
+          }
+        ],
+        "@typescript-eslint/no-explicit-any": "error",
+        "react/jsx-filename-extension": [
+          "error",
+          {
+            "extensions": [
+              ".tsx"
+            ]
+          }
+        ],
+        "react/require-default-props": "off"
+      }
+    }
+  ]
 }

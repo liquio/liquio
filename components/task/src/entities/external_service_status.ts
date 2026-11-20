@@ -1,6 +1,5 @@
 import { Entity } from './entity';
 
-
 export class ExternalServiceStatusEntity extends Entity {
   id: any;
   createdAt: any;
@@ -41,4 +40,3 @@ export class ExternalServiceStatusEntity extends Entity {
     this.rejectedReason = rejectedReason;
   }
 }
-

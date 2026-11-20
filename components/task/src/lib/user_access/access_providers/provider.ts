@@ -19,4 +19,3 @@ export class AccessProvider {
     throw new Error('Method should be defined in child class.');
   }
 }
-

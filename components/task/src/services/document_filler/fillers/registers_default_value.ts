@@ -1,12 +1,14 @@
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
+
 import { Filler } from './filler';
-import { RegisterService } from '../../register';
+import { getLog } from '../../../lib/context';
 
 /**
  * Registers filler.
  */
 export class RegistersDefaultValueFiller extends Filler {
   private static singleton: RegistersDefaultValueFiller;
-  registerService: any;
+  readonly registerService: RegisterApiClient;
 
   /**
    * Registers filler constructor.
@@ -16,7 +18,7 @@ export class RegistersDefaultValueFiller extends Filler {
       // Init parent constructor.
       super();
 
-      this.registerService = new RegisterService();
+      this.registerService = getRegisterApiClient();
       RegistersDefaultValueFiller.singleton = this;
     }
     return RegistersDefaultValueFiller.singleton;
@@ -65,8 +67,8 @@ export class RegistersDefaultValueFiller extends Filler {
           const filterValue =
             typeof filter.value === 'string' && filter.value.startsWith('user.')
               ? this.sandbox.evalWithArgs(`user => ${filter.value}`, [userInfo], {
-                meta: { fn: 'RegistersDefaultValueFiller.fill.filters', filterName: filter.name },
-              })
+                  meta: { fn: 'RegistersDefaultValueFiller.fill.filters', filterName: filter.name },
+                })
               : filter.value;
 
           filtersObject[filter.name] = filterValue;
@@ -112,13 +114,13 @@ export class RegistersDefaultValueFiller extends Filler {
               });
               normalizedRecord.label = normalizedRecord.stringified;
             } catch {
-              global.log.save('can-not-define-stringified-text', { record: v }, 'warn');
+              getLog().save('can-not-define-stringified-text', { record: v }, 'warn');
             }
             return normalizedRecord;
           });
         }
       } catch (error) {
-        global.log.save('registers-default-value-field-filling-error', { error: (error && error.message) || error }, 'warn');
+        getLog().save('registers-default-value-field-filling-error', { error: (error && error.message) || error }, 'warn');
       }
 
       // Return value to set.
@@ -129,4 +131,3 @@ export class RegistersDefaultValueFiller extends Filler {
     return objectToFill;
   }
 }
-

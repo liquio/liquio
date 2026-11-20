@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+
 import { Entity } from './entity';
 
 /**
@@ -108,4 +109,3 @@ export class CustomLogEntity extends Entity {
     return cacheKey;
   }
 }
-

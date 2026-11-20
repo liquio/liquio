@@ -61,16 +61,25 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            {{- if include "liquio.internalTls.enabled" . }}
+            {{- include "liquio.internalTls.volumeMount" . | nindent 12 }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /test/ping
               port: http
+              {{- if include "liquio.internalTls.enabled" . }}
+              scheme: HTTPS
+              {{- end }}
             initialDelaySeconds: 60
             periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /test/ping
               port: http
+              {{- if include "liquio.internalTls.enabled" . }}
+              scheme: HTTPS
+              {{- end }}
             initialDelaySeconds: 30
             periodSeconds: 10
           resources:
@@ -84,6 +93,11 @@ spec:
             secretName: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "notification") }}
         - name: tmp
           emptyDir: {}
+        {{- if include "liquio.internalTls.enabled" . }}
+        {{- $tlsKeys := list "tls.crt" "tls.key" }}
+        {{- if include "liquio.internalTls.mtls" . }}{{ $tlsKeys = append $tlsKeys "ca.crt" }}{{ end }}
+        {{- include "liquio.internalTls.volume" (dict "ctx" . "keys" $tlsKeys) | nindent 8 }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

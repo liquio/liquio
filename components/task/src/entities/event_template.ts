@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -39,4 +38,3 @@ export class EventTemplateEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-

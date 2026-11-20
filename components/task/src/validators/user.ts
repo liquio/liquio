@@ -1,5 +1,5 @@
-
 import { check } from 'express-validator';
+
 import { Validator } from './validator';
 
 /**
@@ -33,7 +33,11 @@ export class UserValidator extends Validator {
    * POST - set two factor auth.
    */
   setTwoFactorAuth() {
-    return check('useTwoFactorAuth').isBoolean().withMessage('Use two factor auth indicator should be defined as boolean.');
+    return [
+      check('useTwoFactorAuth').isBoolean().withMessage('Use two factor auth indicator should be defined as boolean.'),
+      check('twoFactorType').optional({ nullable: true }).isIn(['phone']).withMessage('Two factor type should be phone.'),
+      check('code').optional({ nullable: true }).isString().withMessage('Code should be a string.'),
+    ];
   }
 
   /**
@@ -50,9 +54,7 @@ export class UserValidator extends Validator {
    * POST - send sms for phone verification.
    */
   sendSmsForPhoneVerification() {
-    return [
-      check('phone').isMobilePhone('uk-UA').withMessage('Phone number should be in correct format.'),
-    ];
+    return [check('phone').isMobilePhone('uk-UA').withMessage('Phone number should be in correct format.')];
   }
 
   /**
@@ -69,43 +71,27 @@ export class UserValidator extends Validator {
    * PUT - change email.
    */
   changeEmail() {
-    return [
-      check('email').not().isEmpty(),
-      check('email').isEmail(),
-    ];
+    return [check('email').not().isEmpty(), check('email').isEmail()];
   }
 
   /**
    * POST - check email.
    */
   checkEmail() {
-    return [
-      check('email').not().isEmpty(),
-      check('email').isEmail(),
-    ];
+    return [check('email').not().isEmpty(), check('email').isEmail()];
   }
 
   /**
    * POST - confirm change email.
    */
   confirmChangeEmail() {
-    return [
-      check('email').not().isEmpty(),
-      check('email').isEmail(),
-      check('code').isString().withMessage('Code should be defined as string.'),
-    ];
+    return [check('email').not().isEmpty(), check('email').isEmail(), check('code').isString().withMessage('Code should be defined as string.')];
   }
 
   /**
    * POST - check email confirmation code.
    */
   checkEmailConfirmationCode() {
-    return [
-      check('email').not().isEmpty(),
-      check('email').isEmail(),
-      check('code').isString().withMessage('Code should be defined as string.'),
-    ];
+    return [check('email').not().isEmpty(), check('email').isEmail(), check('code').isString().withMessage('Code should be defined as string.')];
   }
-
 }
-

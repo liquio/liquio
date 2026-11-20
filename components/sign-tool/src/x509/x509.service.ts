@@ -1,8 +1,9 @@
+import { Buffer } from 'buffer';
+import * as crypto from 'crypto';
+
 import { Injectable } from '@nestjs/common';
 import * as asn1js from 'asn1js';
 import * as pkijs from 'pkijs';
-import { Buffer } from 'buffer';
-import * as crypto from 'crypto';
 import { Crypto } from '@peculiar/webcrypto';
 
 import { ConfigurationService } from '../configuration/configuration.service';
@@ -19,7 +20,7 @@ import {
   OID_PERSON_IDENTIFIER,
   OID_SIGNING_TIME,
   OID_PKCS7_SIGNED_DATA,
-  OID_BASIC_CONSTRAINTS,
+  OID_KEY_USAGE,
   OID_SERIAL_NUMBER,
 } from './x509.constants';
 
@@ -53,6 +54,8 @@ export interface SignatureInfo {
   pem?: string;
 }
 
+const TEST_CA_COMMON_NAME = 'Liquio Test CA';
+
 @Injectable()
 export class X509Service {
   private caCerts: pkijs.Certificate[] = [];
@@ -69,16 +72,20 @@ export class X509Service {
       // Remove PEM headers/footers and whitespace
       const b64 = pem.replace(/-----[^-]+-----|\s+/g, '');
       const der = Buffer.from(b64, 'base64');
-      const asn1 = asn1js.fromBER(
-        der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength),
-      );
+      const asn1 = asn1js.fromBER(der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength));
       const cert = new pkijs.Certificate({ schema: asn1.result });
-      const caCN = cert.subject.typesAndValues.find(
-        (tv) => tv.type === OID_COMMON_NAME,
-      )?.value.valueBlock.value;
+      const caCN = cert.subject.typesAndValues.find((tv) => tv.type === OID_COMMON_NAME)?.value.valueBlock.value;
       this.logger.log(`Loaded CA cert: ${caCN}`);
+      if (caCN === TEST_CA_COMMON_NAME) {
+        this.logger.warn(
+          `Trusting the publicly known "${TEST_CA_COMMON_NAME}": anyone can mint certificates accepted by this deployment. Use only in dev/test.`,
+        );
+      }
       return cert;
     });
+    if (this.caCerts.length === 0) {
+      this.logger.warn('No trusted CA certificates configured (x509.caCerts is empty): all x509 signature verification will be rejected.');
+    }
 
     const webcrypto = new Crypto();
     const engine = new pkijs.CryptoEngine({
@@ -100,10 +107,7 @@ export class X509Service {
       const der = Buffer.from(signature, 'base64');
 
       // 2. Convert to ArrayBuffer (safe slice)
-      const arrayBuffer = der.buffer.slice(
-        der.byteOffset,
-        der.byteOffset + der.byteLength,
-      );
+      const arrayBuffer = der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength);
 
       // 3. Parse ASN.1
       const asn1 = asn1js.fromBER(arrayBuffer);
@@ -128,38 +132,12 @@ export class X509Service {
   /**
    * Get signature info from CMS/PKCS#7 signature
    * @param signature - base64-encoded CMS/PKCS#7 signature
+   * @param detachedContent - optional base64-encoded content, for signatures without embedded content
    * @returns Signature info
    */
-  async getSignatureInfo(signature: string): Promise<SignatureInfo> {
+  async getSignatureInfo(signature: string, detachedContent?: string): Promise<SignatureInfo> {
     try {
-      const signedData = await this.parseSignature(signature);
-
-      // Find the signer certificate (not a CA)
-      const signerCert = signedData.certificates
-        .filter((c) => c instanceof pkijs.Certificate)
-        .find((c) => {
-          // Try to find basicConstraints extension
-          const ext = c.extensions?.find(
-            (e) => e.extnID === OID_BASIC_CONSTRAINTS,
-          );
-          if (ext && ext.parsedValue) {
-            // pkijs parses extensions automatically
-            return !ext.parsedValue.cA;
-          }
-          // Fallback: assume any non-CA cert is a signer
-          return true;
-        }) as pkijs.Certificate;
-      if (!signerCert)
-        throw new Error('No signer certificate found in signature');
-
-      // CA validation
-      if (!(await this.isCertSignedByCA(signerCert))) {
-        throw new Error('Certificate is not signed by a trusted CA');
-      }
-
-      // 2. Get the first signerInfo
-      const signerInfo = signedData.signerInfos[0];
-      if (!signerInfo) throw new Error('No signerInfo found in signature');
+      const { signedData, signerCert, signerInfo } = await this.verifySignature(signature, detachedContent);
 
       // 3. Helper to extract fields by OID
       const getField = (obj: pkijs.RelativeDistinguishedNames, oid: string) => {
@@ -172,37 +150,29 @@ export class X509Service {
       const issuer = signerCert.issuer;
 
       // 5. Serial number
-      const serial = Buffer.from(signerCert.serialNumber.valueBlock.toBER())
-        .toString('hex')
-        .toUpperCase();
+      const serial = Buffer.from(signerCert.serialNumber.valueBlock.toBER()).toString('hex').toUpperCase();
 
       // 6. Signing time (from signed attributes)
       let signTime = '';
       if (signerInfo.signedAttrs) {
-        const signingTimeAttr = signerInfo.signedAttrs.attributes.find(
-          (attr) => attr.type === OID_SIGNING_TIME,
-        );
+        const signingTimeAttr = signerInfo.signedAttrs.attributes.find((attr) => attr.type === OID_SIGNING_TIME);
         if (signingTimeAttr && signingTimeAttr.values.length > 0) {
           // GeneralizedTime or UTCTime
           const timeBlock = signingTimeAttr.values[0].valueBlock;
-          signTime = timeBlock.value.toISOString
-            ? timeBlock.value.toISOString()
-            : String(timeBlock.value);
+          signTime = timeBlock.value.toISOString ? timeBlock.value.toISOString() : String(timeBlock.value);
         }
       }
 
-      // 7. Content (if present)
+      // 7. Content (embedded, or the verified detached one)
       let content: string | undefined = undefined;
       if (signedData.encapContentInfo.eContent) {
-        content = Buffer.from(
-          signedData.encapContentInfo.eContent.valueBlock.valueHex,
-        ).toString('base64');
+        content = this.getEmbeddedContent(signedData).toString('base64');
+      } else if (detachedContent) {
+        content = detachedContent;
       }
 
       // 8. PEM
-      const rawCert = Buffer.from(signerCert.toSchema().toBER(false)).toString(
-        'base64',
-      );
+      const rawCert = Buffer.from(signerCert.toSchema().toBER(false)).toString('base64');
       const pem = this.toPem(rawCert);
 
       // 9. Build result
@@ -213,10 +183,7 @@ export class X509Service {
           givenName: getField(subject, OID_GIVEN_NAME),
           middleName: getField(subject, OID_INITIALS),
           organizationName: getField(subject, OID_ORGANIZATION_NAME),
-          organizationIdentifier: getField(
-            subject,
-            OID_ORGANIZATION_IDENTIFIER,
-          ),
+          organizationIdentifier: getField(subject, OID_ORGANIZATION_IDENTIFIER),
           countryName: getField(subject, OID_COUNTRY_NAME),
           localityName: getField(subject, OID_LOCALITY_NAME),
           personIdentifier: getField(subject, OID_PERSON_IDENTIFIER),
@@ -236,9 +203,7 @@ export class X509Service {
       };
     } catch (e) {
       this.logger.error('getSignatureInfo error', e);
-      throw new Error(
-        'Failed to parse or extract signature info: ' + e.message,
-      );
+      throw new Error('Failed to parse or extract signature info: ' + e.message);
     }
   }
 
@@ -250,33 +215,8 @@ export class X509Service {
    */
   async verifyHash(hash: string, signature: string): Promise<boolean> {
     try {
-      const signedData = await this.parseSignature(signature);
-
-      // Find the signer certificate (not a CA)
-      const signerCert = signedData.certificates
-        .filter((c) => c instanceof pkijs.Certificate)
-        .find((c) => {
-          // Try to find basicConstraints extension
-          const ext = c.extensions?.find(
-            (e) => e.extnID === OID_BASIC_CONSTRAINTS,
-          );
-          if (ext && ext.parsedValue) {
-            // pkijs parses extensions automatically
-            return !ext.parsedValue.cA;
-          }
-          // Fallback: assume any non-CA cert is a signer
-          return true;
-        }) as pkijs.Certificate;
-      if (!signerCert)
-        throw new Error('No signer certificate found in signature');
-
-      // CA validation
-      if (!(await this.isCertSignedByCA(signerCert))) {
-        this.logger.error(
-          'verifyHash: Certificate is not signed by a trusted CA',
-        );
-        return false;
-      }
+      // Cryptographic verification (signature, chain, validity); throws on failure
+      const { signedData } = await this.verifySignature(signature);
 
       // Extract the signed content (encapsulated content)
       if (!signedData.encapContentInfo.eContent) {
@@ -285,13 +225,8 @@ export class X509Service {
       }
 
       // Hash the content using SHA-256
-      const contentBuffer = Buffer.from(
-        signedData.encapContentInfo.eContent.valueBlock.valueHex,
-      );
-      const computedHash = crypto
-        .createHash('sha256')
-        .update(contentBuffer)
-        .digest('base64');
+      const contentBuffer = this.getEmbeddedContent(signedData);
+      const computedHash = crypto.createHash('sha256').update(contentBuffer).digest('base64');
 
       // Compare with provided hash (base64)
       return computedHash === hash;
@@ -311,11 +246,7 @@ export class X509Service {
     try {
       const buffer = Buffer.from(data, 'base64');
       // Check if the input was valid base64 (re-encode and compare, and not empty)
-      if (
-        !data ||
-        buffer.length === 0 ||
-        buffer.toString('base64').replace(/=+$/, '') !== data.replace(/=+$/, '')
-      ) {
+      if (!data || buffer.length === 0 || buffer.toString('base64').replace(/=+$/, '') !== data.replace(/=+$/, '')) {
         throw new Error('Input is not valid base64');
       }
       const hash = crypto.createHash('sha256').update(buffer).digest();
@@ -332,10 +263,7 @@ export class X509Service {
    * @param content - content of the data to be signed
    * @returns internal signature
    */
-  async hashToInternalSignature(
-    hash: string,
-    content?: string,
-  ): Promise<string> {
+  async hashToInternalSignature(hash: string, content?: string): Promise<string> {
     try {
       // 1. Parse the external signature (PKCS#7 SignedData, detached)
       const signedData = await this.parseSignature(hash);
@@ -358,10 +286,7 @@ export class X509Service {
 
       // Set eContent directly
       newSignedData.encapContentInfo.eContent = new asn1js.OctetString({
-        valueHex: contentBuffer.buffer.slice(
-          contentBuffer.byteOffset,
-          contentBuffer.byteOffset + contentBuffer.byteLength,
-        ),
+        valueHex: contentBuffer.buffer.slice(contentBuffer.byteOffset, contentBuffer.byteOffset + contentBuffer.byteLength),
       });
 
       // 4. Wrap in ContentInfo
@@ -375,9 +300,7 @@ export class X509Service {
       return Buffer.from(der).toString('base64');
     } catch (e) {
       this.logger.error('hashToInternalSignature error', e);
-      throw new Error(
-        'Failed to create internal signature: ' + (e.message || e),
-      );
+      throw new Error('Failed to create internal signature: ' + (e.message || e));
     }
   }
 
@@ -388,60 +311,79 @@ export class X509Service {
    */
   toPem(base64: string): string {
     const lines = base64.match(/.{1,64}/g) || [];
-    return `-----BEGIN CERTIFICATE-----\n${lines.join(
-      '\n',
-    )}\n-----END CERTIFICATE-----`;
+    return `-----BEGIN CERTIFICATE-----\n${lines.join('\n')}\n-----END CERTIFICATE-----`;
   }
 
   /**
-   * Check if a certificate is signed by one of the loaded CA certs
+   * Cryptographically verify a CMS/PKCS#7 SignedData and return the verified signer.
+   * Checks the SignerInfo signature (incl. messageDigest over the content), that the
+   * signer certificate chains to a configured trusted CA, that it is valid now and
+   * that its key usage permits signing. Throws on any failure (fail closed).
+   * @param signature - base64-encoded CMS/PKCS#7 signature
+   * @param detachedContent - optional base64-encoded content for detached signatures
    */
-  private async isCertSignedByCA(cert: pkijs.Certificate): Promise<boolean> {
-    let commonName: string;
-    let serialNumber: string;
+  private async verifySignature(
+    signature: string,
+    detachedContent?: string,
+  ): Promise<{ signedData: pkijs.SignedData; signerCert: pkijs.Certificate; signerInfo: pkijs.SignerInfo }> {
+    const signedData = await this.parseSignature(signature);
+
+    const signerInfo = signedData.signerInfos[0];
+    if (!signerInfo) throw new Error('No signerInfo found in signature');
+    if (signedData.signerInfos.length !== 1) throw new Error('Exactly one signerInfo is expected');
+    if (!this.caCerts.length) throw new Error('No trusted CA certificates configured');
+
+    const hasEmbeddedContent = Boolean(signedData.encapContentInfo.eContent);
+    if (!hasEmbeddedContent && !detachedContent) throw new Error('No signed content to verify');
+
+    let data: ArrayBuffer | undefined;
+    if (!hasEmbeddedContent) {
+      const buf = Buffer.from(detachedContent as string, 'base64');
+      data = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+    }
+
+    let result: pkijs.SignedDataVerifyResult;
     try {
-      commonName = cert.subject.typesAndValues.find(
-        (tv) => tv.type === OID_COMMON_NAME,
-      )?.value.valueBlock.value;
-
-      serialNumber = cert.subject.typesAndValues.find(
-        (tv) => tv.type === OID_SERIAL_NUMBER,
-      )?.value.valueBlock.value;
-
-      for (const ca of this.caCerts) {
-        const caCN = ca.subject.typesAndValues.find(
-          (tv) => tv.type === OID_COMMON_NAME,
-        )?.value.valueBlock.value;
-
-        const caSerial = Buffer.from(ca.serialNumber.valueBlock.toBER())
-          .toString('hex')
-          .toUpperCase();
-
-        const result = await cert.verify(ca);
-        if (result) {
-          this.logger.log('is-cert-signed-by-ca|success', {
-            commonName,
-            serialNumber,
-            signedBy: { caCN, caSerial },
-          });
-          return true;
-        }
-      }
-
-      this.logger.warn('is-cert-signed-by-ca|warn', {
-        commonName,
-        serialNumber,
-        message: 'Certificate is not signed by any trusted CA',
+      result = await signedData.verify({
+        signer: 0,
+        data,
+        trustedCerts: this.caCerts,
+        checkChain: true,
+        checkDate: new Date(),
+        extendedMode: true,
       });
-      return false;
     } catch (e) {
-      this.logger.error('is-cert-signed-by-ca|error', {
-        commonName,
-        serialNumber,
-        error: e.message,
-        stack: e.stack,
-      });
-      return false;
+      throw new Error('Signature verification failed: ' + (e?.message || e));
+    }
+    if (result.signatureVerified !== true || !result.signerCertificate) {
+      throw new Error('Signature verification failed: ' + (result.message || 'signature is not valid'));
+    }
+
+    const signerCert = result.signerCertificate as pkijs.Certificate;
+    this.assertKeyUsageAllowsSigning(signerCert);
+
+    return { signedData, signerCert, signerInfo };
+  }
+
+  /**
+   * Embedded content bytes, same view pkijs verifies (handles constructed/chunked OCTET STRING)
+   */
+  private getEmbeddedContent(signedData: pkijs.SignedData): Buffer {
+    return Buffer.from((signedData.encapContentInfo.eContent as asn1js.OctetString).getValue());
+  }
+
+  /**
+   * Require digitalSignature or nonRepudiation key usage, when the extension is present
+   */
+  private assertKeyUsageAllowsSigning(cert: pkijs.Certificate): void {
+    const ext = cert.extensions?.find((e) => e.extnID === OID_KEY_USAGE);
+    const bits = ext?.parsedValue?.valueBlock?.valueHex;
+    if (!bits) return;
+    const first = new Uint8Array(bits)[0] || 0;
+    const digitalSignature = (first & 0x80) !== 0;
+    const nonRepudiation = (first & 0x40) !== 0;
+    if (!digitalSignature && !nonRepudiation) {
+      throw new Error('Signer certificate key usage does not allow signing');
     }
   }
 }

@@ -2,7 +2,6 @@ import { Test } from '@nestjs/testing';
 
 import { ConfigurationService } from '@components/configuration/configuration.service';
 import { LoggerService } from '@components/observability/logger.service';
-
 import { ProvidersService } from './providers.service';
 
 const registryGetMock = jest.fn();
@@ -61,13 +60,9 @@ describe('ProvidersService plugin fallback', () => {
 
   it('falls back to the plugin registry for a non-built-in provider class', async () => {
     const fakePluginProvider = {
-      getMethod: jest.fn((name: string) =>
-        name === 'lookup' ? async () => 'plugin-result' : undefined,
-      ),
+      getMethod: jest.fn((name: string) => (name === 'lookup' ? async () => 'plugin-result' : undefined)),
     };
-    registryGetMock.mockImplementation((name: string) =>
-      name === 'CustomPlugin' ? fakePluginProvider : undefined,
-    );
+    registryGetMock.mockImplementation((name: string) => (name === 'CustomPlugin' ? fakePluginProvider : undefined));
 
     servicesConfig = {
       pluginService: {

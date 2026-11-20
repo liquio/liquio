@@ -1,5 +1,5 @@
-
 import { checkSchema } from 'express-validator';
+
 import { Validator } from './validator';
 
 /**
@@ -29,9 +29,8 @@ export class CustomInterfaceValidator extends Validator {
     return checkSchema({
       ['route']: {
         in: ['query'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 }
-

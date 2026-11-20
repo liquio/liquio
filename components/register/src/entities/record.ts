@@ -54,9 +54,9 @@ export default class RecordEntity extends Entity {
       search_string,
       search_string_2,
       search_string_3,
-      is_encrypted
+      is_encrypted,
     },
-    withSearchStrings = false
+    withSearchStrings = false,
   ) {
     super();
 
@@ -130,13 +130,13 @@ export default class RecordEntity extends Entity {
           if (nextRules.flat().length === 0) {
             return {
               ...acc,
-              [key]: object[key]
+              [key]: object[key],
             };
           }
 
           return {
             ...acc,
-            [key]: transform(object[key], nextRules)
+            [key]: transform(object[key], nextRules),
           };
         }, {});
     };

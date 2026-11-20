@@ -21,7 +21,7 @@ const config = {
   // collectCoverage: false,
 
   // An array of glob patterns indicating a set of files for which coverage information should be collected
-  // collectCoverageFrom: undefined,
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/**/*.d.ts'],
 
   // The directory where Jest should output its coverage files
   // coverageDirectory: undefined,
@@ -38,12 +38,7 @@ const config = {
   preset: 'ts-jest/presets/js-with-ts',
 
   // A list of reporter names that Jest uses when writing coverage reports
-  // coverageReporters: [
-  //   "json",
-  //   "text",
-  //   "lcov",
-  //   "clover"
-  // ],
+  coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
 
   // An object that configures minimum threshold enforcement for coverage results
   // coverageThreshold: undefined,
@@ -72,7 +67,7 @@ const config = {
   // globals: {},
 
   // The maximum amount of workers used to run your tests. Can be specified as % or a number. E.g. maxWorkers: 10% will use 10% of your CPU amount + 1 as the maximum worker number. maxWorkers: 2 will use a maximum of 2 workers.
-  // Capped low because most spec files under __tests__/ are e2e tests that each spin up their
+  // Capped low because most spec files under tests/ are e2e tests that each spin up their
   // own Postgres + Redis testcontainers; running many of those in parallel exhausts local
   // Docker/DB resources and causes flaky "connection terminated" failures.
   maxWorkers: 2,
@@ -161,8 +156,8 @@ const config = {
 
   // The glob patterns Jest uses to detect test files
   testMatch: [
-    '**/__tests__/**/*.(spec|test).[jt]s?(x)',
-    '**/?(*.)+(spec|test).[tj]s?(x)'
+    '**/*.spec.[jt]s?(x)',
+    '**/*.e2e-spec.[jt]s?(x)'
   ],
   testPathIgnorePatterns: [
     '/validators/test\\.[jt]s$',
@@ -184,18 +179,11 @@ const config = {
   // This option allows use of a custom test runner
   // testRunner: "jest-circus/runner",
 
-  // Force Jest to exit after tests complete
-  // This is needed because axios/nock interactions can leave open handles
-  forceExit: true,
-
   // A map from regular expressions to paths to transformers
   // transform: undefined,
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
-  // transformIgnorePatterns: [
-  //   "/node_modules/",
-  //   "\\.pnp\\.[^\\/]+$"
-  // ],
+  // ESM-only dependencies (raw-body 4, node-fetch 3) load natively because tests run with --experimental-vm-modules.
 
   // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
   // unmockedModulePathPatterns: undefined,

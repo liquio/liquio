@@ -1,3 +1,5 @@
+import { getModels } from '../lib/context';
+
 /**
  * Workflow status business.
  */
@@ -26,6 +28,6 @@ export class WorkflowStatusBusiness {
    * @returns {Promise<WorkflowStatusEntity[]>}
    */
   async getAll() {
-    return await global.models.workflowStatus.getAll();
+    return await getModels().workflowStatus.getAll();
   }
 }

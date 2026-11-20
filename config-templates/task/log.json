@@ -30,6 +30,8 @@
     "client_secret",
     "_token=",
     "client_id=",
-    "client_secret="
+    "client_secret=",
+    "ipn",
+    "edrpou"
   ]
 }

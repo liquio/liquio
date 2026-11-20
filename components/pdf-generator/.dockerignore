@@ -43,7 +43,7 @@ lerna-debug.log*
 # Other
 terraform
 .gitignore
-docker-compose.yml
+compose.yaml
 
 *.md
 **/*.md
@@ -53,3 +53,14 @@ docker-compose.yml
 
 **/*.spec.ts
 **/*.mock.ts
+.git
+
+# Local config and secrets must never enter the build context.
+config
+config*
+.env*
+**/.env*
+*.pem
+*.key
+.npmrc
+**/secrets*

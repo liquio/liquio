@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { WorkflowTemplateTagEntity } from '../entities/workflow_template_tag';
+import { getModels } from '../lib/context';
 
 export class WorkflowTemplateTagModel extends Model {
   static singleton: WorkflowTemplateTagModel;
@@ -79,8 +80,8 @@ export class WorkflowTemplateTagModel extends Model {
     const tags = await this.model.findAll({
       include: [
         {
-          model: global.models.getModel('workflowTemplate'),
-          through: global.models.getModel('workflowTemplateTagMap'),
+          model: getModels().getModel('workflowTemplate'),
+          through: getModels().getModel('workflowTemplateTagMap'),
           as: 'workflowTemplates',
         },
       ],

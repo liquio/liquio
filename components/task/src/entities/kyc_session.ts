@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -45,4 +44,3 @@ export class KycSessionEntity extends Entity {
     this.updatedAt = updatedAt;
   }
 }
-

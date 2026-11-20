@@ -1,7 +1,6 @@
 // Import.
 import AuthController from './auth';
 import LinkController from './link';
-import MonitoringController from './monitoring';
 import TestController from './test';
 
 class Controllers {
@@ -28,7 +27,6 @@ class Controllers {
     const controllersClasses = {
       test: TestController,
       auth: AuthController,
-      monitoring: MonitoringController,
       link: LinkController,
     };
 

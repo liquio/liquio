@@ -1,3 +1,4 @@
+export { HttpStatusCode } from 'axios';
 export { NextFunction, Router } from 'express';
 
 export { Request } from './request';

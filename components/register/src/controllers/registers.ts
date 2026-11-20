@@ -1,4 +1,5 @@
 import { matchedData } from 'express-validator';
+import { Sandbox } from '@liquio/back-core';
 
 import { Request, Response } from '../router';
 import Stream from '../lib/stream';
@@ -7,7 +8,7 @@ import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import RecordModel from '../models/record';
 import RegisterBusiness from '../businesses/register';
-import Isolation from '../lib/isolation';
+import { ExportAccess, isKeyExportable, projectRecordsForExport, resolveExportAccess } from '../lib/export_access';
 
 // Constants.
 const DB_ERROR_KEYS_EXIST = 'violates foreign key constraint "keys_register_id_fkey" on table "keys"';
@@ -22,6 +23,7 @@ export default class RegistersController extends Controller {
   keyModel: KeyModel;
   recordModel: RecordModel;
   registerBusiness: RegisterBusiness;
+  sandbox: Sandbox;
   exportImportRegisterUuid: 'export_#@ec1bc454b33d11ecb909-0242ac120002&^%_import';
   exportImportRecordUuid: 'export_*&#$5782b2c7-4f234df9&!+*&?_import-';
 
@@ -38,6 +40,7 @@ export default class RegistersController extends Controller {
       this.keyModel = KeyModel.getInstance();
       this.recordModel = RecordModel.getInstance();
       this.registerBusiness = new RegisterBusiness(config);
+      this.sandbox = Sandbox.getInstance();
       RegistersController.singleton = this;
     }
 
@@ -55,11 +58,11 @@ export default class RegistersController extends Controller {
       parent_id: parentId,
       id,
       key_id: keyId,
-      name
+      name,
     } = {
       offset: 0,
       limit: 20,
-      ...matchedData(req, { locations: ['query'] })
+      ...matchedData(req, { locations: ['query'] }),
     } as any;
 
     const filter: { id?: number; parent_id?: number; ['$keys.id$']?: number; name?: string } = {};
@@ -74,7 +77,7 @@ export default class RegistersController extends Controller {
       registersModelResponse = await this.registerModel.getAll({
         offset: offset,
         limit: Math.min(limit, this.config.pagination.maxLimit),
-        filter
+        filter,
       });
     } catch (error) {
       this.log.save('get-registers-error', { error: error && error.message });
@@ -106,15 +109,19 @@ export default class RegistersController extends Controller {
     this.responseData(res, register);
   }
 
+  /** Omit keys the caller must not read from a data export (logged). */
+  private filterExportableKeys(keys: any[] = []): any[] {
+    return keys.filter((key) => {
+      if (isKeyExportable(key)) return true;
+      this.log.save('export-key-not-readable', { keyId: key?.id, registerId: key?.registerId });
+      return false;
+    });
+  }
+
   /**
    * Export by ID.
    */
   async export(req: Request, res: Response) {
-    // Run GC.
-    if (global.gc) {
-      global.gc();
-    }
-
     // Define params.
     const { id: registerId } = matchedData(req, { locations: ['params'] });
     const { with_data: withData, file, key_ids: keyIds } = matchedData(req, { locations: ['query'] });
@@ -148,8 +155,8 @@ export default class RegistersController extends Controller {
         limit: null,
         filter: {
           register_id: registerId,
-          ...(keyIds ? { id: keyIds.split(',').map((keyId) => parseInt(keyId, 10)) } : {})
-        }
+          ...(keyIds ? { id: keyIds.split(',').map((keyId) => parseInt(keyId, 10)) } : {}),
+        },
       });
     } catch (error) {
       const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-keys-error', error);
@@ -157,6 +164,19 @@ export default class RegistersController extends Controller {
     }
     const { data: registerKeysData, meta: registerKeysMeta } = keysModelResponse || {};
     register.keys = { data: registerKeysData, count: registerKeysMeta.count };
+
+    // Export rights: trusted callers get the full dump, everyone else projected output.
+    let exportAccess: ExportAccess;
+    try {
+      exportAccess = resolveExportAccess(req, this.config);
+    } catch (error) {
+      this.log.save('export-access-config-error', { error: error?.message });
+      return this.responseError(res, 'Server access configuration is invalid.', 500);
+    }
+    if (withData && !exportAccess.full) {
+      register.keys.data = this.filterExportableKeys(register.keys.data);
+      register.keys.count = register.keys.data.length;
+    }
 
     // Define register without data.
     const registerWithoutData = JSON.parse(JSON.stringify(register));
@@ -173,13 +193,13 @@ export default class RegistersController extends Controller {
         const countRecordsModelResponse = await this.recordModel.countAll({
           filter: {
             register_id: registerId,
-            key_id: parseInt(key.id)
-          }
+            key_id: parseInt(key.id),
+          },
         });
         if (countRecordsModelResponse > this.config.pagination.maxExportLimit) {
           const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-max-limit-reached', null, {
             recordsCount: countRecordsModelResponse,
-            maxExportLimit: this.config.pagination.maxExportLimit
+            maxExportLimit: this.config.pagination.maxExportLimit,
           });
           return this.responseError(res, errorObject.message, errorObject.code);
         }
@@ -192,15 +212,26 @@ export default class RegistersController extends Controller {
             limit: null,
             filter: {
               register_id: registerId,
-              key_id: parseInt(key.id)
-            }
+              key_id: parseInt(key.id),
+            },
           });
         } catch (error) {
           const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-records-error', error);
           return this.responseError(res, errorObject.message, errorObject.code);
         }
-        const { data: records, meta: recordsMeta } = recordsModelResponse || {};
-        register.keys.data[index].records = { data: records, count: recordsMeta.count };
+        let { data: records } = recordsModelResponse || {};
+        const { meta: recordsMeta } = recordsModelResponse || {};
+        let recordsCount = recordsMeta.count;
+        if (!exportAccess.full) {
+          try {
+            records = projectRecordsForExport(records, key, exportAccess.tokens);
+          } catch (error) {
+            const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-records-error', error);
+            return this.responseError(res, errorObject.message, errorObject.code);
+          }
+          recordsCount = records.length;
+        }
+        register.keys.data[index].records = { data: records, count: recordsCount };
       }
     }
 
@@ -229,22 +260,12 @@ export default class RegistersController extends Controller {
       // Response JSON.
       this.responseData(res, register);
     }
-
-    // Run GC.
-    if (global.gc) {
-      global.gc();
-    }
   }
 
   /**
    * Import by ID.
    */
   async import(req: Request, res: Response) {
-    // Run GC.
-    if (global.gc) {
-      global.gc();
-    }
-
     // Define params.
     let registerId;
     let { data: importRegister } = matchedData(req, { locations: ['body'] });
@@ -253,13 +274,13 @@ export default class RegistersController extends Controller {
       rewrite_schema: doRewriteKeysSchema,
       clear_records: doClearOriginalRecords,
       add_data: doImportRecords,
-      file
+      file,
     } = matchedData(req, { locations: ['query'] });
     const { user } = req.auth;
     const backupInfo = {
       importKeys: {}, // Need for clear records
       originalKeys: {}, // Need for clear records and records import and rewrite schema
-      changes: {}
+      changes: {},
     };
 
     if (file) {
@@ -275,9 +296,6 @@ export default class RegistersController extends Controller {
 
       // GC.
       chunks = [];
-      if (global.gc) {
-        global.gc();
-      }
 
       // Define file content lines.
       const fileContentParts = fileContentBuffer.toString('utf8').split('\n');
@@ -339,9 +357,9 @@ export default class RegistersController extends Controller {
           meta: {
             ...importRegister.meta,
             ...(req.accessInfo && {
-              createdByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName }
-            })
-          }
+              createdByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName },
+            }),
+          },
         });
       } else {
         // Update.
@@ -350,9 +368,9 @@ export default class RegistersController extends Controller {
           meta: {
             ...importRegister.meta,
             ...(req.accessInfo && {
-              updatedByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName }
-            })
-          }
+              updatedByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName },
+            }),
+          },
         });
       }
 
@@ -380,7 +398,7 @@ export default class RegistersController extends Controller {
     try {
       originalKeys = await this.registerBusiness.getExistingRegisterKeys(
         registerId,
-        importRegister.keys.data.map(({ id }) => id)
+        importRegister.keys.data.map(({ id }) => id),
       );
     } catch (error) {
       const errorObject = this.registerBusiness.getErrorAndLogIt('import-register-keys-error', error);
@@ -465,9 +483,9 @@ export default class RegistersController extends Controller {
               meta: {
                 ...importKey.meta,
                 ...(req.accessInfo && {
-                  updatedByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName }
-                })
-              }
+                  updatedByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName },
+                }),
+              },
             });
             backupInfo.changes = this.registerBusiness.changes(backupInfo.changes, 'updated', keyModelResponse.data.id);
           } catch (error) {
@@ -482,9 +500,9 @@ export default class RegistersController extends Controller {
               meta: {
                 ...importKey.meta,
                 ...(req.accessInfo && {
-                  createdByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName }
-                })
-              }
+                  createdByPerson: { userId: req.accessInfo?.userId, name: req.accessInfo?.userName },
+                }),
+              },
             });
             backupInfo.changes = this.registerBusiness.changes(backupInfo.changes, 'created', keyModelResponse.data.id);
           } catch (error) {
@@ -516,8 +534,17 @@ export default class RegistersController extends Controller {
 
             // Update existing key record or create new key record.
             if (importKey.toSearchString.startsWith('(')) {
-              const isolate = new Isolation();
-              importKeyRecord.searchString = isolate.set('importKeyRecord', importKeyRecord).eval(`(${importKey.toSearchString})(importKeyRecord)`);
+              try {
+                const searchStrings = this.sandbox.evalWithArgs(importKey.toSearchString, [importKeyRecord]);
+                if (Array.isArray(searchStrings)) {
+                  [importKeyRecord.searchString, importKeyRecord.searchString2, importKeyRecord.searchString3] = searchStrings;
+                } else {
+                  importKeyRecord.searchString = searchStrings;
+                }
+              } catch (error) {
+                const errorObject = this.registerBusiness.getErrorAndLogIt('import-register-search-string-error', error);
+                return this.responseError(res, errorObject.message, errorObject.code);
+              }
             }
             const keyRecordExistInOriginals =
               importKeyRecord.id && backupInfo.originalKeys[keyModel.id] && backupInfo.originalKeys[keyModel.id].includes(importKeyRecord.id);
@@ -585,11 +612,6 @@ export default class RegistersController extends Controller {
     } else {
       this.responseData(res, { isAccepted: true, changes: backupInfo.changes }, undefined, 202);
     }
-
-    // Run GC.
-    if (global.gc) {
-      global.gc();
-    }
   }
 
   /**
@@ -624,24 +646,40 @@ export default class RegistersController extends Controller {
         offset: 0,
         limit: null,
         filter: {
-          register_id: registerId
-        }
+          register_id: registerId,
+        },
       });
     } catch (error) {
       const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-keys-error', error);
       return this.responseError(res, errorObject.message, errorObject.code);
     }
-    const { data: registerKeysData, meta: registerKeysMeta } = keysModelResponse || {};
+    let { data: registerKeysData } = keysModelResponse || {};
+    const { meta: registerKeysMeta } = keysModelResponse || {};
+    let registerKeysCount = registerKeysMeta.count;
+
+    // Export rights: trusted callers get the full dump, everyone else projected output.
+    let exportAccess: ExportAccess;
+    try {
+      exportAccess = resolveExportAccess(req, this.config);
+    } catch (error) {
+      this.log.save('export-access-config-error', { error: error?.message });
+      return this.responseError(res, 'Server access configuration is invalid.', 500);
+    }
+    if (withData && !exportAccess.full) {
+      registerKeysData = this.filterExportableKeys(registerKeysData);
+      registerKeysCount = registerKeysData.length;
+    }
 
     // Backward compatibility: remove after implementation on bpmn-admin.
     registerKeysData.forEach((item) => (item.lock = item.accessMode === 'read_only'));
 
-    register.keys = { data: registerKeysData, count: registerKeysMeta.count };
+    register.keys = { data: registerKeysData, count: registerKeysCount };
 
     res.write(JSON.stringify(register) + this.exportImportRegisterUuid);
 
     if (withData) {
-      for (const { id = undefined } of register.keys.data) {
+      for (const key of register.keys.data) {
+        const { id = undefined } = key;
         if (!id) continue;
 
         let recordsModelResponse;
@@ -651,14 +689,23 @@ export default class RegistersController extends Controller {
             limit: null,
             filter: {
               register_id: registerId,
-              key_id: parseInt(id)
-            }
+              key_id: parseInt(id),
+            },
           });
         } catch (error) {
           const errorObject = this.registerBusiness.getErrorAndLogIt('export-register-records-error', error);
           return this.responseError(res, errorObject.message, errorObject.code);
         }
-        recordsModelResponse?.data?.forEach((item) => res.write(`${this.exportImportRecordUuid}${JSON.stringify(item)}`));
+        let exportRecords = recordsModelResponse?.data;
+        if (!exportAccess.full) {
+          try {
+            exportRecords = projectRecordsForExport(exportRecords, key, exportAccess.tokens);
+          } catch (error) {
+            this.log.save('export-register-records-error', { error: error?.message });
+            return res.end();
+          }
+        }
+        exportRecords?.forEach((item) => res.write(`${this.exportImportRecordUuid}${JSON.stringify(item)}`));
       }
     }
 
@@ -677,18 +724,18 @@ export default class RegistersController extends Controller {
       created: {
         registers: [],
         keys: [],
-        records: []
+        records: [],
       },
       deleted: {
         registers: [],
         keys: [],
-        records: []
+        records: [],
       },
       updated: {
         registers: [],
         keys: [],
-        records: []
-      }
+        records: [],
+      },
     };
 
     let isRegisterStructHandled = false;
@@ -766,7 +813,7 @@ export default class RegistersController extends Controller {
                   toSearchString,
                   lock,
                   accessMode,
-                  user
+                  user,
                 });
                 changes.created.keys.push(id);
               } else {
@@ -781,7 +828,7 @@ export default class RegistersController extends Controller {
                   toSearchString,
                   lock,
                   accessMode,
-                  user
+                  user,
                 });
                 changes.updated.keys.push(id);
               }
@@ -869,7 +916,7 @@ export default class RegistersController extends Controller {
       registerModelResponse = await this.registerModel.create({ name, description, parentId, meta, user });
     } catch (error) {
       this.log.save('create-register-error', { error: error && error.message });
-      return this.responseError(res, 'Create register error.', 400, error.message);
+      return this.responseError(res, 'Create register error.', 400);
     }
     const { data: register } = registerModelResponse || {};
 
@@ -897,7 +944,7 @@ export default class RegistersController extends Controller {
         description,
         parentId,
         meta,
-        user
+        user,
       });
     } catch (error) {
       this.log.save('update-register-error', { error: error && error.message });
@@ -976,7 +1023,7 @@ export default class RegistersController extends Controller {
               searchString,
               searchString2,
               searchString3,
-              person
+              person,
             });
             createdRecords.push(id);
           } else {

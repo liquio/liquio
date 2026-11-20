@@ -1,13 +1,10 @@
-import { JSONPath as JSONPathOrigin } from 'jsonpath-plus';
 import * as crypto from 'node:crypto';
 
-function searchByKeyValue(
-  obj,
-  searchKey,
-  sign,
-  searchValue,
-  { onlyInArrays = false } = {},
-) {
+import { JSONPath as JSONPathOrigin } from 'jsonpath-plus';
+
+import { getLog } from './context';
+
+function searchByKeyValue(obj, searchKey, sign, searchValue, { onlyInArrays = false } = {}) {
   const result = [];
   let level = 0;
   function searchInObj(obj2, { isArray = false, inRoot = false } = {}) {
@@ -47,11 +44,7 @@ function searchByKeys(obj, searchKeys, { onlyInArrays = false } = {}) {
       }
     } else if (typeof obj2 === 'object' && obj2 !== null) {
       const arrayIncludeOrNot = (onlyInArrays && isArray) || !onlyInArrays;
-      if (
-        arrayIncludeOrNot &&
-        searchKeys.every((key) => typeof obj2[key] != 'undefined')
-      )
-        result.push(obj2);
+      if (arrayIncludeOrNot && searchKeys.every((key) => typeof obj2[key] != 'undefined')) result.push(obj2);
       for (const key in obj2) {
         searchInObj(obj2[key]);
       }
@@ -66,27 +59,23 @@ const timeouts = [];
 
 export const JSONPath = (objOrPath, jsonDocument?) => {
   const startTime = Date.now();
-  const { path = objOrPath, json = jsonDocument } =
-    typeof objOrPath !== 'string' && objOrPath;
+  const { path = objOrPath, json = jsonDocument } = typeof objOrPath !== 'string' && objOrPath;
 
   if (!path || !json) return JSONPathOrigin({ path, json });
 
   const cacheData = path + JSON.stringify(json);
   const cacheKey = crypto.createHash('md5').update(cacheData).digest('hex');
   if (cache[cacheKey])
-    global.log.save('jsonpath-handler-repeating-warning', {
+    getLog().save('jsonpath-handler-repeating-warning', {
       path,
       jsonSize: cacheData.length,
     });
 
   let result;
 
-  const match1 = path.match(
-    /^\$\.\.\[\?\(@\.(\w+)\s+(===?|>=?|<=?)\s+(["'](.*)['"]|true|false)\)\]$/,
-  );
+  const match1 = path.match(/^\$\.\.\[\?\(@\.(\w+)\s+(===?|>=?|<=?)\s+(["'](.*)['"]|true|false)\)\]$/);
   if (match1) {
-    const sign =
-      match1[3] === 'true' ? true : match1[3] === 'false' ? false : match1[4];
+    const sign = match1[3] === 'true' ? true : match1[3] === 'false' ? false : match1[4];
     result = searchByKeyValue(json, match1[1], match1[2], sign);
   }
 
@@ -102,11 +91,12 @@ export const JSONPath = (objOrPath, jsonDocument?) => {
 
   if (!cache[cacheKey]) {
     cache[cacheKey] = 1;
-    timeouts.push(setTimeout(() => delete cache[cacheKey], 1000 * 10));
+    // Cache expiry must not keep the process alive.
+    timeouts.push(setTimeout(() => delete cache[cacheKey], 1000 * 10).unref());
   }
 
   const executionTime = (Date.now() - startTime) / 1000;
-  global.log.save('jsonpath-handler', {
+  getLog().save('jsonpath-handler', {
     path,
     executionTime,
     jsonSize: cacheData.length,

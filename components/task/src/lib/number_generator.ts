@@ -1,7 +1,9 @@
 import moment from 'moment';
 import handlebars from 'handlebars';
+
 import { RedisClient } from './redis_client';
 import { NumberTemplateModel } from '../models/number_template';
+import { getLog } from './context';
 
 export class NumberGenerator {
   private static singleton: NumberGenerator;
@@ -29,9 +31,8 @@ export class NumberGenerator {
    */
   async generate(numberTemplateId, options = {}) {
     // Define number template.
-    const { data: numberTemplate } = await RedisClient.getOrSet(
-      RedisClient.createKey('numberTemplate', 'findById', numberTemplateId),
-      () => this.numberTemplateModel.findById(numberTemplateId),
+    const { data: numberTemplate } = await RedisClient.getOrSet(RedisClient.createKey('numberTemplate', 'findById', numberTemplateId), () =>
+      this.numberTemplateModel.findById(numberTemplateId),
     );
     if (!numberTemplate) {
       return;
@@ -44,10 +45,10 @@ export class NumberGenerator {
     }
 
     // Add register helpers.
-    handlebars.registerHelper('date', function(format) {
+    handlebars.registerHelper('date', function (format) {
       return moment().format(format);
     });
-    handlebars.registerHelper('idZerosPrefix', function(zerosCount) {
+    handlebars.registerHelper('idZerosPrefix', function (zerosCount) {
       return `${currentIncrement}`.padStart(zerosCount, '0');
     });
     handlebars.registerHelper('randomCharacterString', function (character = 'A-Z', stringLength = 3) {
@@ -58,7 +59,7 @@ export class NumberGenerator {
       let string = '';
       let i = 0;
       while (i < stringLength) {
-        string += String.fromCharCode(Math.floor(Math.random() * ((to + 1) - from) + from));
+        string += String.fromCharCode(Math.floor(Math.random() * (to + 1 - from) + from));
         i++;
       }
 
@@ -74,7 +75,7 @@ export class NumberGenerator {
     try {
       template = handlebars.compile(numberTemplate.template);
     } catch (error) {
-      global.log.save('handlebars-compile-error', { error: error && error.message || error });
+      getLog().save('handlebars-compile-error', { error: (error && error.message) || error });
       const wrapped: any = new Error('Handlebars number generator error.');
       wrapped.cause = error;
       throw wrapped;
@@ -91,10 +92,10 @@ export class NumberGenerator {
    */
   generateFromRawTemplate(template, currentIncrement) {
     // Add register helpers.
-    handlebars.registerHelper('date', function(format) {
+    handlebars.registerHelper('date', function (format) {
       return moment().format(format);
     });
-    handlebars.registerHelper('idZerosPrefix', function(zerosCount) {
+    handlebars.registerHelper('idZerosPrefix', function (zerosCount) {
       return `${currentIncrement}`.padStart(zerosCount, '0');
     });
     handlebars.registerHelper('randomCharacterString', function (character = 'A-Z', stringLength = 3) {
@@ -105,7 +106,7 @@ export class NumberGenerator {
       let string = '';
       let i = 0;
       while (i < stringLength) {
-        string += String.fromCharCode(Math.floor(Math.random() * ((to + 1) - from) + from));
+        string += String.fromCharCode(Math.floor(Math.random() * (to + 1 - from) + from));
         i++;
       }
 
@@ -121,7 +122,7 @@ export class NumberGenerator {
     try {
       generator = handlebars.compile(template);
     } catch (error) {
-      global.log.save('handlebars-compile-error', { error: error && error.message || error });
+      getLog().save('handlebars-compile-error', { error: (error && error.message) || error });
       const wrapped: any = new Error('Handlebars number generator error.');
       wrapped.cause = error;
       throw wrapped;
@@ -130,4 +131,3 @@ export class NumberGenerator {
     return number;
   }
 }
-

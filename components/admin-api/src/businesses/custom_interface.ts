@@ -1,3 +1,5 @@
+import { getModels } from '../lib/context';
+
 /**
  * Custom interface business.
  */
@@ -27,7 +29,7 @@ export class CustomInterfaceBusiness {
    * @returns {Promise<CustomInterfaceEntity>}
    */
   async createOrUpdate(customInterface) {
-    return await global.models.customInterface.create(customInterface);
+    return await getModels().customInterface.create(customInterface);
   }
 
   /**
@@ -35,7 +37,7 @@ export class CustomInterfaceBusiness {
    * @returns {Promise<CustomInterfaceEntity[]>}
    */
   async getAll({ currentPage, perPage, filters, sort }) {
-    return await global.models.customInterface.getAll({ currentPage, perPage, filters, sort });
+    return await getModels().customInterface.getAll({ currentPage, perPage, filters, sort });
   }
 
   /**
@@ -44,7 +46,7 @@ export class CustomInterfaceBusiness {
    * @returns {Promise<CustomInterfaceEntity>}
    */
   async deleteById(id) {
-    return await global.models.customInterface.deleteById(id);
+    return await getModels().customInterface.deleteById(id);
   }
 
   /**
@@ -53,6 +55,6 @@ export class CustomInterfaceBusiness {
    * @returns {Promise<CustomInterfaceEntity>}
    */
   async findById(id) {
-    return await global.models.customInterface.findById(id);
+    return await getModels().customInterface.findById(id);
   }
 }

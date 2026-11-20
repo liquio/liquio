@@ -1,3 +1,5 @@
+import { getConfig } from './context';
+
 /**
  * CORS.
  */
@@ -11,8 +13,8 @@ export class Cors {
       allowOrigin = '*',
       allowHeaders = 'Origin, X-Requested-With, Content-Type, Accept, token, Authorization, debug-user-id, enabled-mocks',
       exposeHeaders = 'Name, Version, Customer, Environment, returned-mocks, external-reader-errors',
-      allowMethods = 'GET, POST, PUT, DELETE, OPTIONS'
-    } = global.config.cors;
+      allowMethods = 'GET, POST, PUT, DELETE, OPTIONS',
+    } = getConfig().cors;
     app.use(function (req, res, next) {
       res.header('Access-Control-Allow-Origin', allowOrigin);
       res.header('Access-Control-Allow-Headers', allowHeaders);
@@ -22,4 +24,3 @@ export class Cors {
     });
   }
 }
-

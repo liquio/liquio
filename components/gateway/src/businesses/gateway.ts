@@ -1,7 +1,9 @@
 import { parse as parseJsonc } from 'jsonc-parser';
+import { Sandbox, errorRef } from '@liquio/back-core';
 
+import { getLog, getMessageBus } from '../lib/context';
+import { DESTINATION_MANAGER, gatewayMessageLogContext } from '../lib/message_bus';
 import { SystemNotifier } from '../lib/system_notifier';
-import { Sandbox } from '../lib/sandbox';
 import { GatewayTypeEntity } from '../entities/gateway_type';
 import { WorkflowErrorModel } from '../models/workflow_error';
 import { WorkflowDebugModel } from '../models/workflow_debug';
@@ -47,7 +49,7 @@ export class GatewayBusiness {
     // Define singleton.
     if (!GatewayBusiness.singleton) {
       this.config = config;
-      this.sandbox = new Sandbox();
+      this.sandbox = Sandbox.getInstance();
       this.systemNotifier = new SystemNotifier();
       this.workflowErrorModel = new WorkflowErrorModel();
       this.workflowDebugModel = new WorkflowDebugModel();
@@ -87,9 +89,16 @@ export class GatewayBusiness {
    * @param {string[]} sequenceIds Sequence ID list.
    * @param {DocumentEntity[]} documents Documents.
    * @param {EventEntity[]} events Events.
+   * @param {{workflowId?: string, gatewayTemplateId?: number}} [logMeta] Ids to log on condition error.
    * @returns {Promise<{resultSequence: string, sequenceIds: string[], condition: string, isDefault: boolean, handledAsDefault: boolean}>} Gateway data promise.
    */
-  async calcExclusiveGatewayData(jsonSchemaObject: any, sequenceIds: string[], documents: any[], events: any[]): Promise<any> {
+  async calcExclusiveGatewayData(
+    jsonSchemaObject: any,
+    sequenceIds: string[],
+    documents: any[],
+    events: any[],
+    logMeta: { workflowId?: string; gatewayTemplateId?: number } = {},
+  ): Promise<any> {
     // Check.
     const formulas = jsonSchemaObject.formulas;
     if (!Array.isArray(formulas)) {
@@ -102,9 +111,15 @@ export class GatewayBusiness {
       const { condition, isDefault } = formula;
       let conditionResult;
       try {
-        conditionResult = this.sandbox.evalWithArgs(condition, [documents, events]);
+        // Await the result: an async formula returns a Promise, which is always truthy if not awaited.
+        conditionResult = await this.sandbox.evalWithArgs(condition, [documents, events], { isAsync: true });
       } catch (error: any) {
-        global.log.save('condition-calculation-error', { error: error && error.message, condition, isDefault, documents, events });
+        getLog().save('condition-calculation-error', {
+          workflowId: logMeta.workflowId,
+          gatewayTemplateId: logMeta.gatewayTemplateId,
+          condition,
+          error: error && error.message,
+        });
         throw error;
       }
       if (conditionResult) {
@@ -134,6 +149,58 @@ export class GatewayBusiness {
   }
 
   /**
+   * Check that the gateway template is a part of the BPMN schema of the workflow's template.
+   * @param {number} gatewayTemplateId Gateway template ID.
+   * @param {string} workflowId Workflow ID.
+   * @returns {Promise<boolean>} True if the gateway belongs to the workflow template.
+   */
+  async isGatewayTemplateInWorkflow(gatewayTemplateId: number, workflowId: string): Promise<boolean> {
+    if (!Number.isInteger(Number(gatewayTemplateId))) {
+      return false;
+    }
+    const workflow = await this.workflowModel.findById(workflowId);
+    if (!workflow || !workflow.workflowTemplateId) {
+      return false;
+    }
+    const workflowTemplate = await this.workflowTemplateModel.findById(workflow.workflowTemplateId);
+    const xmlBpmnSchema = workflowTemplate && workflowTemplate.xmlBpmnSchema;
+    if (typeof xmlBpmnSchema !== 'string') {
+      return false;
+    }
+
+    // Gateways are identified as `Gateway-<id>` in BPMN (see manager's writingQueueGateway producer).
+    return new RegExp(`\\bid\\s*=\\s*["']gateway-${Number(gatewayTemplateId)}["']`, 'i').test(xmlBpmnSchema);
+  }
+
+  /**
+   * Verify that the workflow ID of a message can be trusted: the workflow exists, its template matches the message
+   * and the gateway template is a part of the workflow's BPMN schema.
+   * @param {object} messageObject Message object.
+   * @returns {Promise<string|null>} Verified workflow ID or null.
+   */
+  async verifyMessageWorkflowId(messageObject: any): Promise<string | null> {
+    try {
+      const { workflowId, workflowTemplateId, gatewayTemplateId } = messageObject || {};
+      if (!workflowId) {
+        return null;
+      }
+      const workflow = await this.workflowModel.findById(workflowId);
+      if (!workflow) {
+        return null;
+      }
+      if (workflowTemplateId !== undefined && workflowTemplateId !== null && String(workflowTemplateId) !== String(workflow.workflowTemplateId)) {
+        return null;
+      }
+      if (!(await this.isGatewayTemplateInWorkflow(gatewayTemplateId, workflowId))) {
+        return null;
+      }
+      return workflowId;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Create from message.
    * @param {object} messageObject AMQP message object.
    * @param {string} messageObject.workflowId Workflow ID.
@@ -141,6 +208,8 @@ export class GatewayBusiness {
    * @param {string[]} messageObject.sequenceIds Sequence ID list.
    */
   async createFromMessage(messageObject: any) {
+    // Set once the message workflow ID is verified against the gateway template.
+    let verifiedWorkflowId: string | null | undefined;
     try {
       // Define params.
       const workflowId = messageObject.workflowId;
@@ -151,10 +220,18 @@ export class GatewayBusiness {
       }
 
       // Log.
-      global.log.save('gateway-handling|message-parsed', { workflowId, gatewayTemplateId, sequenceIds });
+      getLog().save('gateway-handling|message-parsed', { workflowId, gatewayTemplateId, sequenceIds });
 
       // Define gateway options.
       const gatewayTemplate = await this.gatewayTemplateModel.findById(gatewayTemplateId);
+
+      // The gateway template must belong to the template of the workflow. Ack and drop forged/mismatched messages
+      // without recording a workflow error (that would let a forged message mark a foreign workflow as errored).
+      if (!(await this.isGatewayTemplateInWorkflow(gatewayTemplateId, workflowId))) {
+        getLog().save('gateway-handling|template-workflow-mismatch', gatewayMessageLogContext(messageObject));
+        return true;
+      }
+      verifiedWorkflowId = workflowId;
       const gatewayTypeId = gatewayTemplate.gatewayTypeId;
       const name = gatewayTemplate.name;
       const jsonSchema = gatewayTemplate.jsonSchema;
@@ -175,7 +252,7 @@ export class GatewayBusiness {
           data = await this.calcParallelGatewayData(jsonSchemaObject, sequenceIds);
           break;
         case GatewayTypeEntity.Types.Exclusive:
-          data = await this.calcExclusiveGatewayData(jsonSchemaObject, sequenceIds, documents, events);
+          data = await this.calcExclusiveGatewayData(jsonSchemaObject, sequenceIds, documents, events, { workflowId, gatewayTemplateId });
           break;
         case GatewayTypeEntity.Types.Inclusive:
           data = await this.calcInclusiveGatewayData(jsonSchemaObject, sequenceIds);
@@ -208,24 +285,31 @@ export class GatewayBusiness {
           version: lastVersionWorkflowHistory && lastVersionWorkflowHistory.version,
         });
         if (!createdGateway) {
-          throw new Error('Gateway wasn\'t created.');
+          throw new Error("Gateway wasn't created.");
         }
 
         // Log.
-        global.log.save('gateway-handling|db-instance-created', { createdGateway });
+        getLog().save('gateway-handling|db-instance-created', {
+          workflowId,
+          gatewayTemplateId,
+          gatewayId: createdGateway.id,
+          gatewayTypeId: createdGateway.gatewayTypeId,
+          version: createdGateway.version,
+        });
 
-        // Send message to RabbitMQ.
+        // Report back to manager.
         const outMessage = { workflowId, gatewayId: createdGateway.id };
 
-        global.messageQueue.produce(outMessage);
+        await getMessageBus().publish(DESTINATION_MANAGER, outMessage);
       }
 
       // Inform about handling status.
     } catch (error: any) {
-      global.log.save('document-creating-by-message-from-queue-error', { messageObject });
+      const logContext = gatewayMessageLogContext(messageObject);
 
       // If enabled debug model.
       if (typeof messageObject.debugId !== 'undefined' && messageObject && messageObject.workflowId) {
+        getLog().save('document-creating-by-message-from-queue-error', { ...logContext, error: errorRef(error) });
         await this.workflowDebugModel.create({
           id: messageObject.debugId,
           workflowId: messageObject.workflowId,
@@ -233,27 +317,39 @@ export class GatewayBusiness {
           data: { error: error.message, queueMessage: messageObject },
         });
       } else {
+        const linkedWorkflowId = verifiedWorkflowId !== undefined ? verifiedWorkflowId : await this.verifyMessageWorkflowId(messageObject);
+        let errorId: number | undefined;
         try {
-          await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject });
-          await this.workflowModel.setError(messageObject.workflowId);
+          errorId = await this.workflowErrorModel.create({ error: error.message, queueMessage: messageObject }, { workflowId: linkedWorkflowId });
+          if (linkedWorkflowId) {
+            await this.workflowModel.setError(linkedWorkflowId as any);
+          }
         } catch (error: any) {
-          global.log.save('workflow-id-not-found-error', { messageObject, error: error.message });
+          getLog().save('workflow-id-not-found-error', { ...logContext, error: errorRef(error) });
         }
+        getLog().save('document-creating-by-message-from-queue-error', {
+          ...logContext,
+          error: errorRef(error),
+          errorId,
+          ...(linkedWorkflowId ? {} : { workflowLinked: false }),
+        });
 
-        try {
-          const workflowTemplate = await this.workflowTemplateModel.findIdAndNameAndErrorsSubscribersById(messageObject.workflowTemplateId);
-          const gatewayTemplate = await this.gatewayTemplateModel.findIdAndNameById(messageObject.gatewayTemplateId);
+        if (linkedWorkflowId) {
+          try {
+            const workflowTemplate = await this.workflowTemplateModel.findIdAndNameAndErrorsSubscribersById(messageObject.workflowTemplateId);
+            const gatewayTemplate = await this.gatewayTemplateModel.findIdAndNameById(messageObject.gatewayTemplateId);
 
-          await this.systemNotifier.sendEmails({
-            workflowId: messageObject.workflowId,
-            workflowTemplateName: workflowTemplate?.name,
-            workflowErrorsSubscribers: workflowTemplate?.errorsSubscribers,
-            gatewayTemplateId: gatewayTemplate?.id,
-            gatewayTemplateName: gatewayTemplate?.name,
-            error: error?.message,
-          });
-        } catch (error: any) {
-          global.log.save('system-notifier-error', error.message);
+            await this.systemNotifier.sendEmails({
+              workflowId: linkedWorkflowId,
+              workflowTemplateName: workflowTemplate?.name,
+              workflowErrorsSubscribers: workflowTemplate?.errorsSubscribers,
+              gatewayTemplateId: gatewayTemplate?.id,
+              gatewayTemplateName: gatewayTemplate?.name,
+              error: error?.message,
+            });
+          } catch (error: any) {
+            getLog().save('system-notifier-error', { error: errorRef(error) });
+          }
         }
       }
     }
@@ -265,11 +361,11 @@ export class GatewayBusiness {
     const latestGatewayInWorkflow = await this.gatewayModel.getLatestGatewayInWorkflow(gatewayTemplateId, workflowId);
     const sequenceIds = latestGatewayInWorkflow?.data?.sequenceIds || [];
 
-    global.log.save('get-sequence-ids-from-latest-gateway', {
+    getLog().save('get-sequence-ids-from-latest-gateway', {
       gatewayTemplateId,
       workflowId,
       sequenceIds,
-      latestGatewayInWorkflow,
+      latestGatewayId: latestGatewayInWorkflow?.id,
     });
 
     return sequenceIds;

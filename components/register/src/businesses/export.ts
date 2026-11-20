@@ -7,8 +7,10 @@ import RecordModel from '../models/record';
 import KeyEntity from '../entities/key';
 import RegisterEntity from '../entities/register';
 import RecordEntity from '../entities/record';
-import { Config } from '../lib/config';
+import { RegisterConfig } from '../lib/config';
 import { RedisClient } from '../lib/redis_client';
+import { ExportAccess, ExportKeyForbiddenError, RESTRICTED_EXPORT_ACCESS, isKeyExportable, projectRecordsForExport } from '../lib/export_access';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const AUTO_CLEAR_INTERVAL = 1000 * 60 * 60 * 24; // 1 day.
@@ -16,7 +18,7 @@ const STATUSES = {
   Preparing: 'Preparing',
   Prepared: 'Prepared',
   Exported: 'Exported',
-  Failed: 'Failed'
+  Failed: 'Failed',
 };
 
 /**
@@ -31,7 +33,7 @@ export default class ExportBusiness extends Business {
   toExport: { [key: string]: any };
   exportTimeouts: Map<string, NodeJS.Timeout>;
 
-  constructor(config: Config) {
+  constructor(config: RegisterConfig) {
     // Define singleton.
     if (!ExportBusiness.singleton) {
       super(config);
@@ -77,7 +79,8 @@ export default class ExportBusiness extends Business {
   // Get key and register and records by key ID.
   async getKeyAndRegisterAndRecords(
     keyId: number,
-    options: { onlySchema?: boolean } = {}
+    options: { onlySchema?: boolean } = {},
+    access: ExportAccess = RESTRICTED_EXPORT_ACCESS,
   ): Promise<{
     key: KeyEntity;
     register: RegisterEntity;
@@ -92,9 +95,16 @@ export default class ExportBusiness extends Business {
     // Return key and register if only schema.
     if (onlySchema) return { key, register };
 
+    // Non-full export never reads a key the caller cannot read.
+    if (!access.full && !isKeyExportable(key)) {
+      this.log.save('export-key-not-readable', { keyId });
+      throw new ExportKeyForbiddenError(keyId);
+    }
+
     // Get records.
     const recordModelResponse = await this.recordModel.getByKeyId(keyId, true);
-    const { data: records } = recordModelResponse || {};
+    let { data: records } = recordModelResponse || {};
+    if (!access.full) records = projectRecordsForExport(records, key, access.tokens);
 
     // Remove isEncrypted on export
     records.forEach((record) => {
@@ -124,10 +134,21 @@ export default class ExportBusiness extends Business {
    * @example
    * const exportId = await exportBusiness.prepareToExport(1);
    */
-  async startPreparingToExport(keyId: number, options = {}): Promise<string> {
+  async startPreparingToExport(
+    keyId: number,
+    options: { onlySchema?: boolean } = {},
+    access: ExportAccess = RESTRICTED_EXPORT_ACCESS,
+  ): Promise<string> {
+    // Reject an unreadable key up front (explicit key export answers 403 instead of a failed job).
+    const { key } = await this.getKeyAndRegister(keyId);
+    if (!options?.onlySchema && !access.full && !isKeyExportable(key)) {
+      this.log.save('export-key-not-readable', { keyId });
+      throw new ExportKeyForbiddenError(keyId);
+    }
+
     const exportId = this.generateExportId();
-    this.prepareToExport(exportId, keyId, options);
-    setTimeout(() => this.clearToExport(exportId), AUTO_CLEAR_INTERVAL); // Clear "to export" after 1 day.
+    this.prepareToExport(exportId, keyId, options, access);
+    setTimeout(() => this.clearToExport(exportId), AUTO_CLEAR_INTERVAL).unref?.(); // Clear "to export" after 1 day.
     return exportId;
   }
 
@@ -142,19 +163,19 @@ export default class ExportBusiness extends Business {
    * @example
    * await exportBusiness.prepareToExport('exportId', 1);
    */
-  async prepareToExport(exportId: string, keyId: number, options = {}) {
+  async prepareToExport(exportId: string, keyId: number, options: { onlySchema?: boolean } = {}, access: ExportAccess = RESTRICTED_EXPORT_ACCESS) {
     // Preset "to export".
     this.toExport[exportId] = {
       keyId,
       options,
       data: null,
       createdAt: new Date(),
-      status: ExportBusiness.Statuses.Preparing
+      status: ExportBusiness.Statuses.Preparing,
     };
 
     // Try to set data to export.
     try {
-      const exportData = await this.getKeyAndRegisterAndRecords(keyId, options);
+      const exportData = await this.getKeyAndRegisterAndRecords(keyId, options, access);
       this.toExport[exportId].data = exportData;
       this.toExport[exportId].status = ExportBusiness.Statuses.Prepared;
 
@@ -176,7 +197,7 @@ export default class ExportBusiness extends Business {
   async checkToExportStatus(exportId: string) {
     if (this.toExport[exportId]) {
       return this.toExport[exportId].status;
-    } else if (global.config?.redis?.isEnabled) {
+    } else if (getConfig()?.redis?.isEnabled) {
       try {
         const serializedData = await RedisClient.getInstance().get(['register', 'exportId', exportId]);
 
@@ -205,9 +226,9 @@ export default class ExportBusiness extends Business {
     if (this.toExport[exportId]) {
       return {
         ...this.toExport[exportId].data,
-        options: this.toExport[exportId].options
+        options: this.toExport[exportId].options,
       };
-    } else if (global.config?.redis?.isEnabled) {
+    } else if (getConfig()?.redis?.isEnabled) {
       try {
         const serializedData = await RedisClient.getInstance().get(['register', 'exportId', exportId]);
         if (serializedData) {
@@ -236,7 +257,7 @@ export default class ExportBusiness extends Business {
   clearToExport(exportId: string) {
     if (exportId) {
       this.toExport[exportId] = undefined;
-      if (global.config?.redis?.isEnabled) {
+      if (getConfig()?.redis?.isEnabled) {
         try {
           RedisClient.getInstance().delete(['register', 'exportId', exportId]);
         } catch (error) {
@@ -246,7 +267,6 @@ export default class ExportBusiness extends Business {
     } else {
       this.toExport = {};
     }
-    if (global.gc) global.gc();
   }
 
   async updateToExportState(exportId: string) {
@@ -255,7 +275,7 @@ export default class ExportBusiness extends Business {
     try {
       const serializedData = JSON.stringify(this.toExport[exportId]);
 
-      if (global.config?.redis?.isEnabled) {
+      if (getConfig()?.redis?.isEnabled) {
         await RedisClient.getInstance().set(['register', 'exportId', exportId], serializedData, AUTO_CLEAR_INTERVAL / 1000);
       }
     } catch (error) {

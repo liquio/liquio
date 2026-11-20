@@ -1,18 +1,20 @@
 import axios, { AxiosRequestConfig } from 'axios';
+import { Log } from '@liquio/back-core';
 
 import prepareAxiosErrorToLog from './prepareAxiosErrorToLog';
-
-import { Log } from '@liquio/back-core';
+import { TlsConfig, createHttpsAgent } from './tls';
+import { getConfig, getLog } from './context';
 
 // Constants.
 const ROUTES = {
-  verifySignatureExternal: '/verify-signature-external'
+  verifySignatureExternal: '/verify-signature-external',
 };
 
 export interface SignConfig {
   url: string;
   token: string;
   timeout?: number;
+  tls?: TlsConfig;
 }
 
 /**
@@ -25,6 +27,7 @@ export default class Sign {
   url: string;
   token: string;
   timeout: number;
+  tls?: TlsConfig;
 
   /**
    * Sign constructor.
@@ -34,10 +37,11 @@ export default class Sign {
     // Define singleton.
     if (!Sign.singleton) {
       this.log = Log.getInstance();
-      const { url, token, timeout = 10000 } = config || global.config.sign;
+      const { url, token, timeout = 10000, tls } = config || getConfig().sign;
       this.url = url;
       this.token = token;
       this.timeout = timeout;
+      this.tls = tls;
       Sign.singleton = this;
     }
 
@@ -57,24 +61,29 @@ export default class Sign {
       headers: { token: this.token },
       data: {
         data,
-        signature
+        signature,
       },
-      timeout: this.timeout
+      timeout: this.timeout,
     };
+    const httpsAgent = createHttpsAgent(this.tls, 'sign');
+    if (httpsAgent) {
+      requestOptions.httpsAgent = httpsAgent;
+    }
     try {
       const { data: response } = await axios(requestOptions);
       return response;
     } catch (error) {
-      global.log.save(
+      getLog().save(
         'sign-service-verify-signature-external-error',
         {
           ...prepareAxiosErrorToLog(error),
           requestOptions: {
             ...requestOptions,
-            headers: '*****'
-          }
+            headers: '*****',
+            httpsAgent: undefined,
+          },
         },
-        'error'
+        'error',
       );
       throw error;
     }

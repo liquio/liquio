@@ -1,6 +1,6 @@
 import nodeRSA from 'node-rsa';
-
 import { Log } from '@liquio/back-core';
+
 import { convertAllEscapes } from '../lib/string_converter';
 import { Models } from '../models';
 import { UserServicesCreationAttributes } from '../models/user_services.model';
@@ -14,8 +14,8 @@ import { BankIDStrategy } from './passport_libs/passport-bankid/strategy';
 export async function bankid(app: Express) {
   const log = Log.getInstance();
   let passport = app.passport;
-  let fs = require('fs');
-  let path = require('path');
+  let fs = require('node:fs');
+  let path = require('node:path');
   const config = app.config.auth_providers?.bankid;
   if (!config) {
     throw new Error("'bankid' provider is not configured");
@@ -56,7 +56,7 @@ export async function bankid(app: Express) {
   async function verify(req: Request, accessToken: string, refreshToken: string, profile: Record<string, any>, done: CallbackFn) {
     const profileDecrypt = decryptProfile(privateKey, profile);
 
-    log.save('user-authorize-by-bankId', { profileDecrypt }, 'info');
+    log.save('user-authorize-by-bankId', { status: 'profile-decrypted' }, 'info');
     let saveUserQuery: UserServicesCreationAttributes = {
       userId: '',
       data: profileDecrypt,

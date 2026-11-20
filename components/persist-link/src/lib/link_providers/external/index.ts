@@ -2,14 +2,15 @@
 import _ from 'lodash';
 import handlebars from 'handlebars';
 import moment from 'moment';
-import pdf from 'html-pdf';
 import qrImage from 'qr-image';
+import { Sandbox } from '@liquio/back-core';
 
 import { getConfig, getLog } from '../../context';
+import { describeOptions } from '../../log_redact';
+import { renderPdf } from '../../pdf_generator';
 import FilestorageHandler from '../filestorage/filestorage_handler';
 import LinkProvider from '../link_provider';
 import RegisterProvider from './providers/register';
-import Sandbox from '../../../lib/sandbox';
 import TemplateModel from '../../../models/template';
 
 // Constants.
@@ -38,7 +39,12 @@ class ExternalLinkProvider extends LinkProvider {
         register: new RegisterProvider(config.register),
       };
       const appConfig = getConfig();
-      this.sandbox = new Sandbox(appConfig.sandbox);
+      // jsonMap code is DB-stored, so it always runs in isolated-vm whatever `sandbox.isolationLevel` is configured.
+      this.sandbox = new Sandbox({
+        ...appConfig.sandbox,
+        isolationLevel: 'isolated-vm' as any,
+        getLog,
+      });
       this.filestorageHandler = new FilestorageHandler(appConfig.link_providers.filestorage);
 
       ExternalLinkProvider.singleton = this;
@@ -81,14 +87,14 @@ class ExternalLinkProvider extends LinkProvider {
       // Check.
       const isValidData = this.isValidOptions(options);
       if (!isValidData) {
-        res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+        return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
       }
 
       // Define params.
       const { templateName, filter } = options;
       let { templateMethod } = options;
 
-      getLog().save('external-link-provider-options', options);
+      getLog().save('external-link-provider-options', describeOptions(options));
 
       const template = await this.templateModel.findByNameAndMethod(templateName, templateMethod);
       if (!template) {
@@ -106,18 +112,14 @@ class ExternalLinkProvider extends LinkProvider {
         return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
       }
 
-      let preparedData = {
-        global: {
-          currentDate: moment().format('DD.MM.YYYY'),
-        },
-      };
+      const preparedData = {};
 
       if (template.jsonMap) {
         for (const [key, value] of Object.entries(template.jsonMap)) {
           if (value.startsWith('async (') || value.startsWith('(')) {
             preparedData[key] = await this.sandbox.evalWithArgs(value, [{ recordData: data }], {
               isAsync: true,
-              global: { getFileBase64: this.getFileBase64.bind(this) },
+              global: { getFileBase64: async (link) => this.getFileBase64(link) },
               meta: { fn: key, caller: 'ExternalLinkProvider.open' },
             });
           } else {
@@ -156,6 +158,11 @@ class ExternalLinkProvider extends LinkProvider {
             return isNaN(num) ? acc : acc + num;
           }, 0);
         },
+        currentDate: function (format, options) {
+          const opts = typeof format === 'string' ? options : format;
+          const fmt = typeof format === 'string' && format ? format : 'DD.MM.YYYY';
+          return moment(opts?.data?.now ?? new Date()).format(fmt);
+        },
         dateFormat: function (date, format) {
           return moment(date).format(format);
         },
@@ -175,12 +182,17 @@ class ExternalLinkProvider extends LinkProvider {
 
       if (responseFormat !== 'pdf') {
         const handlebarsTemplate = handlebars.compile(template.html);
-        const html = handlebarsTemplate(preparedData);
-        return res.set(CONTENT_TYPE_HEADER, 'text/html; charset=utf-8').status(200).send(html);
+        const html = handlebarsTemplate(preparedData, { data: { now: new Date() } });
+        return res
+          .set(CONTENT_TYPE_HEADER, 'text/html; charset=utf-8')
+          .set('X-Content-Type-Options', 'nosniff')
+          .set('Content-Security-Policy', 'sandbox')
+          .status(200)
+          .send(html);
       }
 
       const handlebarsTemplate = handlebars.compile(template.pdf);
-      let html = handlebarsTemplate(preparedData);
+      let html = handlebarsTemplate(preparedData, { data: { now: new Date() } });
 
       // Check if landscape PDF orientation.
       const landscapeFormat = !!html.match('<landscape_orientation>');
@@ -245,14 +257,10 @@ class ExternalLinkProvider extends LinkProvider {
         pdfOptions.width = pdfWidth;
       }
 
+      const pdfBuffer = await renderPdf(html, pdfOptions);
       res.set(CONTENT_TYPE_HEADER, 'application/pdf');
-      pdf.create(html, pdfOptions).toStream((err, stream) => {
-        if (err) {
-          getLog().save('external-provider-error', { error: err && err.message });
-          return res.status(500).send({ error: 'External provider error.' });
-        }
-        stream.pipe(res);
-      });
+      res.set('X-Content-Type-Options', 'nosniff');
+      return res.status(200).send(pdfBuffer);
     } catch (error) {
       getLog().save('external-provider-error', { error: error && error.message });
       res.status(500).send({ error: 'External provider error.' });
@@ -289,13 +297,13 @@ class ExternalLinkProvider extends LinkProvider {
       // Check.
       const isValidData = this.isValidOptions(options);
       if (!isValidData) {
-        res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
+        return res.status(RESPONSE_NOT_FOUND_CODE).send(RESPONSE_NOT_FOUND_OBJECT);
       }
 
       // Define params.
       const { templateName, templateMethod } = options;
 
-      getLog().save('external-link-provider-options', options);
+      getLog().save('external-link-provider-options', describeOptions(options));
 
       const template = await this.templateModel.findByNameAndMethod(templateName, templateMethod);
       if (!template) {

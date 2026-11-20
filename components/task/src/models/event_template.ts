@@ -5,6 +5,7 @@ import { Model } from './model';
 import { EventTemplateEntity } from '../entities/event_template';
 import { RedisClient } from '../lib/redis_client';
 import { PgPubSub } from '../lib/pgpubsub';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const DEFAULT_CACHE_TTL = 300; // 5 minutes
@@ -24,19 +25,19 @@ export class EventTemplateModel extends Model {
         {
           event_type_id: {
             type: Sequelize.INTEGER,
-            references: { model: 'event_types', key: 'id' }
+            references: { model: 'event_types', key: 'id' },
           },
           name: Sequelize.STRING,
           description: Sequelize.STRING,
           json_schema: Sequelize.TEXT,
-          html_template: Sequelize.TEXT
+          html_template: Sequelize.TEXT,
         },
         {
           tableName: 'event_templates',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.prototype.prepareEntity = this.prepareEntity;
@@ -44,8 +45,8 @@ export class EventTemplateModel extends Model {
       PgPubSub.getInstance().subscribe('event_template_row_change_notify', this.onRowChange.bind(this));
 
       this.cacheTtl = {
-        findById: global.config.cache.eventTemplate?.findById || DEFAULT_CACHE_TTL,
-        findByIds: global.config.cache.eventTemplate?.findByIds || DEFAULT_CACHE_TTL
+        findById: getConfig().cache.eventTemplate?.findById || DEFAULT_CACHE_TTL,
+        findByIds: getConfig().cache.eventTemplate?.findByIds || DEFAULT_CACHE_TTL,
       };
 
       EventTemplateModel.singleton = this;
@@ -63,7 +64,7 @@ export class EventTemplateModel extends Model {
     const { data: eventTemplate } = await RedisClient.getOrSet(
       RedisClient.createKey('event_template', 'findById', id),
       () => this.model.findByPk(id),
-      this.cacheTtl.findById
+      this.cacheTtl.findById,
     );
 
     return this.prepareEntity(eventTemplate);
@@ -78,10 +79,10 @@ export class EventTemplateModel extends Model {
     const { data: eventTemplates } = await RedisClient.getOrSet(
       RedisClient.createKey('event_template', 'findByIds', ids),
       () => this.model.findAll({ where: { id: ids } }),
-      this.cacheTtl.findByIds
+      this.cacheTtl.findByIds,
     );
 
-    return eventTemplates.map(item => this.prepareEntity(item));
+    return eventTemplates.map((item) => this.prepareEntity(item));
   }
 
   /**
@@ -109,7 +110,7 @@ export class EventTemplateModel extends Model {
       jsonSchema: jsonSchema,
       htmlTemplate: item.html_template,
       createdAt: item.created_at,
-      updatedAt: item.updated_at
+      updatedAt: item.updated_at,
     });
   }
 
@@ -127,7 +128,7 @@ export class EventTemplateModel extends Model {
       json_schema: JSON.stringify(item.jsonSchema),
       html_template: item.htmlTemplate,
       created_at: item.createdAt,
-      updated_at: item.updatedAt
+      updated_at: item.updatedAt,
     };
   }
 

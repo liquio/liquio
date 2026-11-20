@@ -1,9 +1,70 @@
-
 import { randomUUID } from 'node:crypto';
 
 import { Controller } from './controller';
 import { ExternalReader } from '../lib/external_reader';
 import typeOf from '../lib/type_of';
+import { getConfig, getLog, getRedisClient } from '../lib/context';
+
+// Keys that drive attachment saving and sandbox evaluation in ExternalReader.getDataByUser: server-side config only.
+const FORBIDDEN_EXTRA_PARAMS = [
+  'isSaveAttachments',
+  'documentId',
+  'deleteOldAttachmentsBeforeSave',
+  'isRewriteAttachmentsOnEachRequest',
+  'prepareAttachments',
+];
+const UNSAFE_KEYS = ['__proto__', 'constructor', 'prototype'];
+const URL_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*:/i;
+const CONTROL_CHARS_PATTERN = /[\u0000-\u001f\u007f]/;
+
+/**
+ * Whether the value is a path relative to the provider base URL (same rules as the external-reader HttpProvider).
+ * @param {unknown} url Url from the request.
+ * @returns {boolean}
+ */
+const isRelativeUrl = (url: unknown): boolean => {
+  if (typeof url !== 'string') {
+    return false;
+  }
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(url);
+  } catch {
+    return false;
+  }
+  return [url, decoded].every(
+    (value) =>
+      !URL_SCHEME_PATTERN.test(value) &&
+      !value.startsWith('//') &&
+      !value.includes('\\') &&
+      !value.includes('@') &&
+      !CONTROL_CHARS_PATTERN.test(value) &&
+      !value.split(/[?#]/)[0].split('/').includes('..'),
+  );
+};
+
+/**
+ * Remove params that a user must not control from the request extraParams.
+ * Attachment saving keys are dropped, an absolute or unsafe "url" is dropped, and a non-object value becomes an empty object.
+ * @param {unknown} extraParams Extra params from the request body.
+ * @returns {object} Sanitized copy.
+ */
+export const sanitizeUserExtraParams = (extraParams: unknown): Record<string, unknown> => {
+  if (typeOf(extraParams) !== 'object') {
+    return {};
+  }
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(extraParams as Record<string, unknown>)) {
+    if (FORBIDDEN_EXTRA_PARAMS.includes(key) || UNSAFE_KEYS.includes(key)) {
+      continue;
+    }
+    if (key === 'url' && !isRelativeUrl(value)) {
+      continue;
+    }
+    result[key] = value;
+  }
+  return result;
+};
 
 /**
  * External reader controller.
@@ -42,12 +103,16 @@ export class ExternalReaderController extends Controller {
     try {
       const { service, method } = req.params;
       const { data: response } = await this.externalReader.getCaptchaChallenge(service, method);
-      return this.responseData(res, response?.challenge || {
-        enabled: false,
-        challenge: null,
-      }, true);
+      return this.responseData(
+        res,
+        response?.challenge || {
+          enabled: false,
+          challenge: null,
+        },
+        true,
+      );
     } catch (error) {
-      global.log.save('external-reader|get-captcha-challenge|error', { error: error && error.message || error }, 'error');
+      getLog().save('external-reader|get-captcha-challenge|error', { error: (error && error.message) || error }, 'error');
       return this.responseError(res, error);
     }
   }
@@ -62,18 +127,19 @@ export class ExternalReaderController extends Controller {
     const user = this.getRequestUserInfo(req);
     const { head, member } = this.getRequestUserUnitIds(req);
     const userUnits = { head, member };
-    const { service, method, captchaPayload, filters: nonUserFilter, extraParams } = req.body;
+    const { service, method, captchaPayload, filters: nonUserFilter } = req.body;
+    const extraParams = sanitizeUserExtraParams(req.body.extraParams);
     const enabledMocksHeader = req.get('enabled-mocks');
 
     // Check that method is accessible by this route.
-    if (global.config.external_reader?.strictThroughDocumentAccess?.includes(`${service}.${method}`)) {
+    if (getConfig().external_reader?.strictThroughDocumentAccess?.includes(`${service}.${method}`)) {
       return this.responseError(res, 'Method is not accessible according to access rules', 400);
     }
 
     // Check params.
-    const isWrongParam = (param) => typeof param !== 'string' || param.split('').some(p => ['/', '?'].includes(p));
+    const isWrongParam = (param) => typeof param !== 'string' || param.split('').some((p) => ['/', '?'].includes(p));
     if (isWrongParam(service) || isWrongParam(method)) {
-      global.log.save('external-reader|get-data|params-error', { service, method }, 'error');
+      getLog().save('external-reader|get-data|params-error', { service, method }, 'error');
       return this.responseError(res, 'Incorrect service or method name.', 400);
     }
 
@@ -82,27 +148,27 @@ export class ExternalReaderController extends Controller {
     let meta;
     try {
       const getDataByUserResponse = await this.externalReader.getDataByUser(
-        service, 
-        method, 
+        service,
+        method,
         captchaPayload,
-        oauthToken, 
-        user, 
+        oauthToken,
+        user,
         nonUserFilter,
         extraParams,
         userUnits,
-        enabledMocksHeader
+        enabledMocksHeader,
       );
       data = getDataByUserResponse.data;
       meta = getDataByUserResponse.meta;
     } catch (error) {
-      global.log.save('external-reader|get-data|error', { error: error && error.message || error, service, method, nonUserFilter, user }, 'error');
+      getLog().save('external-reader|get-data|error', { error: (error && error.message) || error, service, method, nonUserFilter, user }, 'error');
 
       let code = 500;
       if (error.message.includes('Authentication error')) {
         code = 401;
       }
 
-      return this.responseError(res, error.message, code);
+      return this.responseError(res, error, code);
     }
     const isDataWithPagination = !!meta;
     const dataToResponse = isDataWithPagination ? { data, meta } : data;
@@ -122,18 +188,19 @@ export class ExternalReaderController extends Controller {
     const user = this.getRequestUserInfo(req);
     const { head, member } = this.getRequestUserUnitIds(req);
     const userUnits = { head, member };
-    const { service, method, filters: nonUserFilter, extraParams, captchaPayload } = req.body;
+    const { service, method, filters: nonUserFilter, captchaPayload } = req.body;
+    const extraParams = sanitizeUserExtraParams(req.body.extraParams);
     let { requestId } = req.body;
     const enabledMocksHeader = req.get('enabled-mocks');
 
-    if (!global.redisClient) {
-      global.log.save('external-reader|get-data-async|redis-error', { error: 'Redis client is not initialized' }, 'error');
+    if (!getRedisClient()) {
+      getLog().save('external-reader|get-data-async|redis-error', { error: 'Redis client is not initialized' }, 'error');
       return this.responseError(res, 'Redis client is not initialized', 500);
     }
 
     if (requestId) {
-      global.log.save('external-reader|get-data-async|request-id', { requestId }, 'info');
-      const requestData = await global.redisClient.get(`external-reader-request-id:${requestId}`);
+      getLog().save('external-reader|get-data-async|request-id', { requestId }, 'info');
+      const requestData = await getRedisClient().get(`external-reader-request-id:${requestId}`);
 
       if (requestData) {
         return this.responseData(res, JSON.parse(requestData));
@@ -143,21 +210,25 @@ export class ExternalReaderController extends Controller {
     }
 
     // Check params.
-    const isWrongParam = (param) => typeof param !== 'string' || param.split('').some(p => ['/', '?'].includes(p));
+    const isWrongParam = (param) => typeof param !== 'string' || param.split('').some((p) => ['/', '?'].includes(p));
     if (isWrongParam(service) || isWrongParam(method)) {
-      global.log.save('external-reader|get-data|params-error', { service, method }, 'error');
+      getLog().save('external-reader|get-data|params-error', { service, method }, 'error');
       return this.responseError(res, 'Incorrect service or method name.', 400);
     }
 
     requestId = randomUUID();
 
-    await global.redisClient.set(`external-reader-request-id:${requestId}`, {
-      status: 'processing'
-    }, 60 * 60);
+    await getRedisClient().set(
+      `external-reader-request-id:${requestId}`,
+      {
+        status: 'processing',
+      },
+      60 * 60,
+    );
 
     (async () => {
       try {
-        const getDataByUserResponse = (await this.externalReader.getDataByUser(
+        const getDataByUserResponse = await this.externalReader.getDataByUser(
           service,
           method,
           captchaPayload,
@@ -168,26 +239,33 @@ export class ExternalReaderController extends Controller {
           userUnits,
           enabledMocksHeader,
           token,
-          this.config.external_reader.asyncTimeout || 1000 * 60 * 60
-        ));
+          this.config.external_reader.asyncTimeout || 1000 * 60 * 60,
+        );
 
-        await global.redisClient.set(`external-reader-request-id:${requestId}`, {
-          data: getDataByUserResponse.data,
-          meta: getDataByUserResponse.meta,
-        }, 60 * 60);
-
+        await getRedisClient().set(
+          `external-reader-request-id:${requestId}`,
+          {
+            data: getDataByUserResponse.data,
+            meta: getDataByUserResponse.meta,
+          },
+          60 * 60,
+        );
       } catch (error) {
-        global.log.save('external-reader|get-data|error', { error: error && error.message || error, service, method, nonUserFilter, user }, 'error');
+        getLog().save('external-reader|get-data|error', { error: (error && error.message) || error, service, method, nonUserFilter, user }, 'error');
 
         let code = 500;
         if (error.message.includes('Authentication error')) {
           code = 401;
         }
 
-        await global.redisClient.set(`external-reader-request-id:${requestId}`, {
-          errorCode: code,
-          error: error.message
-        }, 60 * 60);
+        await getRedisClient().set(
+          `external-reader-request-id:${requestId}`,
+          {
+            errorCode: code,
+            error: error.message,
+          },
+          60 * 60,
+        );
       }
     })();
 
@@ -230,8 +308,8 @@ export class ExternalReaderController extends Controller {
     try {
       response = await this.externalReader.deleteCacheByUser(oauthToken, user);
     } catch (error) {
-      global.log.save('external-reader|delete-cache|error', { error: error && error.message || error, user }, 'error');
-      return this.responseError(res, error.message);
+      getLog().save('external-reader|delete-cache|error', { error: (error && error.message) || error, user }, 'error');
+      return this.responseError(res, error);
     }
 
     this.responseData(res, response, true);
@@ -245,15 +323,14 @@ export class ExternalReaderController extends Controller {
    */
   async getCaptchProviders(req, res) {
     try {
-      global.log.save('external-reader|get-captcha-providers|info', { endpoint: 'external-reader/captcha/providers/list' }, 'info');
+      getLog().save('external-reader|get-captcha-providers|info', { endpoint: 'external-reader/captcha/providers/list' }, 'info');
 
       const { data: response } = await this.externalReader.getCaptchProviders();
 
       return this.responseData(res, response);
     } catch (error) {
-      global.log.save('external-reader|get-captcha-providers|error', { error: error && error.message || error }, 'error');
+      getLog().save('external-reader|get-captcha-providers|error', { error: (error && error.message) || error }, 'error');
       return this.responseError(res, error);
     }
   }
 }
-

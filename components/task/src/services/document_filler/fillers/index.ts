@@ -1,4 +1,3 @@
-
 import { TaskModel } from '../../../models/task';
 import { EventModel } from '../../../models/event';
 import { HelpersFiller } from './helpers';
@@ -15,6 +14,7 @@ import { ExternalReaderFiller } from './external_reader';
 import { ValueFunctionFiller } from './value_function';
 import { VerifiedUserInfoFiller } from './verified_user_info';
 import { CopyWorkflowDocumentFiller } from './copy_workflow_document';
+import { getLog } from '../../../lib/context';
 
 // Constants.
 const FILLERS_CLASSES_LIST = {
@@ -31,7 +31,7 @@ const FILLERS_CLASSES_LIST = {
   CalculatedFieldsFiller,
   ValueFunctionFiller,
   VerifiedUserInfoFiller,
-  CopyWorkflowDocumentFiller
+  CopyWorkflowDocumentFiller,
 };
 
 /**
@@ -52,8 +52,8 @@ export class Fillers {
     if (!Fillers.singleton) {
       this.taskModel = new TaskModel();
       this.eventModel = new EventModel();
-      const fillersClasses = [ ...Object.values(Fillers.List), ...customFillers ];
-      this.initializedFillers = fillersClasses.map(v => new v());
+      const fillersClasses = [...Object.values(Fillers.List), ...customFillers];
+      this.initializedFillers = fillersClasses.map((v) => new v());
       Fillers.singleton = this;
     }
     return Fillers.singleton;
@@ -87,14 +87,14 @@ export class Fillers {
     // Find documents and events from current workflow to pass to filers options.
     try {
       allProcessDocuments = await this.taskModel.getDocumentsByWorkflowId(workflowId, false);
-      currentOnlyDocuments = allProcessDocuments.filter(document => document.isTaskCurrent);
+      currentOnlyDocuments = allProcessDocuments.filter((document) => document.isTaskCurrent);
     } catch (error) {
-      global.log.save('document-filler-get-documents-error', error, 'error');
+      getLog().save('document-filler-get-documents-error', error, 'error');
     }
     try {
       events = await this.eventModel.getEventsByWorkflowId(workflowId);
     } catch (error) {
-      global.log.save('document-filler-get-events-error', error, 'error');
+      getLog().save('document-filler-get-events-error', error, 'error');
     }
 
     // Fill object using all fillers.
@@ -102,9 +102,9 @@ export class Fillers {
       // "documents: [...documents]" - for prevent modification documents and events in value function.
       await filler.fill(jsonSchema, documentData, {
         ...options,
-        documents: [ ...currentOnlyDocuments ],
-        allProcessDocuments: [ ...allProcessDocuments ],
-        events: [ ...events ]
+        documents: [...currentOnlyDocuments],
+        allProcessDocuments: [...allProcessDocuments],
+        events: [...events],
       });
     }
 
@@ -112,4 +112,3 @@ export class Fillers {
     return documentData;
   }
 }
-

@@ -1,8 +1,26 @@
 // Import.
-import got from 'got';
+import { createRegisterApiClient } from '@liquio/back-core';
 
 import { getLog } from '../../../context';
 import Provider from './provider';
+
+/**
+ * Strip userinfo and query from a URL before logging.
+ * @param {string} url URL.
+ * @returns {string}
+ */
+const urlForLog = (url) => {
+  try {
+    const parsed = new URL(url);
+    parsed.username = '';
+    parsed.password = '';
+    parsed.search = '';
+    parsed.hash = '';
+    return parsed.toString();
+  } catch {
+    return '[invalid-url]';
+  }
+};
 
 /**
  * Register provider.
@@ -15,6 +33,17 @@ class RegisterProvider extends Provider {
   constructor(config) {
     // Call parent constructor.
     super(config);
+    this.client = config ? this.createClient(config) : undefined;
+  }
+
+  /**
+   * Create register API client.
+   * @param {object} config Register provider config.
+   * @returns {object}
+   */
+  createClient(config) {
+    const { url, token, timeout = 10000 } = config;
+    return createRegisterApiClient({ url, token, timeout, getLog });
   }
 
   /**
@@ -23,27 +52,26 @@ class RegisterProvider extends Provider {
    * @returns {Promise<boolean>}
    */
   async getRecord(filter) {
-    const { url, token, timeout = 10000 } = this.config;
+    const { url } = this.config;
+    const client = this.client || (this.client = this.createClient(this.config));
 
-    // Request options.
-    const requestOptions = {
-      url: `${url}/records/${filter.recordId}`,
-      method: 'GET',
-      timeout,
-      headers: { token: token, 'Content-Type': 'application/json' },
-      responseType: 'json',
-      resolveBodyOnly: true,
-    };
-    getLog().save('external-register-request', { requestOptions });
+    getLog().save('external-register-request', {
+      url: urlForLog(`${url}/records/${filter.recordId}`),
+      recordId: filter.recordId,
+    });
 
     try {
-      const response = await got(requestOptions);
-      getLog().save('external-register-response', response);
+      const data = await client.findRecordById(filter.recordId);
+      getLog().save('external-register-response', {
+        recordId: filter.recordId,
+        hasData: !!data,
+        size: data ? JSON.stringify(data).length : 0,
+      });
 
-      return response && response.data;
+      return data;
     } catch (error) {
       getLog().save('external-register-error', {
-        ...filter,
+        recordId: filter.recordId,
         error: error && error.message,
       });
 

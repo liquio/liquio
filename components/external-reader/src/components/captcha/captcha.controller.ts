@@ -2,7 +2,6 @@ import { Controller, Get, Param } from '@nestjs/common';
 import { ApiResponse } from '@nestjs/swagger';
 
 import { Public } from '@common/decorators';
-
 import { GetCaptchaResponse, GetProviderListResponse } from './captcha.dto';
 import { CaptchaService } from './captcha.service';
 
@@ -28,10 +27,7 @@ export class CaptchaController {
     description: 'Get captcha for the specified service and method',
     type: GetCaptchaResponse,
   })
-  async getCaptcha(
-    @Param('service') service: string,
-    @Param('method') method: string,
-  ): Promise<GetCaptchaResponse | null> {
+  async getCaptcha(@Param('service') service: string, @Param('method') method: string): Promise<GetCaptchaResponse | null> {
     const challenge = await this.captchaService.getCaptcha(service, method);
 
     if (!challenge) {

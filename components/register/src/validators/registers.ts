@@ -1,4 +1,5 @@
 import { body, query, param } from 'express-validator';
+
 import Validator from './validator';
 
 /**
@@ -41,7 +42,7 @@ export default class RegistersValidator extends Validator {
       query('created_by').optional(),
       query('updated_from').optional(),
       query('updated_to').optional(),
-      query('updated_by').optional()
+      query('updated_by').optional(),
     ];
   }
 
@@ -62,7 +63,7 @@ export default class RegistersValidator extends Validator {
       param('id').isInt().toInt(),
       query('with_data').isBoolean().toBoolean(),
       query('file').isBoolean().toBoolean().optional(),
-      query('key_ids').isString().optional()
+      query('key_ids').isString().optional(),
     ];
   }
 
@@ -77,7 +78,7 @@ export default class RegistersValidator extends Validator {
       query('add_data').isBoolean().toBoolean().optional(),
       query('force').isBoolean().toBoolean().optional(),
       query('file').isBoolean().toBoolean().optional(),
-      body('data').optional()
+      body('data').optional(),
     ];
   }
 
@@ -99,7 +100,7 @@ export default class RegistersValidator extends Validator {
       body('createdBy').optional(),
       body('updatedFrom').optional(),
       body('updatedTo').optional(),
-      body('updatedBy').optional()
+      body('updatedBy').optional(),
     ];
   }
 
@@ -121,7 +122,7 @@ export default class RegistersValidator extends Validator {
       body('createdBy').optional(),
       body('updatedFrom').optional(),
       body('updatedTo').optional(),
-      body('updatedBy').optional()
+      body('updatedBy').optional(),
     ];
   }
 

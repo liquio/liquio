@@ -7,7 +7,6 @@ import supertest from 'supertest';
 import { ConfigurationModule } from '@components/configuration/configuration.module';
 import { LoggerService } from '@components/observability/logger.service';
 import { ObservabilityModule } from '@components/observability/observability.module';
-
 import { ProvidersModule } from './providers.module';
 
 jest.mock('../configuration/configuration.service', () => ({
@@ -142,9 +141,7 @@ describe('ProvidersModule', () => {
     });
 
     it('should handle errors correctly', async () => {
-      nock('http://example.com')
-        .get('/error')
-        .reply(500, { message: 'Internal server error', statusCode: 500 });
+      nock('http://example.com').get('/error').reply(500, { message: 'Internal server error', statusCode: 500 });
 
       await supertest(app.getHttpServer())
         .post('/exampleService1/get')

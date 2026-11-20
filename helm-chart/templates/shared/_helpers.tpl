@@ -150,6 +150,19 @@ Usage: {{ include "liquio.secretConfig.name" (dict "ctx" . "service" "gateway") 
 {{- end }}
 
 {{/*
+Name of the Secret that holds the plain monitoring tokens (keys: manager, gateway, event), for scrapers.
+Override with secrets.existingSecrets.monitoring.
+*/}}
+{{- define "liquio.monitoringSecret.name" -}}
+{{- $existingSecrets := .Values.secrets.existingSecrets | default dict -}}
+{{- if and (kindIs "map" $existingSecrets) (hasKey $existingSecrets "monitoring") -}}
+{{- index $existingSecrets "monitoring" -}}
+{{- else -}}
+{{- printf "%s-monitoring-tokens" (include "liquio.fullname" .) -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Whether the init-secrets Job should run (i.e. Helm manages secret creation).
 Defaults to true when secrets.createSecrets is not set.
 */}}

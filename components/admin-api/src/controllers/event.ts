@@ -6,6 +6,9 @@ import { EventBusiness } from '../businesses/event';
 import { WorkflowBusiness } from '../businesses/workflow';
 import { BpmnWorkflowBusiness } from '../businesses/bpmn_workflow';
 import { EventTemplateEntity } from '../entities/event_template';
+import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
+import { getConfig, getLog, getModels } from '../lib/context';
 
 /**
  * Event controller.
@@ -42,7 +45,7 @@ export class EventController extends Controller {
     let savedEventTemplateEntities = [];
     let newLastWorkflowHistoryId;
     try {
-      if (global.config.workflow_editor.disabled === true) {
+      if (getConfig().workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
@@ -55,7 +58,7 @@ export class EventController extends Controller {
         const lastWorkflowHistory = await this.workflowBusiness.findLastWorkflowHistoryByWorkflowTemplateId(workflowTemplateId);
 
         if (lastWorkflowHistory && lastWorkflowHistory.id !== lastWorkflowHistoryIdHeader) {
-          const error = new Error('Header Last-Workflow-History-Id expired.');
+          const error = new PublicError('Header Last-Workflow-History-Id expired.');
           (error as any).details = [{ lastWorkflowHistory: lastWorkflowHistory }];
           throw error;
         }
@@ -70,8 +73,8 @@ export class EventController extends Controller {
         const savedEventTemplateEntity = await this.eventBusiness.createOrUpdate(eventEntity);
         savedEventTemplateEntities.push(savedEventTemplateEntity);
 
-        await global.log.save('user-created-updated-event-template', {
-          user,
+        await getLog().save('user-created-updated-event-template', {
+          user: toLogUser(user),
           data: { savedEventTemplateEntity },
         });
 
@@ -101,14 +104,14 @@ export class EventController extends Controller {
     const id = paramsData.id;
 
     try {
-      if (global.config.workflow_editor.disabled === true) {
+      if (getConfig().workflow_editor.disabled === true) {
         throw new Exceptions.ACCESS(Exceptions.ACCESS.Messages.WORKFLOW_EDITOR);
       }
 
       await this.eventBusiness.deleteById(id);
 
       const user = this.getRequestUserBaseInfo(req);
-      await global.log.save('user-deleted-event-template', { user, data: { id } });
+      await getLog().save('user-deleted-event-template', { user: toLogUser(user), data: { id } });
     } catch (error) {
       return this.responseError(res, error, error.httpStatusCode);
     }
@@ -147,7 +150,7 @@ export class EventController extends Controller {
     const id = paramsData.id;
     let event;
 
-    const currentEvent = await global.models.event.findById(id);
+    const currentEvent = await getModels().event.findById(id);
     if (currentEvent.dueDate < new Date()) {
       return this.responseError(res, 'Event already skipped.');
     }

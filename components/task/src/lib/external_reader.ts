@@ -1,14 +1,28 @@
-import axios from 'axios';
 import { PassThrough } from 'node:stream';
 
-import { appendTraceMeta, getTraceMeta, getTraceId } from '@liquio/back-core';
+import axios from 'axios';
+import { appendTraceMeta, getTraceMeta, getTraceId, Sandbox } from '@liquio/back-core';
+
 import { StorageService } from '../services/storage';
 import { DocumentAttachmentModel } from '../models/document_attachment';
-import { Sandbox } from './sandbox';
 import typeOf from './type_of';
+import { getConfig, getHttpClient, getLog } from './context';
 
 const HIDE_REPLACEMENT_TEXT = '*****';
 const MAX_LOG_LENGTH = 100e3 - 1000;
+
+// Strip userinfo and query string: a config URL may carry credentials or a token.
+export const urlForLog = (value: string): string => {
+  try {
+    const u = new URL(value);
+    u.username = '';
+    u.password = '';
+    u.search = '';
+    return u.toString();
+  } catch {
+    return '[invalid-url]';
+  }
+};
 
 /**
  * External Reader.
@@ -29,7 +43,7 @@ export class ExternalReader {
    * External Reader constructor.
    * @param {object} config External reader config.
    */
-  constructor(config = global.config.external_reader) {
+  constructor(config = getConfig().external_reader) {
     // Singleton.
     if (!ExternalReader.singleton) {
       // Save params.
@@ -40,7 +54,7 @@ export class ExternalReader {
       this.timeout = timeout;
       this.storageService = new StorageService();
       this.documentAttachmentModel = new DocumentAttachmentModel();
-      this.sandbox = new Sandbox();
+      this.sandbox = Sandbox.getInstance();
 
       // External reader routes.
       this.apiRoutes = Object.freeze({
@@ -66,7 +80,7 @@ export class ExternalReader {
    */
   async getCaptchaChallenge(service, method) {
     const response = await axios({
-      url: `${this.url}${this.apiRoutes.getCaptchaChallenge}/${service}/${method}`,
+      url: `${this.url}${this.apiRoutes.getCaptchaChallenge}/${encodeURIComponent(service)}/${encodeURIComponent(method)}`,
       method: 'GET',
       headers: {
         Authorization: this.basicAuthToken,
@@ -142,8 +156,8 @@ export class ExternalReader {
       const errorMessage = (error.response?.body?.error?.message || error.toString()).replace(/[^a-zA-Z0-9+=_\-?"'.:, ]/g, '');
 
       if (error.code === 'ESOCKETTIMEDOUT' || error.cause?.code === 'ESOCKETTIMEDOUT') {
-        global.log.save('external-reader-get-data-esockettimeout', {
-          url,
+        getLog().save('external-reader-get-data-esockettimeout', {
+          url: urlForLog(url),
           errorCode: error.code || error.cause?.code,
           error: error.message,
           service,
@@ -152,8 +166,8 @@ export class ExternalReader {
       }
 
       if (error.code === 'ECONNRESET' || error.cause?.code === 'ECONNRESET' || error.message === 'socket hang up') {
-        global.log.save('external-reader-get-data-econnreset', {
-          url,
+        getLog().save('external-reader-get-data-econnreset', {
+          url: urlForLog(url),
           errorCode: error.code || error.cause?.code,
           error: error.message,
           service,
@@ -188,6 +202,7 @@ export class ExternalReader {
    * @param {string} enabledMocksHeader Header with enabled mocks.
    * @param {string} token Access token.
    * @param {number} customTimeout Custom timeout.
+   * @param {boolean} trustedExtraParams True only for server-side callers whose extraParams come from template config, never from a request body.
    * @returns {object} Data.
    */
   async getDataByUser(
@@ -199,9 +214,10 @@ export class ExternalReader {
     nonUserFilter = {},
     extraParams: any = {},
     userUnits = { head: [], member: [] },
-    enabledMocksHeader,
-    token,
-    customTimeout,
+    enabledMocksHeader?,
+    token?,
+    customTimeout?,
+    trustedExtraParams = false,
   ) {
     // Define user filter.
     const { ipn, edrpou } = user;
@@ -220,30 +236,49 @@ export class ExternalReader {
       token,
       customTimeout,
     );
-    let dataToLog = '';
-    const ending = '<...cut>';
-    try {
-      if (typeof data === 'object') {
-        const stringifiedData = JSON.stringify(data);
-        dataToLog = stringifiedData.length > MAX_LOG_LENGTH ? stringifiedData.substring(0, MAX_LOG_LENGTH - ending.length) + ending : stringifiedData;
-      } else if (typeof data === 'string') {
-        dataToLog = data.length > MAX_LOG_LENGTH ? data.substring(0, MAX_LOG_LENGTH - ending.length) + ending : data;
-      }
-    } catch (error) {
-      global.log.save('external-reader-cannot-cut-data-to-log', { error, service, method });
-      dataToLog = data;
-    }
-    global.log.save('external-reader-raw-data-response', {
+    const logResponses = !!getConfig()?.external_reader?.logResponses;
+    const logPayload: any = {
       service,
       method,
-      userFilter: { ...userFilter, userServices: HIDE_REPLACEMENT_TEXT },
-      nonUserFilter,
-      data: dataToLog,
-    });
+      userFilter: HIDE_REPLACEMENT_TEXT,
+      nonUserFilter: HIDE_REPLACEMENT_TEXT,
+    };
+    if (logResponses) {
+      // Opt-in only: provider responses may contain personal data.
+      const ending = '<...cut>';
+      let dataToLog = '';
+      try {
+        if (typeof data === 'object') {
+          const stringifiedData = JSON.stringify(data);
+          dataToLog =
+            stringifiedData.length > MAX_LOG_LENGTH ? stringifiedData.substring(0, MAX_LOG_LENGTH - ending.length) + ending : stringifiedData;
+        } else if (typeof data === 'string') {
+          dataToLog = data.length > MAX_LOG_LENGTH ? data.substring(0, MAX_LOG_LENGTH - ending.length) + ending : data;
+        }
+      } catch (error) {
+        getLog().save('external-reader-cannot-cut-data-to-log', { error, service, method });
+        dataToLog = data;
+      }
+      logPayload.data = dataToLog;
+    } else {
+      let size = 0;
+      try {
+        size = typeof data === 'string' ? data.length : JSON.stringify(data)?.length || 0;
+      } catch {
+        size = -1;
+      }
+      logPayload.responseType = typeOf(data);
+      logPayload.responseKeys = data && typeof data === 'object' ? Object.keys(data) : [];
+      logPayload.responseSize = size;
+    }
+    getLog().save('external-reader-raw-data-response', logPayload);
 
     // Check for attachments saving.
+    // Attachment saving is driven by server-side config only: untrusted extraParams never reach it.
     if (
+      trustedExtraParams === true &&
       extraParams.isSaveAttachments &&
+      typeof extraParams.documentId === 'string' &&
       extraParams.documentId &&
       typeOf(data.data?.attachments) === 'array' &&
       data.data.attachments.length &&
@@ -275,7 +310,7 @@ export class ExternalReader {
           await Promise.all(attachments.map((v) => this.storageService.provider.deleteFile(v.link)));
         } catch (error) {
           // Do not throw error. This error should not block saving new attachments.
-          global.log.save('external-reader|get-data-by-user|delete-file-from-file-storage-error', { error: error.toString() }, 'warn');
+          getLog().save('external-reader|get-data-by-user|delete-file-from-file-storage-error', { error: error.toString() }, 'warn');
         }
 
         try {
@@ -290,8 +325,8 @@ export class ExternalReader {
       // Additional preparations.
       data.data.attachments = extraParams.prepareAttachments?.includes('=>')
         ? this.sandbox.evalWithArgs(extraParams.prepareAttachments, [{ attachments: data.data.attachments, filters: nonUserFilter }], {
-          meta: { fn: 'getDataByUser.prepareAttachments', service, method },
-        })
+            meta: { fn: 'getDataByUser.prepareAttachments', service, method },
+          })
         : data.data.attachments;
 
       // Save new attachments.
@@ -352,7 +387,7 @@ export class ExternalReader {
     query += readersQuery ? readersQuery : '';
     query = query === '?' ? '' : query;
 
-    const response = await global.httpClient.request(
+    const response = await getHttpClient().request(
       `${this.url}${this.apiRoutes.getMocksKeysByUser}${query}`,
       {
         method: 'GET',
@@ -407,7 +442,7 @@ export class ExternalReader {
     const traceMeta = getTraceMeta();
 
     if (!traceMeta) {
-      global.log.save('external-reader-errors|trace-meta-not-found', { traceId: getTraceId(), externalReaderError });
+      getLog().save('external-reader-errors|trace-meta-not-found', { traceId: getTraceId(), externalReaderError });
       return;
     }
 
@@ -437,4 +472,3 @@ export class ExternalReader {
     return response.data;
   }
 }
-

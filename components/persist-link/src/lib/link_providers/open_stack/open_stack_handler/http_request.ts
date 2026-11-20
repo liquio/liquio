@@ -1,5 +1,5 @@
 // Import.
-import request from 'request';
+import LibHttpRequest from '../../../http_request';
 
 // Constants.
 const HTTP_METHOD_GET = 'GET';
@@ -56,34 +56,16 @@ class HttpRequest {
    * @return {Promise<object>}
    */
   static async send(requestOptions) {
-    return new Promise((resolve, reject) => {
-      // Do request.
-      request(requestOptions, (err, res, body) => {
-        // Check error.
-        if (err) {
-          return reject(err);
-        }
-
-        // Return responsed body object.
-        const bodyObject = parseBody(body);
-        resolve(bodyObject);
-      });
-    });
+    return LibHttpRequest.send(requestOptions);
   }
-}
 
-/**
- * Parse body.
- * @private
- * @param {string} body Body.
- * @return {object}
- */
-function parseBody(body) {
-  try {
-    const bodyObject = JSON.parse(body);
-    return bodyObject;
-  } catch {
-    return body;
+  /**
+   * Send HTTP request and get the response as a readable stream.
+   * @param {object} requestOptions Request options.
+   * @return {Promise<import('http').IncomingMessage>} Response stream with upstream status code and headers.
+   */
+  static async stream(requestOptions) {
+    return LibHttpRequest.stream(requestOptions);
   }
 }
 

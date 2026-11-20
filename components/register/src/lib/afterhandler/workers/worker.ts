@@ -1,5 +1,6 @@
-import AfterhandlerModel from '../../../models/afterhandler';
 import { Log } from '@liquio/back-core';
+
+import AfterhandlerModel from '../../../models/afterhandler';
 
 export type AfterhandlerType = 'blockchain' | 'elastic' | 'plink';
 
@@ -118,7 +119,7 @@ export default class AfterhandlerWorker {
       } catch (error) {
         this.log.save('afterhandler-worker|error', {
           error: error && error.message,
-          afterhandlerType: this.afterhandlerType
+          afterhandlerType: this.afterhandlerType,
         });
         try {
           if (afterhandlerId) {
@@ -128,7 +129,7 @@ export default class AfterhandlerWorker {
           this.log.save('afterhandler-worker-set-synced-with-error|error', {
             afterhandlerId,
             error: error && error.message,
-            afterhandlerType: this.afterhandlerType
+            afterhandlerType: this.afterhandlerType,
           });
         }
       }
@@ -185,7 +186,7 @@ export default class AfterhandlerWorker {
 
   /**
    * Dispose.
-   * @returns {boolean} GC called indicator. Equals `1` if GC called and `0` in other case.
+   * @returns {number} Always `0` (GC is no longer triggered).
    */
   dispose() {
     // Inform.
@@ -206,17 +207,7 @@ export default class AfterhandlerWorker {
     this.disposed = true;
     this.log.save('afterhandler-worker|disposed', { afterhandlerType: this.afterhandlerType });
 
-    // Return `0` if GC not available.
-    if (!global.gc) {
-      return 0;
-    }
-
-    // Call GC and return `1`.
-    if (global.gc) {
-      global.gc['collect']();
-      this.log.save('afterhandler-worker|gc', { afterhandlerType: this.afterhandlerType });
-      return 1;
-    }
+    return 0;
   }
 
   /**

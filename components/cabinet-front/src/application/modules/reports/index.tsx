@@ -1,0 +1,25 @@
+import ReportListPage from 'application/modules/reports/pages/ReportList';
+import { getConfig } from 'core/helpers/configLoader';
+
+export default function getReportsModule() {
+  const { reports: { enabled } = {} } = getConfig() as unknown as { reports?: { enabled?: boolean } };
+
+  return enabled
+    ? {
+        routes: [
+          {
+            path: '/reports',
+            title: 'Reports',
+            component: ReportListPage
+          }
+        ],
+        navigation: [
+          // {
+          //   id: 'Reports',
+          //   icon: <AssessmentIcon />,
+          //   path: '/reports'
+          // }
+        ]
+      }
+    : {};
+}

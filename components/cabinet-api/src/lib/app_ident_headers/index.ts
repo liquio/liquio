@@ -1,5 +1,7 @@
 import { AppInfo } from '@liquio/back-core';
 
+import { getConfig } from '../context';
+
 // Constants.
 const DEFAULT_CUSTOMER = '1';
 const DEFAULT_ENVIRONMENT = '0';
@@ -21,8 +23,8 @@ class AppIdentHeaders {
    */
   static get middleware() {
     const appInfo = new AppInfo();
-    const customer = (config && config.server && config.server.customer) || DEFAULT_CUSTOMER;
-    const environment = (config && config.server && config.server.environment) || DEFAULT_ENVIRONMENT;
+    const customer = (getConfig() && getConfig().server && getConfig().server.customer) || DEFAULT_CUSTOMER;
+    const environment = (getConfig() && getConfig().server && getConfig().server.environment) || DEFAULT_ENVIRONMENT;
 
     return (req: any, res: any, next: () => void): void => {
       res.setHeader('Name', appInfo.name);

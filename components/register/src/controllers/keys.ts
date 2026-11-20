@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { matchedData } from 'express-validator';
+import { Sandbox } from '@liquio/back-core';
 
 import { Request, Response } from '../router';
 import Controller from './controller';
@@ -10,7 +11,9 @@ import ElasticAfterhandlerWorker from '../lib/afterhandler/workers/elastic';
 import JobQueue from '../lib/job_queue';
 import KeyEntity from '../entities/key';
 import { ModelUpdateResponse } from '../lib/interfaces';
-import Isolation from '../lib/isolation';
+import { resolveCallerAccess } from '../lib/caller_access';
+import HistoryAccess, { HistoryKeyForbiddenError, canSearchHistoryData } from '../lib/history_access';
+import { getAfterhandler } from '../lib/context';
 
 const REINDEX_CHUNK_SIZE = 10;
 
@@ -23,6 +26,7 @@ export default class KeysController extends Controller {
   keyModel: KeyModel;
   recordsModel: RecordsModel;
   historyModel: HistoryModel;
+  sandbox: Sandbox;
   reindexing: { [keyId: number]: boolean };
   encryption_job_queue: JobQueue;
 
@@ -37,6 +41,7 @@ export default class KeysController extends Controller {
       this.keyModel = KeyModel.getInstance();
       this.recordsModel = RecordsModel.getInstance();
       this.historyModel = HistoryModel.getInstance();
+      this.sandbox = Sandbox.getInstance();
 
       this.reindexing = {};
       this.setupEncryptionJobQueue();
@@ -55,11 +60,11 @@ export default class KeysController extends Controller {
       offset,
       limit,
       register_id: registerId,
-      parent_id: parentId
+      parent_id: parentId,
     } = {
       offset: 0,
       limit: 100,
-      ...matchedData(req, { locations: ['query'] })
+      ...matchedData(req, { locations: ['query'] }),
     } as any;
     const filter: { register_id?: number; parent_id?: number } = {};
     if (registerId) filter.register_id = registerId;
@@ -71,7 +76,7 @@ export default class KeysController extends Controller {
       keysModelResponse = await this.keyModel.getAll({
         offset: offset,
         limit: Math.min(limit, this.config.pagination.maxLimit),
-        filter
+        filter,
       });
     } catch (error) {
       this.log.save('get-keys-error', { error: error && error.message });
@@ -125,11 +130,33 @@ export default class KeysController extends Controller {
       offset,
       limit,
       operation,
-      record_data_like: recordDataLike
+      record_data_like: recordDataLike,
     } = { offset: 0, limit: 20, ...matchedData(req, { locations: ['query'] }) } as any;
+
+    let access;
+    try {
+      access = resolveCallerAccess(req, this.config);
+    } catch {
+      return this.responseError(res, 'Invalid register access configuration.', 500);
+    }
 
     if (!(await this.keyModel.checkRecordsReadableById(keyId))) {
       return this.responseError(res, 'Key records are not readable', 403);
+    }
+
+    // Untrusted callers get snapshots projected through the key rules; `record_data_like` must not probe hidden fields.
+    const historyAccess = access.trusted ? undefined : new HistoryAccess(this.keyModel, access.allowTokens, req.auth?.userLimitedAccessKeys);
+    if (historyAccess) {
+      try {
+        const key = await historyAccess.assertKeyReadable(keyId);
+        if (recordDataLike && !canSearchHistoryData(key, recordDataLike, access.allowTokens)) {
+          return this.responseError(res, 'Search by the requested record data fields is not allowed.', 403);
+        }
+      } catch (error) {
+        if (error instanceof HistoryKeyForbiddenError) return this.responseError(res, 'Key records are not readable', 403);
+        this.log.save('get-history-by-key-id-access-error', { error: error && error.message });
+        return this.responseError(res, 'Unable to authorize history.', 500);
+      }
     }
 
     // Get history.
@@ -146,8 +173,19 @@ export default class KeysController extends Controller {
       return this.responseError(res, 'Not found.', 404);
     }
 
+    let visibleHistory = historyList;
+    if (historyAccess) {
+      try {
+        visibleHistory = await historyAccess.project(historyList);
+      } catch (error) {
+        if (error instanceof HistoryKeyForbiddenError) return this.responseError(res, 'Key records are not readable', 403);
+        this.log.save('get-history-by-key-id-access-error', { error: error && error.message });
+        return this.responseError(res, 'Unable to authorize history.', 500);
+      }
+    }
+
     // Response.
-    this.responseData(res, historyList, meta);
+    this.responseData(res, visibleHistory, meta);
   }
 
   /**
@@ -157,7 +195,7 @@ export default class KeysController extends Controller {
     // Define params.
     const { registerId, name, description, schema, parentId, meta, toString, toSearchString, lock, accessMode, toExport, isEncrypted } = matchedData(
       req,
-      { locations: ['body'] }
+      { locations: ['body'] },
     ) as any;
     const { user } = req.auth;
 
@@ -178,11 +216,11 @@ export default class KeysController extends Controller {
         // Backwards compatibility: simplify after migration in bpmn-admin
         accessMode: !accessMode && lock ? 'read_only' : accessMode || 'full',
         toExport,
-        isEncrypted
+        isEncrypted,
       });
     } catch (error) {
       this.log.save('create-key-error', { error: error && error.message });
-      return this.responseError(res, 'Create key error.', 400, error.message);
+      return this.responseError(res, 'Create key error.', 400);
     }
     const { data: key } = keyModelResponse || {};
 
@@ -203,7 +241,7 @@ export default class KeysController extends Controller {
     const { id } = matchedData(req, { locations: ['params'] });
     const { registerId, name, description, schema, parentId, meta, toString, toSearchString, lock, accessMode, toExport, isEncrypted } = matchedData(
       req,
-      { locations: ['body'] }
+      { locations: ['body'] },
     ) as any;
     const { user } = req.auth;
 
@@ -236,7 +274,7 @@ export default class KeysController extends Controller {
         // Backwards compatibility: simplify after migration in bpmn-admin
         accessMode: !accessMode && lock ? 'read_only' : accessMode || 'full',
         toExport,
-        isEncrypted
+        isEncrypted,
       });
     } catch (error) {
       this.log.save('update-key-error', { error: error.message, toString: toString.toString() });
@@ -244,12 +282,12 @@ export default class KeysController extends Controller {
     const { data: key } = keyModelResponse || {};
 
     const [oldAfterhandlers, newAfterhandlers] = [oldKeyModelResponse.data.meta?.afterhandlers, meta?.afterhandlers].map((meta) =>
-      [].concat(meta).filter(Boolean).sort()
+      [].concat(meta).filter(Boolean).sort(),
     );
 
     if (!_.isEqual(oldAfterhandlers, newAfterhandlers)) {
       const addedAfterhandlers = newAfterhandlers.filter((afterhandler) => !oldAfterhandlers.includes(afterhandler));
-      global.afterhandler.reindex(id, { types: addedAfterhandlers });
+      getAfterhandler().reindex(id, { types: addedAfterhandlers });
     }
 
     // Check.
@@ -315,11 +353,10 @@ export default class KeysController extends Controller {
     const toSearchString = key.toSearchString;
     let toSearchStringFunction;
     try {
-      const isolate = new Isolation();
-      toSearchStringFunction = isolate.eval(`(${toSearchString})`);
+      toSearchStringFunction = this.sandbox.eval(toSearchString);
     } catch (error) {
       this.log.save('define-to-search-string-function-error', { error: error && error.message });
-      return this.responseError(res, 'Can not define search string function.', 500, error && error.message);
+      return this.responseError(res, 'Can not define search string function.', 500);
     }
 
     const updateRecords = async (offset) => {
@@ -329,7 +366,7 @@ export default class KeysController extends Controller {
         recordsModelResponse = await this.recordsModel.getByKeyId(keyId, false, {
           order: [['id', 'ASC']],
           offset,
-          limit: REINDEX_CHUNK_SIZE
+          limit: REINDEX_CHUNK_SIZE,
         });
       } catch (error) {
         this.log.save('get-records-by-key-id-error', { error: error && error.message });
@@ -381,7 +418,7 @@ export default class KeysController extends Controller {
         this.reindexing[keyId] = false;
         return { recordsToUpdate };
       })(),
-      new Promise((resolve) => setTimeout(() => resolve({ message: 'Reindex started.' }), 1000))
+      new Promise((resolve) => setTimeout(() => resolve({ message: 'Reindex started.' }), 1000)),
     ]);
     // Metric.
     this.responseData(res, result);
@@ -413,7 +450,7 @@ export default class KeysController extends Controller {
     this.responseData(res, { keyToReindex: key }, undefined, 202);
 
     // Afterhandlers reindex.
-    await global.afterhandler.reindex(keyId, options);
+    await getAfterhandler().reindex(keyId, options);
   }
 
   /**
@@ -439,7 +476,7 @@ export default class KeysController extends Controller {
       this.log.save('get-synced-by-ids-error', { error: error && error.message });
     }
 
-    const elasticWorker = global.afterhandler.workers.find((worker) => worker instanceof ElasticAfterhandlerWorker);
+    const elasticWorker = getAfterhandler().workers.find((worker) => worker instanceof ElasticAfterhandlerWorker);
 
     for (const result of syncedResponse) {
       const { key_id: keyId, total, queue_length: queueLength, is_elastic_active: isElasticActive } = result;
@@ -452,7 +489,7 @@ export default class KeysController extends Controller {
         const { count = 0, error } = await elasticWorker.getIndexCount(keyId);
 
         result.elastic = count;
-        result.isReindexing = await global.afterhandler.isKeyReindexing(keyId);
+        result.isReindexing = await getAfterhandler().isKeyReindexing(keyId);
 
         if (error) {
           if (error.type === 'index_not_found_exception') {
@@ -460,7 +497,8 @@ export default class KeysController extends Controller {
             result.status_message = null;
           } else {
             result.elasticStatus = 'error';
-            result.status_message = error?.reason || error?.message || error;
+            this.log.save('get-elastic-status-error', { keyId, error: error?.reason || error?.message || error });
+            result.status_message = 'Elasticsearch error.';
           }
         } else if (result.isReindexing || Number(queueLength) > 0) {
           // Elastic status is considered "In Progress" if the afterhandler is still reindexing or there are items in the sync queue.
@@ -498,7 +536,7 @@ export default class KeysController extends Controller {
       this.log.save('get-all-synced-error', { error: error && error.message });
     }
 
-    const elasticWorker = global.afterhandler.workers.find((worker) => worker instanceof ElasticAfterhandlerWorker);
+    const elasticWorker = getAfterhandler().workers.find((worker) => worker instanceof ElasticAfterhandlerWorker);
 
     if (elasticWorker?.config?.isActive) {
       for (const result of syncedResponse) {
@@ -561,7 +599,7 @@ export default class KeysController extends Controller {
     this.encryption_job_queue = new JobQueue({
       onJobFailure: async (error) => {
         this.log.save('encryption-job-error', { error: error && error.message });
-      }
+      },
     });
 
     if (this.config.encryption?.check_on_startup) {

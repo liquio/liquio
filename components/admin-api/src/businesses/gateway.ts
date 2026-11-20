@@ -1,4 +1,5 @@
 import { Exceptions } from '../exceptions';
+import { getModels } from '../lib/context';
 
 // Constants.
 const SEQUELIZE_CONSTRAINT_ERROR = 'SequelizeForeignKeyConstraintError';
@@ -32,7 +33,7 @@ export class GatewayBusiness {
    * @returns {Promise<GatewayEntity>}
    */
   async createOrUpdate(gatewayEntity) {
-    return global.models.gatewayTemplate.create(gatewayEntity);
+    return getModels().gatewayTemplate.create(gatewayEntity);
   }
 
   /**
@@ -42,7 +43,7 @@ export class GatewayBusiness {
    */
   async deleteById(id) {
     try {
-      return await global.models.gatewayTemplate.deleteById(id);
+      return await getModels().gatewayTemplate.deleteById(id);
     } catch (error) {
       if (error.name === SEQUELIZE_CONSTRAINT_ERROR) {
         throw new Exceptions.WORKFLOW(Exceptions.WORKFLOW.Messages.CONSTRAINT);
@@ -58,6 +59,6 @@ export class GatewayBusiness {
    * @returns {Promise<GatewayEntity>}
    */
   async findById(id) {
-    return await global.models.gatewayTemplate.findById(id);
+    return await getModels().gatewayTemplate.findById(id);
   }
 }

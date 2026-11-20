@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import { randomUUID } from 'crypto';
+
 import { Global, MiddlewareConsumer, Module } from '@nestjs/common';
 
 import { LoggerService } from './logger.service';
@@ -26,9 +27,7 @@ export class ObservabilityModule {
     return als;
   }
 
-  constructor(
-    private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>,
-  ) {}
+  constructor(private readonly als: AsyncLocalStorage<AsyncLocalStorageContext>) {}
 
   configure(consumer: MiddlewareConsumer) {
     consumer

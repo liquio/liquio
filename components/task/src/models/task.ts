@@ -7,9 +7,12 @@ import { Model } from './model';
 import { TaskEntity } from '../entities/task';
 import { RedisClient } from '../lib/redis_client';
 import { SequelizeDbError } from '../lib/errors';
+import { getConfig, getModels } from '../lib/context';
+import { ownFlag } from '../lib/own_flag';
 
 // Constants.
 const GET_ALL_BY_USER_ID_CACHE_TTL = 600; // 10 minutes.
+const GET_TRACE_META_CACHE_TTL = 3600; // 1 hour.
 
 /**
  * Task Model.
@@ -192,7 +195,7 @@ export class TaskModel extends Model {
    */
   async getAllByWorkflowId(workflowId) {
     let tasks = await this.model.findAll({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, is_current: true },
     });
 
@@ -239,19 +242,19 @@ export class TaskModel extends Model {
    * @returns {Promise<TaskEntity>}
    */
   async findById(id, { withWorkflow = false, withWorkflowTemplate = false } = {}) {
-    const include: any[] = [{ model: global.models.document.model }, { model: global.models.taskTemplate.model }];
+    const include: any[] = [{ model: getModels().document.model }, { model: getModels().taskTemplate.model }];
 
     if (withWorkflow) {
       include.push({
-        model: global.models.workflow.model,
+        model: getModels().workflow.model,
         attributes: Array.isArray(withWorkflow) ? withWorkflow : undefined,
         include: withWorkflowTemplate
           ? [
-            {
-              model: global.models.workflowTemplate.model,
-              attributes: Array.isArray(withWorkflowTemplate) ? withWorkflowTemplate : undefined,
-            },
-          ]
+              {
+                model: getModels().workflowTemplate.model,
+                attributes: Array.isArray(withWorkflowTemplate) ? withWorkflowTemplate : undefined,
+              },
+            ]
           : [],
       });
     }
@@ -265,13 +268,13 @@ export class TaskModel extends Model {
     const taskEntity = this.prepareEntity(task);
 
     if (task.document) {
-      taskEntity.document = await global.models.document.prepareEntity(task.document);
+      taskEntity.document = await getModels().document.prepareEntity(task.document);
     }
 
     if (task.workflow) {
-      taskEntity.workflow = global.models.workflow.prepareEntity(task.workflow);
+      taskEntity.workflow = getModels().workflow.prepareEntity(task.workflow);
       if (task.workflow.workflowTemplate) {
-        taskEntity.workflow.workflowTemplate = global.models.workflowTemplate.prepareEntity(task.workflow.workflowTemplate);
+        taskEntity.workflow.workflowTemplate = getModels().workflowTemplate.prepareEntity(task.workflow.workflowTemplate);
       }
     }
 
@@ -297,11 +300,11 @@ export class TaskModel extends Model {
   async findByDocumentIdWithWorkflow(documentId) {
     const task = await this.model.findOne({
       where: { document_id: documentId },
-      include: [{ model: global.models.workflow.model }],
+      include: [{ model: getModels().workflow.model }],
     });
 
     if (task.workflow) {
-      task.workflow = global.models.workflow.prepareEntity(task.workflow);
+      task.workflow = getModels().workflow.prepareEntity(task.workflow);
     }
 
     return this.prepareEntity(task);
@@ -309,7 +312,7 @@ export class TaskModel extends Model {
 
   /**
    * Check draft expiration by document ID.
-   * @note Similar to global.businesses.task.checkDraftExpired, but fetches task.
+   * @note Similar to getBusinesses().task.checkDraftExpired, but fetches task.
    * @param {string} documentId Document ID.
    * @returns {Promise<boolean>} Draft expiration flag promise.
    */
@@ -329,7 +332,7 @@ export class TaskModel extends Model {
   async getDocumentsByWorkflowId(workflowId, isCurrentOnly = true, isAppendPerformerUsers = false) {
     // Define common params.
     const options: any = {
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId },
     };
 
@@ -381,7 +384,7 @@ export class TaskModel extends Model {
     const task = await this.model.findOne({
       include: [
         {
-          model: global.models.document.model,
+          model: getModels().document.model,
           where: {
             data: {
               result: {
@@ -395,7 +398,7 @@ export class TaskModel extends Model {
         workflow_id: workflowId,
         task_template_id: taskTemplateId,
       },
-      order: [[global.models.document.model, 'created_at', 'desc']],
+      order: [[getModels().document.model, 'created_at', 'desc']],
     });
 
     // Check.
@@ -417,7 +420,7 @@ export class TaskModel extends Model {
   async findDocumentByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId, finished) {
     // Find task.
     const options: any = {
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: {
         workflow_id: workflowId,
         task_template_id: taskTemplateId,
@@ -456,7 +459,7 @@ export class TaskModel extends Model {
 
     // Find task.
     const task = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateIds, is_current: true },
       order: [['created_at', 'DESC']],
     });
@@ -481,7 +484,7 @@ export class TaskModel extends Model {
   async findDocumentIdByWorkflowIdAndTaskTemplateId(workflowId, taskTemplateId) {
     // Find all task.
     const task = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
       attributes: ['id', 'document_id'],
     });
@@ -629,31 +632,30 @@ export class TaskModel extends Model {
    * @param {string} data.version Version.
    * @returns {Promise<TaskEntity>} Created task entity promise.
    */
-  async create({
-    taskTemplateId,
-    workflowId,
-    documentId,
-    userId,
-    performerUnits = [],
-    requiredPerformerUnits = [],
-    performerUsers = [],
-    performerUsersIpn = [],
-    performerUsersEmail = [],
-    performerUserNames = [],
-    signerUsers = [],
-    onlyForHeads = false,
-    dueDate,
-    isEntry,
-    copyFrom,
-    name,
-    _createdByUnitHeads = [],
-    _createdByUnits = [],
-    observerUnits,
-    isSystem = false,
-    labels = [],
-    meta = {},
-    version,
-  }) {
+  async create(params) {
+    const {
+      taskTemplateId,
+      workflowId,
+      documentId,
+      userId,
+      performerUnits = [],
+      requiredPerformerUnits = [],
+      performerUsers = [],
+      performerUsersIpn = [],
+      performerUsersEmail = [],
+      performerUserNames = [],
+      signerUsers = [],
+      onlyForHeads = false,
+      dueDate,
+      isEntry,
+      copyFrom,
+      name,
+      observerUnits,
+      labels = [],
+      meta = {},
+      version,
+    } = params;
+    const isSystem = ownFlag(params, 'isSystem');
     // Prepare task record.
     const task = this.prepareForModel({
       taskTemplateId,
@@ -874,7 +876,7 @@ export class TaskModel extends Model {
    */
   async findCurrentTaskByWorkflowIdAndTaskTemplateID(workflowId, taskTemplateId) {
     const task = await this.model.findOne({
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
       where: { workflow_id: workflowId, task_template_id: taskTemplateId, is_current: true },
       attributes: ['id'],
     });
@@ -943,7 +945,7 @@ export class TaskModel extends Model {
 
     // Count unread tasks.
     const unreadTasks = await this.model.count({
-      include: [{ model: global.models.workflow.model, required: true, attributes: [] }],
+      include: [{ model: getModels().workflow.model, required: true, attributes: [] }],
       where: {
         ...sequelizeOptions.filters,
         // meta: { isRead: false },
@@ -989,7 +991,7 @@ export class TaskModel extends Model {
       limit: 1,
       where: { workflow_id: workflowId, task_template_id: taskTemplateId },
       order: [['created_at', 'DESC']],
-      include: [{ model: global.models.document.model }],
+      include: [{ model: getModels().document.model }],
     });
     const task = result && result[0];
 
@@ -1048,21 +1050,21 @@ export class TaskModel extends Model {
 
     sequelizeOptions.include = [
       {
-        model: global.models.document.model,
+        model: getModels().document.model,
         required: true,
         attributes: ['number'],
       },
       {
-        model: global.models.workflow.model,
+        model: getModels().workflow.model,
         required: true,
         attributes: ['number', 'user_data', 'data'],
-        include: _.has(filters, 'workflow_name') ? [{ model: global.models.workflowTemplate.model, attributes: ['name', 'data'] }] : [],
+        include: _.has(filters, 'workflow_name') ? [{ model: getModels().workflowTemplate.model, attributes: ['name', 'data'] }] : [],
       },
       (_.has(filters, 'search') || _.has(filters, 'name')) && {
-        model: global.models.taskTemplate.model,
+        model: getModels().taskTemplate.model,
         attributes: ['name'],
         required: true,
-        include: [{ model: global.models.documentTemplate.model, attributes: ['name'] }],
+        include: [{ model: getModels().documentTemplate.model, attributes: ['name'] }],
       },
     ];
 
@@ -1080,41 +1082,44 @@ export class TaskModel extends Model {
       };
     }
 
-    if (_.has(filters, 'assigned_to')) {
-      if (filters['assigned_to'] === 'me') {
-        sequelizeOptions.filters[Sequelize.Op.or] = [
-          { performer_users: { [Sequelize.Op.overlap]: [userId] } },
-          { signer_users: { [Sequelize.Op.overlap]: [userId] } },
-        ];
-      } else if (filters['assigned_to'] === 'unit') {
-        const performerUnitsFiltered = []
-          .concat(filters.performer_units)
-          .filter(Boolean)
-          .map((v) => parseInt(v))
-          .filter((v) => userUnitIds.includes(v) || userHeadUnitIds.includes(v));
+    // Accept only plain strings: arrays/objects (e.g. `filters[assigned_to][]=me`) must never skip the default user scope.
+    const assignedTo = typeof filters.assigned_to === 'string' ? filters.assigned_to : undefined;
+    const closedBy = typeof filters.closed_by === 'string' ? filters.closed_by : undefined;
 
-        sequelizeOptions.filters[Sequelize.Op.and] = [
-          {
-            [Sequelize.Op.or]: [
-              { performer_units: { [Sequelize.Op.overlap]: userUnitIds }, only_for_heads: false },
-              { performer_units: { [Sequelize.Op.overlap]: userHeadUnitIds }, only_for_heads: true },
-            ],
-          },
-          {
-            [Sequelize.Op.or]: [
-              Sequelize.literal('required_performer_units = \'{}\''),
-              { required_performer_units: { [Sequelize.Op.contained]: userUnitIds } },
-            ],
-          },
-          performerUnitsFiltered.length && { performer_units: { [Sequelize.Op.overlap]: performerUnitsFiltered } },
-        ].filter(Boolean);
-      }
+    if (assignedTo === 'me') {
+      sequelizeOptions.filters[Sequelize.Op.or] = [
+        { performer_users: { [Sequelize.Op.overlap]: [userId] } },
+        { signer_users: { [Sequelize.Op.overlap]: [userId] } },
+      ];
+    } else if (assignedTo === 'unit') {
+      const performerUnitsFiltered = []
+        .concat(filters.performer_units)
+        .filter(Boolean)
+        .map((v) => parseInt(v))
+        .filter((v) => userUnitIds.includes(v) || userHeadUnitIds.includes(v));
+
+      sequelizeOptions.filters[Sequelize.Op.and] = [
+        {
+          [Sequelize.Op.or]: [
+            { performer_units: { [Sequelize.Op.overlap]: userUnitIds }, only_for_heads: false },
+            { performer_units: { [Sequelize.Op.overlap]: userHeadUnitIds }, only_for_heads: true },
+          ],
+        },
+        {
+          [Sequelize.Op.or]: [
+            Sequelize.literal("required_performer_units = '{}'"),
+            { required_performer_units: { [Sequelize.Op.contained]: userUnitIds } },
+          ],
+        },
+        performerUnitsFiltered.length && { performer_units: { [Sequelize.Op.overlap]: performerUnitsFiltered } },
+      ].filter(Boolean);
     } else {
+      // Default scope (also for any unknown/non-string `assigned_to`).
       sequelizeOptions.filters[Sequelize.Op.and].push({
         [Sequelize.Op.or]: [
           { performer_users: { [Sequelize.Op.overlap]: [userId] } },
           { signer_users: { [Sequelize.Op.overlap]: [userId] } },
-          global.config.modules.main && global.config.modules.main.observerUnits ? { observer_units: { [Sequelize.Op.overlap]: userUnitIds } } : null,
+          getConfig().modules.main && getConfig().modules.main.observerUnits ? { observer_units: { [Sequelize.Op.overlap]: userUnitIds } } : null,
           {
             [Sequelize.Op.or]: [
               { performer_units: { [Sequelize.Op.overlap]: userUnitIds }, only_for_heads: false },
@@ -1129,7 +1134,7 @@ export class TaskModel extends Model {
 
       sequelizeOptions.filters[Sequelize.Op.and].push({
         [Sequelize.Op.or]: [
-          Sequelize.literal('required_performer_units = \'{}\''),
+          Sequelize.literal("required_performer_units = '{}'"),
           { required_performer_units: { [Sequelize.Op.contained]: userUnitIds } },
         ].filter((v) => v !== null),
       });
@@ -1137,21 +1142,19 @@ export class TaskModel extends Model {
 
     if (_.has(filters, 'closed_by')) {
       sequelizeOptions.filters['finished'] = true;
-      if (filters['closed_by'] === 'me') {
+      if (closedBy === 'me') {
         sequelizeOptions.filters['updated_by'] = userId;
-      } else if (filters['closed_by'] === 'unit' && _.has(filters, 'assigned_to') && filters['assigned_to'] !== 'unit') {
+      } else if (closedBy === 'unit' && assignedTo === 'me') {
         sequelizeOptions.filters[Sequelize.Op.and].push({
           [Sequelize.Op.or]: [
             { performer_units: { [Sequelize.Op.overlap]: userUnitIds }, only_for_heads: false },
             { performer_units: { [Sequelize.Op.overlap]: userHeadUnitIds }, only_for_heads: true },
-            global.config.modules.main && global.config.modules.main.observerUnits
-              ? { observer_units: { [Sequelize.Op.overlap]: userUnitIds } }
-              : null,
+            getConfig().modules.main && getConfig().modules.main.observerUnits ? { observer_units: { [Sequelize.Op.overlap]: userUnitIds } } : null,
           ].filter((v) => v !== null),
         });
         sequelizeOptions.filters[Sequelize.Op.and].push({
           [Sequelize.Op.or]: [
-            Sequelize.literal('required_performer_units = \'{}\''),
+            Sequelize.literal("required_performer_units = '{}'"),
             { required_performer_units: { [Sequelize.Op.contained]: userUnitIds } },
           ].filter((v) => v !== null),
         });
@@ -1218,7 +1221,7 @@ export class TaskModel extends Model {
         task_template_id: filters.task_template_id,
       });
     } else if (_.has(filters, 'task_template_id_list')) {
-      const parsedTaskTemplateIdList = filters.task_template_id_list.map((v) => parseInt(v)).filter((v) => !isNaN(v));
+      const parsedTaskTemplateIdList = (_.get(filters, 'task_template_id_list') as string[]).map((v) => parseInt(v)).filter((v) => !isNaN(v));
       sequelizeOptions.filters[Sequelize.Op.and].push({
         task_template_id: { [Sequelize.Op.in]: parsedTaskTemplateIdList },
       });
@@ -1241,9 +1244,9 @@ export class TaskModel extends Model {
     }
     if (_.has(filters, 'without_performer_username')) {
       if (filters.without_performer_username === true) {
-        sequelizeOptions.filters[Sequelize.Op.and].push(Sequelize.literal('array_to_string(performer_usernames, \'||\') = \'\''));
+        sequelizeOptions.filters[Sequelize.Op.and].push(Sequelize.literal("array_to_string(performer_usernames, '||') = ''"));
       } else {
-        sequelizeOptions.filters[Sequelize.Op.and].push(Sequelize.literal('array_to_string(performer_usernames, \'||\') != \'\''));
+        sequelizeOptions.filters[Sequelize.Op.and].push(Sequelize.literal("array_to_string(performer_usernames, '||') != ''"));
       }
     }
 
@@ -1346,7 +1349,7 @@ export class TaskModel extends Model {
     query.where.performer_units = { [Sequelize.Op.contains]: [unitId] };
     query.include = [
       {
-        model: global.models.taskTemplate.model,
+        model: getModels().taskTemplate.model,
         attributes: ['name', 'id'],
       },
     ];
@@ -1489,7 +1492,7 @@ export class TaskModel extends Model {
     }
 
     if (options.filters.is_performers_users_must_be_defined) {
-      query.where.performer_users = Sequelize.literal('performer_users != \'{}\'::CHARACTER VARYING[]');
+      query.where.performer_users = Sequelize.literal("performer_users != '{}'::CHARACTER VARYING[]");
     }
 
     if (options.filters.date && options.filters.date.from && options.filters.date.to) {
@@ -1699,6 +1702,40 @@ export class TaskModel extends Model {
   }
 
   /**
+   * Get entity IDs related to the task for trace meta.
+   * @param {string} taskId Task ID.
+   * @returns {Promise<{taskId, workflowId, taskTemplateId, workflowTemplateId}>} Trace meta.
+   */
+  async getTraceMetaByTaskId(taskId) {
+    const {
+      data: [row],
+    } = await RedisClient.getOrSet(
+      RedisClient.createKey('task', 'getTraceMetaByDocumentId', taskId),
+      async () =>
+        this.db.query(
+          `
+            select
+              t.id as "taskId",
+              w.id as "workflowId",
+              t.task_template_id as "taskTemplateId",
+              w.workflow_template_id as "workflowTemplateId"
+            from tasks t
+            left join workflows w on w.id = t.workflow_id
+            where t.id = :taskId
+            limit 1
+          `,
+          {
+            replacements: { taskId },
+            type: Sequelize.QueryTypes.SELECT,
+          },
+        ),
+      GET_TRACE_META_CACHE_TTL,
+    );
+
+    return row || { taskId };
+  }
+
+  /**
    * Prepare entity.
    * @param {object} item Item.
    * @returns {TaskEntity}
@@ -1803,4 +1840,3 @@ export class TaskModel extends Model {
     };
   }
 }
-

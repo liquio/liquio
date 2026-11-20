@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto';
+
 import { Op } from 'sequelize';
 
 import Business from './business';
@@ -11,13 +12,20 @@ const AUTO_CLEAR_INTERVAL = 1000 * 60 * 60 * 24 * 7; // 1 week.
 const STATUSES = {
   Rollbacking: 'Rollbacking',
   Rollbacked: 'Rollbacked',
-  Failed: 'Failed'
+  Failed: 'Failed',
 };
 const OPERATIONS = {
   CREATE: 'create',
   UPDATE: 'update',
-  DELETE: 'delete'
+  DELETE: 'delete',
 };
+
+/** Thrown when a rollback targets a key whose records are not writable (accessMode `read_only`). */
+export class RollbackKeyForbiddenError extends Error {
+  constructor(public keyId: unknown) {
+    super('Key records are not writable.');
+  }
+}
 
 /**
  * Rollback business.
@@ -79,7 +87,7 @@ export default class RollbackBusiness extends Business {
 
     const rollbackId = this.generateRollbackId();
     this.rollback(rollbackId, { keyId, timePoint }, { user, accessInfo });
-    setTimeout(() => this.clearToRollback(rollbackId), AUTO_CLEAR_INTERVAL);
+    setTimeout(() => this.clearToRollback(rollbackId), AUTO_CLEAR_INTERVAL).unref?.();
     return rollbackId;
   }
 
@@ -98,6 +106,7 @@ export default class RollbackBusiness extends Business {
     if (!timeRegExp.test(timePoint)) throw new Error('Invalide timePoint format');
     const maxTimeRollback = 1000 * 60 * 60 * 24 * 7 + 10 * 1000; // 1 week + 10 seconds;
     if (Date.now() - new Date(timePoint).getTime() > maxTimeRollback) throw new Error("timePoint mustn't be earlier than 1 week");
+    await this.assertKeyWritable(keyId);
   }
 
   checkPreviousRollbackProceed(keyId) {
@@ -124,7 +133,6 @@ export default class RollbackBusiness extends Business {
     } else {
       this.toRollback = {};
     }
-    if (global.gc) global.gc();
   }
 
   /**
@@ -150,15 +158,15 @@ export default class RollbackBusiness extends Business {
         isRemovedRecords: false,
         restoredRecordsCount: 0,
         isRestoredRecords: false,
-        error: null
-      }
+        error: null,
+      },
     };
     const rollbackMeta = {
       rollbackId,
       timePoint,
       timeStart: new Date().toJSON(),
       userId: accessInfo.userId,
-      userName: accessInfo.userName
+      userName: accessInfo.userName,
     };
     let allHistoryRowsByKeyId; // [{id', 'recordId', 'operation', 'createdAt}]
     try {
@@ -190,12 +198,13 @@ export default class RollbackBusiness extends Business {
       await this.restoreDeletedAndUpdatedRecords(
         rollbackId,
         { keyId, recordsIdsToRestore: deletedAndUpdatedRecordsIdsNeededToProcessing, timePoint },
-        { rollbackMeta }
+        { rollbackMeta },
       );
     } catch (error) {
       // Set error status.
       this.toRollback[rollbackId].status = RollbackBusiness.Statuses.Failed;
-      this.toRollback[rollbackId].details.error = error?.message;
+      this.log.save('rollback-error', { rollbackId, error: error?.message, stack: error?.stack });
+      this.toRollback[rollbackId].details.error = 'Rollback failed.';
       throw error;
     }
     this.toRollback[rollbackId].status = RollbackBusiness.Statuses.Rollbacked;
@@ -232,13 +241,13 @@ export default class RollbackBusiness extends Business {
     const { removedRecords } = await this.recordModel.bulkDelete(
       {
         key_id: keyId,
-        id: { [Op.in]: recordsIdsToRemove }
+        id: { [Op.in]: recordsIdsToRemove },
       },
       undefined,
       removeCounterCb,
       user,
       { id: accessInfo.userId, name: accessInfo.userName }, // person param
-      { accessInfo, rollbackMeta } as any // historyMeta param
+      { accessInfo, rollbackMeta } as any, // historyMeta param
     );
     this.toRollback[rollbackId].details.removedRecordsCount = removedRecords;
     this.toRollback[rollbackId].details.isRemovedRecords = true;
@@ -267,9 +276,7 @@ export default class RollbackBusiness extends Business {
       this.toRollback[rollbackId].details.isRestoredRecords = true;
       return;
     }
-    const {
-      data: { registerId }
-    } = await this.keyModel.findById(keyId);
+    const { registerId, isEncrypted } = await this.getKeyOrFail(keyId);
 
     this.toRollback[rollbackId].details.restoredRecordsCount = 0;
     this.toRollback[rollbackId].details.isRestoredRecords = false;
@@ -292,9 +299,9 @@ export default class RollbackBusiness extends Business {
           searchString2,
           search_string_3,
           searchString3,
-          signature
+          signature,
         },
-        person
+        person,
       } = lastHistoryRowBeforeTimePoint;
 
       const historyMeta = { ...meta.historyMeta, rollbackMeta };
@@ -320,10 +327,11 @@ export default class RollbackBusiness extends Business {
             searchString2: search_string_2 || searchString2,
             searchString3: search_string_3 || searchString3,
             person,
-            signature
+            signature,
+            isEncrypted,
           },
           true,
-          historyMeta
+          historyMeta,
         );
       }
       if (!isRecordExist) {
@@ -340,10 +348,11 @@ export default class RollbackBusiness extends Business {
             searchString2: search_string_2 || searchString2,
             searchString3: search_string_3 || searchString3,
             person,
-            signature
+            signature,
+            isEncrypted,
           },
           true,
-          historyMeta
+          historyMeta,
         );
       }
 
@@ -376,9 +385,8 @@ export default class RollbackBusiness extends Business {
     if (!user || !accessInfo) throw new Error('All accessOptions options are required');
     const { data: historyRow } = await this.historyModel.findById(historyId);
     if (historyRow.recordId !== recordId || historyRow.keyId !== keyId) throw new Error("Params historyId, recordId, keyId don't match");
-    const {
-      data: { registerId }
-    } = await this.keyModel.findById(keyId);
+    await this.assertKeyWritable(keyId);
+    const { registerId, isEncrypted } = await this.getKeyOrFail(keyId);
     const {
       data: {
         id,
@@ -394,16 +402,16 @@ export default class RollbackBusiness extends Business {
         searchString2,
         search_string_3,
         searchString3,
-        signature
+        signature,
       },
-      person
+      person,
     } = historyRow as any;
 
     const rollbackMeta = {
       historyId,
       timeStart: new Date().toJSON(),
       userId: accessInfo.userId,
-      userName: accessInfo.userName
+      userName: accessInfo.userName,
     };
     const historyMeta = { ...meta.historyMeta, rollbackMeta };
 
@@ -430,10 +438,11 @@ export default class RollbackBusiness extends Business {
           searchString2: search_string_2 || searchString2,
           searchString3: search_string_3 || searchString3,
           person,
-          signature
+          signature,
+          isEncrypted,
         },
         true,
-        historyMeta
+        historyMeta,
       );
       rollbackedRecord = recordModelResponse.data;
     }
@@ -451,13 +460,42 @@ export default class RollbackBusiness extends Business {
           searchString2: search_string_2 || searchString2,
           searchString3: search_string_3 || searchString3,
           person,
-          signature
+          signature,
+          isEncrypted,
         },
         true,
-        historyMeta
+        historyMeta,
       );
       rollbackedRecord = recordModelResponse.data;
     }
     return rollbackedRecord;
+  }
+
+  /**
+   * Rollback writes records, so it follows the same `accessMode` rule as the other write paths.
+   * @private
+   * @param {number} keyId Key ID.
+   * @throws {RollbackKeyForbiddenError} If the key records are not writable.
+   * @throws {Error} If the key does not exist.
+   */
+  async assertKeyWritable(keyId) {
+    const { data: key } = (await this.keyModel.findById(keyId)) || {};
+    if (!key) throw new Error('Key of the records to rollback does not exist.');
+    if (!this.keyModel.checkRecordsWritable(key)) throw new RollbackKeyForbiddenError(keyId);
+  }
+
+  /**
+   * Get key or fail: encryption state of restored records must come from the key.
+   * @private
+   * @param {number} keyId Key ID.
+   * @returns {Promise<{registerId, isEncrypted}>} Key params.
+   * @throws {Error} Error if key does not exist.
+   */
+  async getKeyOrFail(keyId) {
+    const { data: key } = (await this.keyModel.findById(keyId)) || {};
+    if (!key) {
+      throw new Error('Key of the records to rollback does not exist.');
+    }
+    return { registerId: key.registerId, isEncrypted: !!key.isEncrypted };
   }
 }

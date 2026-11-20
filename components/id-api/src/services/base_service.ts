@@ -1,6 +1,7 @@
-import { Services, ServicesCollection } from '.';
-import { Config } from '../config';
 import { Log } from '@liquio/back-core';
+
+import { Services, ServicesCollection } from '.';
+import { IdApiConfig } from '../config';
 import { Models, ModelsCollection } from '../models';
 import { Express } from '../types';
 
@@ -8,7 +9,7 @@ export abstract class BaseService {
   protected log = Log.getInstance();
 
   constructor(
-    protected config: Config,
+    protected config: IdApiConfig,
     protected models: Models,
     protected express: Express,
   ) {}

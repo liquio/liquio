@@ -1,12 +1,15 @@
 import { Controller } from './controller';
 import { Preview } from '../lib/preview';
 import { OpenStack as Openstack } from '../providers/openstack';
+import { getLog } from '../lib/context';
 
 const MESSAGE_PONG = 'pong';
 const DEFAULT_VERSION = '0.0.0';
 const DEFAULT_CUSTOMER = 1;
 const DEFAULT_ENVIRONMENT = 0;
 const PWGEN_SERVICE_INFO = 'pwgen';
+const OPENSTACK_PROVIDER_NAME = 'openstack';
+const HTTP_STATUS_CODE_NOT_FOUND = 404;
 
 /**
  * Test controller.
@@ -33,11 +36,20 @@ export class TestController extends Controller {
   }
 
   /**
-   * Ping.
+   * Public liveness ping. Reveals nothing but the pong message.
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
   async ping(req, res) {
+    this.responseData(res, { message: MESSAGE_PONG });
+  }
+
+  /**
+   * Authenticated ping with optional downstream health check.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async pingWithAuth(req, res) {
     // Define params.
     const healthCheck = req.query.health_check;
 
@@ -58,7 +70,7 @@ export class TestController extends Controller {
       try {
         previewServiceResponse = await this.preview.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-preview-service-error', { error: error && error.message });
+        getLog().save('test-ping-preview-service-error', { error: error && error.message });
       }
       const pwgenPongMsg = previewServiceResponse && previewServiceResponse.body && previewServiceResponse.body.message === MESSAGE_PONG;
 
@@ -95,7 +107,7 @@ export class TestController extends Controller {
     const serviceVersionInfo = this.config.versions && this.config.versions.services.find((v) => v.name === serviceName);
     const serviceMinVersion = (serviceVersionInfo && serviceVersionInfo.minVersion) || DEFAULT_VERSION;
     if (!serviceMinVersion || !serviceVersion) {
-      global.log.save('can-not-find-service-min-version');
+      getLog().save('can-not-find-service-min-version');
       return false;
     }
 
@@ -135,14 +147,18 @@ export class TestController extends Controller {
     const { query } = req;
     const { count_object: countObject } = query;
     const { openstack: openstackConfig } = (this.providersConfig && this.providersConfig.list) || {};
+    const activeProviderName = this.providersConfig && this.providersConfig.activeProvider;
+    if (!openstackConfig || activeProviderName !== OPENSTACK_PROVIDER_NAME) {
+      return this.responseError(res, 'Not found', HTTP_STATUS_CODE_NOT_FOUND);
+    }
     const containerName = openstackConfig && openstackConfig.container;
     const openstack = new Openstack(openstackConfig);
     let response;
     try {
       response = await openstack.getMetadata(containerName, countObject);
     } catch (error) {
-      global.log.save('check-openstack-metadata-error', { error });
-      return this.responseError(res, `get-openstack-metadata-error: ${error && error.message}`);
+      getLog().save('check-openstack-metadata-error', { error: error && error.message });
+      return this.responseError(res, 'File provider check failed');
     }
 
     // Return response.

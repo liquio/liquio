@@ -1,14 +1,15 @@
-
 import _ from 'lodash';
+import { Sandbox } from '@liquio/back-core';
+import { getRegisterApiClient } from '@liquio/back-core';
 
 import { Business } from './business';
 import { UnitAccessModel } from '../models/unit_access';
 import { UnitAccessEntity } from '../entities/unit_access';
-import { RegisterService } from '../services/register';
+import { withDefaultRecordsSort } from '../services/register';
 import { JSONPath } from '../lib/jsonpath';
 import { RedisClient } from '../lib/redis_client';
-import { Sandbox } from '../lib/sandbox';
 import { InvalidParamsError, ForbiddenError, NotFoundError } from '../lib/errors';
+import { getConfig, getLog } from '../lib/context';
 
 // Constants.
 const ALLOW_CREATE = 'create';
@@ -20,7 +21,7 @@ const HIDE_KEY = 'hide_key';
 const ALLOW_HEAD = 'head';
 const WRONG_ACCESS_METHOD = 'Wrong access method.';
 
-const ERROR_REGISTER_RECORD_ACCESS = 'User doesn\'t have any access to register record.';
+const ERROR_REGISTER_RECORD_ACCESS = "User doesn't have any access to register record.";
 const ERROR_REGISTER_RECORD_STRICT_ACCESS = 'Strict access to register record not allowed.';
 const ERROR_KEY_RECORDS_READONLY = 'Key records are readonly.';
 
@@ -31,7 +32,7 @@ export class RegisterBusiness extends Business {
   private static singleton: RegisterBusiness;
 
   unitAccessModel: any;
-  registerService: any;
+  readonly registerService: any;
   sandbox: any;
   registers: any;
   keys: any;
@@ -47,8 +48,8 @@ export class RegisterBusiness extends Business {
     if (!RegisterBusiness.singleton) {
       super(config);
       this.unitAccessModel = new UnitAccessModel();
-      this.registerService = new RegisterService();
-      this.sandbox = new Sandbox({});
+      this.registerService = getRegisterApiClient();
+      this.sandbox = Sandbox.getInstance();
       this.registers = [];
       this.keys = [];
       this.unitAccess = [];
@@ -68,7 +69,7 @@ export class RegisterBusiness extends Business {
       ALLOW_DELETE,
       ALLOW_HISTORY,
       ALLOW_HEAD,
-      HIDE_KEY
+      HIDE_KEY,
     };
   }
 
@@ -79,7 +80,7 @@ export class RegisterBusiness extends Business {
       [ALLOW_UPDATE]: 'allowUpdate',
       [ALLOW_DELETE]: 'allowDelete',
       [ALLOW_HISTORY]: 'allowHistory',
-      [HIDE_KEY]: 'hideKey'
+      [HIDE_KEY]: 'hideKey',
     };
   }
 
@@ -91,16 +92,11 @@ export class RegisterBusiness extends Business {
   async getRegisters(userUnitIds) {
     await this.prepareData();
 
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ);
 
     return this.registers.filter((register) => {
       const keysForRegister = this.keysByRegister[register.id] || [];
-      return keysForRegister.some(key =>
-        this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, key.id)
-      );
+      return keysForRegister.some((key) => this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, key.id));
     });
   }
 
@@ -112,14 +108,9 @@ export class RegisterBusiness extends Business {
   async getKeys(userUnitIds) {
     await this.prepareData();
 
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ);
 
-    const keys = this.keys.filter((key) =>
-      this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, key.id)
-    );
+    const keys = this.keys.filter((key) => this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, key.id));
     return this.mapKeysWithAccess(userUnitIds, _.cloneDeep(keys));
   }
 
@@ -153,7 +144,7 @@ export class RegisterBusiness extends Business {
         await updateAccessForMethod(key, this.AccessMethod.ALLOW_HISTORY, 'allowHistory');
 
         return key;
-      })
+      }),
     );
   }
 
@@ -168,10 +159,7 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object[]>} Records list promise.
    */
   async getRecordsByKeyId(keyId, userUnitIds, params, strict = false, allowTokens, accessInfo) {
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId);
     if (!strict && !hasAccess) {
@@ -191,18 +179,18 @@ export class RegisterBusiness extends Business {
     }
 
     // Get records.
-    const records = await this.registerService.getRecords(params, accessInfo);
+    const records = await this.registerService.getRecords(withDefaultRecordsSort(params), { accessInfo });
 
     // Define and return record ID and stringified text for strict access.
     if (strict) {
       await this.prepareData();
-      const keyInfo = this.keys.find(v => v.id === keyId);
+      const keyInfo = this.keys.find((v) => v.id === keyId);
       const { toString, schema: keySchema } = keyInfo;
 
       // Handle key schema controls.
       records.data = await this.handleControlsGet(records, keySchema);
 
-      records.data = records.data.map(v => this.convertToStrictRecord(v, toString, keySchema));
+      records.data = records.data.map((v) => this.convertToStrictRecord(v, toString, keySchema));
     }
 
     // Return records info.
@@ -217,10 +205,7 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object[]>} Records list promise.
    */
   async getHistoryByKeyId(keyId, userUnitIds, params) {
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_HISTORY, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_HISTORY, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId);
     if (!hasAccess) {
@@ -228,7 +213,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Get history.
-    const history = await this.registerService.getHistoryByKeyId(keyId, params);
+    const history = await this.registerService.getKeyHistory(keyId, params);
 
     // Return history info.
     return history;
@@ -242,10 +227,7 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object[]>} Records list promise.
    */
   async getViewingHistoryByKeyId(keyId, userUnitIds, params) {
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_HISTORY, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_HISTORY, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId);
     if (!hasAccess) {
@@ -253,7 +235,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Get and return viewing history.
-    return this.registerService.getViewingHistoryByKeyId(keyId, params);
+    return this.registerService.getAccessLog({ key_id: keyId, ...params });
   }
 
   /**
@@ -265,10 +247,7 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object[]>} Records list promise.
    */
   async getHistoryByRecordId(keyId, recordId, userUnitIds, params) {
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_HISTORY, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_HISTORY, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId);
     if (!hasAccess) {
@@ -276,8 +255,8 @@ export class RegisterBusiness extends Business {
     }
 
     // Get history.
-    const history = await this.registerService.getHistoryByRecordId(recordId, params);
-    if (history && Array.isArray(history.data) && history.data.some(v => v.keyId !== keyId)) {
+    const history = await this.registerService.getRecordHistory(recordId, params);
+    if (history && Array.isArray(history.data) && history.data.some((v) => v.keyId !== keyId)) {
       throw new ForbiddenError(ERROR_REGISTER_RECORD_ACCESS);
     }
 
@@ -286,18 +265,15 @@ export class RegisterBusiness extends Business {
   }
 
   /**
-     * Get viewing history by key ID.
-     * @param {number} keyId Key ID.
-     * @param {number} recordId Record ID.
-     * @param {{all: Array<number>, head: Array<number>, member: Array<number>}} userUnitIds User unit IDs.
-     * @param {{offset, limit, created_from, created_to}} params Params.
-     * @returns {Promise<object[]>} Records list promise.
-     */
+   * Get viewing history by key ID.
+   * @param {number} keyId Key ID.
+   * @param {number} recordId Record ID.
+   * @param {{all: Array<number>, head: Array<number>, member: Array<number>}} userUnitIds User unit IDs.
+   * @param {{offset, limit, created_from, created_to}} params Params.
+   * @returns {Promise<object[]>} Records list promise.
+   */
   async getViewingHistoryByRecordId(keyId, recordId, userUnitIds, params) {
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_HISTORY, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_HISTORY, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId);
     if (!hasAccess) {
@@ -305,8 +281,8 @@ export class RegisterBusiness extends Business {
     }
 
     // Get viewing history.
-    const viewingHistory = await this.registerService.getViewingHistoryByRecordId(recordId, params);
-    if (viewingHistory && Array.isArray(viewingHistory.data) && viewingHistory.data.some(v => v.keyId !== keyId)) {
+    const viewingHistory = await this.registerService.getAccessLog({ record_id: recordId, ...params });
+    if (viewingHistory && Array.isArray(viewingHistory.data) && viewingHistory.data.some((v) => v.keyId !== keyId)) {
       throw new ForbiddenError(ERROR_REGISTER_RECORD_ACCESS);
     }
 
@@ -323,10 +299,12 @@ export class RegisterBusiness extends Business {
   async getRecordsByKeyIdFullAccess(keyId, params: any = {}) {
     // Get records.
     if (!params.key_id) params.key_id = keyId;
-    const records = await this.registerService.getRecords({
-      ...params,
-      allow_see_all_records: true,
-    });
+    const records = await this.registerService.getRecords(
+      withDefaultRecordsSort({
+        ...params,
+        allow_see_all_records: true,
+      }),
+    );
 
     // Return records info.
     return records;
@@ -344,20 +322,8 @@ export class RegisterBusiness extends Business {
    * @param {object} control Control.
    * @returns {Promise<Object[]>} Records list promise.
    */
-  async getFilteredRecordsByKeyId(
-    keyId,
-    userUnitIds,
-    params,
-    strict = false,
-    allowTokens,
-    body = {},
-    accessInfo,
-    control
-  ) {
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ, false);
+  async getFilteredRecordsByKeyId(keyId, userUnitIds, params, strict = false, allowTokens, body = {}, accessInfo, control) {
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ, false);
 
     // Check access to key.
     const hasReadAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId);
@@ -375,14 +341,14 @@ export class RegisterBusiness extends Business {
     }
 
     // Get records.
-    const records = await this.registerService.getFilteredRecords(params, body, accessInfo);
+    const records = await this.registerService.getFilteredRecords(params, body, { accessInfo });
 
     // Define and return record ID and stringified text for strict access.
     if (strict) {
       await this.prepareData();
-      const keyInfo = this.keys.find(v => v.id === keyId);
+      const keyInfo = this.keys.find((v) => v.id === keyId);
       const { toString, schema: keySchema } = keyInfo;
-      if (records.data) records.data = records.data.map(v => this.convertToStrictRecord(v, toString, keySchema));
+      if (records.data) records.data = records.data.map((v) => this.convertToStrictRecord(v, toString, keySchema));
     }
 
     // Return records info.
@@ -403,15 +369,13 @@ export class RegisterBusiness extends Business {
     }
 
     // Get records.
-    const records = await this.registerService.getRecords({ ...params, key_id: keyId }, accessInfo);
+    const records = await this.registerService.getRecords(withDefaultRecordsSort({ ...params, key_id: keyId }), { accessInfo });
 
     // Define and return record ID and stringified text.
     await this.prepareData();
-    const keyInfo = this.keys.find(v => v.id === keyId);
+    const keyInfo = this.keys.find((v) => v.id === keyId);
     const { toString, schema, parentId: keyParentId } = keyInfo;
-    records.data = records.data.map((v) =>
-      this.convertToStrictRecord(v, toString, schema, keyParentId),
-    );
+    records.data = records.data.map((v) => this.convertToStrictRecord(v, toString, schema, keyParentId));
 
     // Return records info.
     return records;
@@ -425,12 +389,7 @@ export class RegisterBusiness extends Business {
    * @param {Object} excludeList.
    * @returns {Promise<object[]>} Records list promise.
    */
-  async getRecordsTreeByKeyIds(
-    keyIds,
-    params: any = { offset: 0, limit: 100000 },
-    accessInfo?,
-    excludeList?,
-  ) {
+  async getRecordsTreeByKeyIds(keyIds, params: any = { offset: 0, limit: 100000 }, accessInfo?, excludeList?) {
     // Define .
     const linkedKeyIds = await this.getLinkedKeyIds(keyIds);
 
@@ -462,7 +421,7 @@ export class RegisterBusiness extends Business {
   async getLinkedKeyIds(initKeyIds) {
     // Load init keys.
     await this.prepareData();
-    const initKeys = this.keys.filter(v => initKeyIds.includes(v.id));
+    const initKeys = this.keys.filter((v) => initKeyIds.includes(v.id));
 
     // Define linked keys container and fill with needed keys.
     let linkedKeys = [...initKeys];
@@ -510,7 +469,7 @@ export class RegisterBusiness extends Business {
     }
 
     // Return defined links chain.
-    return linkedKeys.map(v => v.id);
+    return linkedKeys.map((v) => v.id);
   }
 
   /**
@@ -527,10 +486,7 @@ export class RegisterBusiness extends Business {
       throw new InvalidParamsError('Missing required parameters: allowTokens');
     }
 
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId);
     if (!hasAccess) {
@@ -540,9 +496,9 @@ export class RegisterBusiness extends Business {
     const params = {
       record_id: recordId,
       key_id: keyId,
-      allow_tokens: allowTokens
+      allow_tokens: allowTokens,
     };
-    const response = await this.registerService.getRecords(params, accessInfo);
+    const response = await this.registerService.getRecords(withDefaultRecordsSort(params), { accessInfo });
     const record = response?.data?.[0];
 
     if (!record) {
@@ -552,7 +508,6 @@ export class RegisterBusiness extends Business {
     return record;
   }
 
-
   /**
    * Find record by ID.
    * @param {string} id Record ID.
@@ -561,16 +516,13 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object>}
    */
   async findRecordById(id, userUnitIds, accessInfo) {
-    const record = await this.registerService.findRecordById(id, accessInfo);
+    const record = await this.registerService.findRecordById(id, { accessInfo });
 
     if (!record) {
       throw new ForbiddenError(ERROR_REGISTER_RECORD_ACCESS);
     }
 
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_READ, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, record.keyId);
     if (!hasAccess) {
@@ -588,10 +540,7 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object>}
    */
   async createRecord(userUnitIds, data, accessInfo) {
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_CREATE, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_CREATE, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, data.keyId);
     if (!hasAccess) {
@@ -601,7 +550,7 @@ export class RegisterBusiness extends Business {
     // Handle key schema controls.
     const handledData = await this.handleControlsCreate(data);
 
-    return await this.registerService.createRecord(handledData, accessInfo);
+    return await this.registerService.createRecord(handledData, { accessInfo });
   }
 
   /**
@@ -613,10 +562,7 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object>}
    */
   async updateRecordById(id, userUnitIds, data, accessInfo) {
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_UPDATE, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_UPDATE, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, data.keyId);
     if (!hasAccess) {
@@ -630,7 +576,7 @@ export class RegisterBusiness extends Business {
       throw new ForbiddenError('Key contains fields with allowTokens option.');
     }
 
-    return await this.registerService.updateRecordById(id, handledData, accessInfo);
+    return await this.registerService.updateRecordById(id, handledData, { accessInfo });
   }
 
   /**
@@ -648,17 +594,14 @@ export class RegisterBusiness extends Business {
       throw new NotFoundError('Register record not found.');
     }
 
-    const {
-      userUnitsAccess,
-      accessConfigMethod
-    } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_DELETE, false);
+    const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod.ALLOW_DELETE, false);
 
     const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, record.keyId);
     if (!hasAccess) {
       throw new ForbiddenError(ERROR_REGISTER_RECORD_ACCESS);
     }
 
-    return await this.registerService.deleteRecordById(id, person, accessInfo);
+    return await this.registerService.deleteRecordById(id, { person, accessInfo });
   }
 
   /**
@@ -696,7 +639,7 @@ export class RegisterBusiness extends Business {
    */
   async getKeyById(keyId) {
     await this.prepareData();
-    const key = this.keys.find(v => v.id === keyId);
+    const key = this.keys.find((v) => v.id === keyId);
     return key;
   }
 
@@ -706,8 +649,8 @@ export class RegisterBusiness extends Business {
    */
   async prepareData() {
     const [registers, keys, unitAccess] = await Promise.all([
-      this.registerService.getRegisters({ limit: global.config.register.limit }),
-      this.registerService.getKeys({ limit: global.config.register.limit }),
+      this.registerService.getRegisters({ limit: getConfig().register.limit }),
+      this.registerService.getKeys({ limit: getConfig().register.limit }),
       this.unitAccessModel.getAllWithCache(),
     ]);
 
@@ -739,18 +682,16 @@ export class RegisterBusiness extends Business {
    * @returns {boolean}
    */
   hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId) {
-    const unitsThatHaveAccessToKey = userUnitsAccess.filter((unit) =>
-      unit.keys[accessConfigMethod]?.includes(keyId)
-    );
+    const unitsThatHaveAccessToKey = userUnitsAccess.filter((unit) => unit.keys[accessConfigMethod]?.includes(keyId));
 
     if (!unitsThatHaveAccessToKey.length) {
       // User do not have needed access.
       return false;
     }
 
-    if (unitsThatHaveAccessToKey.every(unit => unit.keys.allowHead?.includes(keyId))) {
+    if (unitsThatHaveAccessToKey.every((unit) => unit.keys.allowHead?.includes(keyId))) {
       // If every user unit that has needed access to key additionally required allowHead access to this key - we need to check that user is a head in one of them.
-      return unitsThatHaveAccessToKey.some(unit => userUnitIds.head.includes(unit.unit));
+      return unitsThatHaveAccessToKey.some((unit) => userUnitIds.head.includes(unit.unit));
     }
 
     return true;
@@ -768,7 +709,7 @@ export class RegisterBusiness extends Business {
    */
   shouldBeHidden(userUnitIds, userUnitsAccess, keyId) {
     const unitsWithReadAccess = userUnitsAccess.filter((unit) =>
-      unit.keys[this.AccessMethodToConfigMapper[this.AccessMethod.ALLOW_READ]]?.includes(keyId)
+      unit.keys[this.AccessMethodToConfigMapper[this.AccessMethod.ALLOW_READ]]?.includes(keyId),
     );
 
     if (!unitsWithReadAccess.length) {
@@ -776,16 +717,16 @@ export class RegisterBusiness extends Business {
     }
 
     const unitsThatHideTheKey = unitsWithReadAccess.filter((unit) =>
-      unit.keys[this.AccessMethodToConfigMapper[this.AccessMethod.HIDE_KEY]]?.includes(keyId)
+      unit.keys[this.AccessMethodToConfigMapper[this.AccessMethod.HIDE_KEY]]?.includes(keyId),
     );
-    const unitsThatExposeTheKey = unitsWithReadAccess.filter((unit) =>
-      !unit.keys[this.AccessMethodToConfigMapper[this.AccessMethod.HIDE_KEY]]?.includes(keyId)
+    const unitsThatExposeTheKey = unitsWithReadAccess.filter(
+      (unit) => !unit.keys[this.AccessMethodToConfigMapper[this.AccessMethod.HIDE_KEY]]?.includes(keyId),
     );
 
     if (unitsThatHideTheKey.length < unitsWithReadAccess.length) {
-      if (unitsThatExposeTheKey.every(unit => unit.keys.allowHead?.includes(keyId))) {
+      if (unitsThatExposeTheKey.every((unit) => unit.keys.allowHead?.includes(keyId))) {
         // If every user unit that has needed access to key additionally required allowHead access to this key - we need to check that user is a head in one of them.
-        return !unitsThatExposeTheKey.some(unit => userUnitIds.head.includes(unit.unit));
+        return !unitsThatExposeTheKey.some((unit) => userUnitIds.head.includes(unit.unit));
       }
       return false;
     } else {
@@ -811,7 +752,7 @@ export class RegisterBusiness extends Business {
 
     return {
       userUnitsAccess,
-      accessConfigMethod
+      accessConfigMethod,
     };
   }
 
@@ -822,27 +763,24 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<boolean>} Access allowed indicator.
    */
   async checkStrictAccess(keyId) {
-    const { data: isAllowed } = await RedisClient.getOrSet(
-      RedisClient.createKey('register', 'checkStrictAccess', keyId),
-      async () => {
-        // Check config.
-        const strictAccessKeys = await this.getRegisterStrictAccessKeysConfig();
+    const { data: isAllowed } = await RedisClient.getOrSet(RedisClient.createKey('register', 'checkStrictAccess', keyId), async () => {
+      // Check config.
+      const strictAccessKeys = await this.getRegisterStrictAccessKeysConfig();
 
-        // Check if allowed and return.
-        const isAllowed = strictAccessKeys.includes(keyId);
+      // Check if allowed and return.
+      const isAllowed = strictAccessKeys.includes(keyId);
 
-        if (isAllowed) {
-          const key = await this.getKeyById(keyId);
+      if (isAllowed) {
+        const key = await this.getKeyById(keyId);
 
-          // Check if key is personal.
-          if (this.isKeyPersonal(key)) {
-            return new Error('Personal register keys are not allowed to use in strict access mode.');
-          }
+        // Check if key is personal.
+        if (this.isKeyPersonal(key)) {
+          return new Error('Personal register keys are not allowed to use in strict access mode.');
         }
+      }
 
-        return isAllowed;
-      },
-    );
+      return isAllowed;
+    });
 
     if (isAllowed instanceof Error) {
       throw isAllowed;
@@ -860,7 +798,7 @@ export class RegisterBusiness extends Business {
    */
   async checkAccessSeeAllRecords(userUnitIds) {
     const access = await this.getRegisterAccessConfig(userUnitIds.all, false);
-    if (access.some(item => item.allowSeeAllRecords === true)) {
+    if (access.some((item) => item.allowSeeAllRecords === true)) {
       return true;
     }
 
@@ -882,13 +820,9 @@ export class RegisterBusiness extends Business {
     // Define stringified text.
     let stringified;
     try {
-      stringified = this.sandbox.evalWithArgs(
-        toString,
-        [record],
-        { meta: { fn: 'convertToStrictRecord', recordId: record.id } },
-      );
+      stringified = this.sandbox.evalWithArgs(toString, [record], { meta: { fn: 'convertToStrictRecord', recordId: record.id } });
     } catch (error) {
-      global.log.save('convert-to-strict-record-error', { error: error && error.message, record, keySchema }, 'warn');
+      getLog().save('convert-to-strict-record-error', { error: error && error.message, record, keySchema }, 'warn');
     }
 
     // Define strict record.
@@ -980,44 +914,36 @@ export class RegisterBusiness extends Business {
    */
   async getRegisterAccessConfig(unitIds, usePreparedCache = true) {
     // Get from DB with cache.
-    const unitAccess = usePreparedCache
-      ? this.unitAccess
-      : await this.unitAccessModel.getAllWithCache();
-    const accessToRegisterForSpecificUnitsList = unitAccess.filter(
-      (v) =>
-        unitIds.includes(v.unitId) &&
-        v.type === UnitAccessEntity.Types.register,
-    );
+    const unitAccess = usePreparedCache ? this.unitAccess : await this.unitAccessModel.getAllWithCache();
+    const accessToRegisterForSpecificUnitsList = unitAccess.filter((v) => unitIds.includes(v.unitId) && v.type === UnitAccessEntity.Types.register);
     const accessFromDb = accessToRegisterForSpecificUnitsList.map((v) => ({
       ...v.data,
       unit: v.unitId,
     }));
 
     // Get from config.
-    const accessFromConfig = global.config.register.access.filter((v) =>
-      unitIds.includes(v.unit),
-    );
+    const accessFromConfig = getConfig().register.access.filter((v) => unitIds.includes(v.unit));
 
     // Merge and return.
     const access = unitIds
-      .filter(
-        (v) =>
-          accessFromDb.some((d) => d.unit === v) ||
-          accessFromConfig.some((c) => c.unit === v),
-      )
+      .filter((v) => accessFromDb.some((d) => d.unit === v) || accessFromConfig.some((c) => c.unit === v))
       .map((v) => {
-        const accessFromDbRecord = JSON.parse(
-          JSON.stringify(accessFromDb.find((d) => d.unit === v) || {}),
-        );
-        const accessFromConfigRecord = JSON.parse(
-          JSON.stringify(accessFromConfig.find((c) => c.unit === v) || {}),
-        );
+        const accessFromDbRecord = JSON.parse(JSON.stringify(accessFromDb.find((d) => d.unit === v) || {}));
+        const accessFromConfigRecord = JSON.parse(JSON.stringify(accessFromConfig.find((c) => c.unit === v) || {}));
         const accessRecord = { ...accessFromConfigRecord, ...accessFromDbRecord };
         const allowRead = [...new Set([..._.get(accessFromDbRecord, 'keys.allowRead', []), ..._.get(accessFromConfigRecord, 'keys.allowRead', [])])];
-        const allowCreate = [...new Set([..._.get(accessFromDbRecord, 'keys.allowCreate', []), ..._.get(accessFromConfigRecord, 'keys.allowCreate', [])])];
-        const allowUpdate = [...new Set([..._.get(accessFromDbRecord, 'keys.allowUpdate', []), ..._.get(accessFromConfigRecord, 'keys.allowUpdate', [])])];
-        const allowDelete = [...new Set([..._.get(accessFromDbRecord, 'keys.allowDelete', []), ..._.get(accessFromConfigRecord, 'keys.allowDelete', [])])];
-        const allowHistory = [...new Set([..._.get(accessFromDbRecord, 'keys.allowHistory', []), ..._.get(accessFromConfigRecord, 'keys.allowHistory', [])])];
+        const allowCreate = [
+          ...new Set([..._.get(accessFromDbRecord, 'keys.allowCreate', []), ..._.get(accessFromConfigRecord, 'keys.allowCreate', [])]),
+        ];
+        const allowUpdate = [
+          ...new Set([..._.get(accessFromDbRecord, 'keys.allowUpdate', []), ..._.get(accessFromConfigRecord, 'keys.allowUpdate', [])]),
+        ];
+        const allowDelete = [
+          ...new Set([..._.get(accessFromDbRecord, 'keys.allowDelete', []), ..._.get(accessFromConfigRecord, 'keys.allowDelete', [])]),
+        ];
+        const allowHistory = [
+          ...new Set([..._.get(accessFromDbRecord, 'keys.allowHistory', []), ..._.get(accessFromConfigRecord, 'keys.allowHistory', [])]),
+        ];
         const allowHead = [...new Set([..._.get(accessFromDbRecord, 'keys.allowHead', []), ..._.get(accessFromConfigRecord, 'keys.allowHead', [])])];
         const hideKey = [...new Set([..._.get(accessFromDbRecord, 'keys.hideKey', []), ..._.get(accessFromConfigRecord, 'keys.hideKey', [])])];
         _.set(accessRecord, 'keys.allowRead', allowRead);
@@ -1043,12 +969,11 @@ export class RegisterBusiness extends Business {
   async getRegisterStrictAccessKeysConfig() {
     // Get from DB with cache.
     const unitAccess = await this.unitAccessModel.getAllWithCache();
-    const accessToRegisterForAllUnits = unitAccess
-      .find(v => !v.unitId && v.type === UnitAccessEntity.Types.register);
+    const accessToRegisterForAllUnits = unitAccess.find((v) => !v.unitId && v.type === UnitAccessEntity.Types.register);
     const { data: { strictAccess: { keys: strictAccessKeysFromDb = [] } = {} } = {} } = accessToRegisterForAllUnits || {};
 
     // Get from config.
-    const { strictAccess: { keys: strictAccessKeysFromConfig = [] } = {} } = global.config.register;
+    const { strictAccess: { keys: strictAccessKeysFromConfig = [] } = {} } = getConfig().register;
 
     // Merge and return.
     const strictAccessKeys = [...new Set([...strictAccessKeysFromDb, ...strictAccessKeysFromConfig])];
@@ -1080,7 +1005,7 @@ export class RegisterBusiness extends Business {
         // Dynamic add public property to key schema.
         keyProperties[keyProperty + 'Linked'] = {
           type: isFull ? 'object' : 'string',
-          public: true
+          public: true,
         };
 
         // Get linked index list.
@@ -1096,7 +1021,7 @@ export class RegisterBusiness extends Business {
 
         // Get linked record list key info.
         await this.prepareData();
-        const linkedKeyInfo = this.keys.find(v => v.id === linkKeyId);
+        const linkedKeyInfo = this.keys.find((v) => v.id === linkKeyId);
 
         // Get needed indexed column.
         // Define that toSearchSting function returning single element or array.
@@ -1121,11 +1046,11 @@ export class RegisterBusiness extends Business {
           register_id: linkedKeyInfo.registerId,
           key_id: linkKeyId,
           is_search_string_array: true,
-          search: (!linkIndex || linkIndex === 1) ? linkIndexList : undefined,
-          search_2: (linkIndex === 2) ? linkIndexList : undefined,
-          search_3: (linkIndex === 3) ? linkIndexList : undefined
+          search: !linkIndex || linkIndex === 1 ? linkIndexList : undefined,
+          search_2: linkIndex === 2 ? linkIndexList : undefined,
+          search_3: linkIndex === 3 ? linkIndexList : undefined,
         };
-        const recordListToLink = await this.registerService.getRecords(params);
+        const recordListToLink = await this.registerService.getRecords(withDefaultRecordsSort(params));
 
         function linkRecords(a, b) {
           const aS = a.sort((a, b) => a.data[keyProperty] - b.data[keyProperty]);
@@ -1143,11 +1068,9 @@ export class RegisterBusiness extends Business {
               if (isFull) {
                 aS[aI].data[keyProperty + 'Linked'] = bS[bI].data;
               } else {
-                aS[aI].data[keyProperty + 'Linked'] = this.sandbox.evalWithArgs(
-                  linkedKeyInfo.toString,
-                  [bS[bI]],
-                  { meta: { fn: 'recordListToLink.link', context: bS[bI] } },
-                );
+                aS[aI].data[keyProperty + 'Linked'] = this.sandbox.evalWithArgs(linkedKeyInfo.toString, [bS[bI]], {
+                  meta: { fn: 'recordListToLink.link', context: bS[bI] },
+                });
               }
               aI++;
               if (aS[aI] && aS[aI].data[keyProperty] === bS[bI].data[linkTo]) {
@@ -1178,11 +1101,7 @@ export class RegisterBusiness extends Business {
   async handleControlsUpdate(id, record) {
     // Get key schema properties.
     await this.prepareData();
-    const {
-      schema: {
-        properties: keyProperties = {}
-      } = {}
-    } = this.keys.find(v => v.id === record.keyId);
+    const { schema: { properties: keyProperties = {} } = {} } = this.keys.find((v) => v.id === record.keyId);
 
     // Retrieve the previous record state if there are readOnly properties
     let oldRecord;
@@ -1213,7 +1132,7 @@ export class RegisterBusiness extends Business {
 
         // Get linked record list key info.
         await this.prepareData();
-        const linkedKeyInfo = this.keys.find(v => v.id === linkKeyId);
+        const linkedKeyInfo = this.keys.find((v) => v.id === linkKeyId);
 
         // Get needed indexed column.
         // Define that toSearchSting function returning single element or array.
@@ -1237,14 +1156,18 @@ export class RegisterBusiness extends Business {
         const params = {
           register_id: linkedKeyInfo.registerId,
           key_id: linkKeyId,
-          search: (!linkIndex || linkIndex === 1) ? linkedIndex : undefined,
-          search_2: (linkIndex === 2) ? linkedIndex : undefined,
-          search_3: (linkIndex === 3) ? linkedIndex : undefined
+          search: !linkIndex || linkIndex === 1 ? linkedIndex : undefined,
+          search_2: linkIndex === 2 ? linkedIndex : undefined,
+          search_3: linkIndex === 3 ? linkedIndex : undefined,
         };
-        const linkedRecord = await this.registerService.getRecords(params);
+        const linkedRecord = await this.registerService.getRecords(withDefaultRecordsSort(params));
 
         if (!linkedRecord.data || !linkedRecord.data.length) {
-          global.log.save('register-businesses|handle-control-update|record-to-link-not-found', { record, control: keyProperties[keyProperty], params }, 'error');
+          getLog().save(
+            'register-businesses|handle-control-update|record-to-link-not-found',
+            { record, control: keyProperties[keyProperty], params },
+            'error',
+          );
           throw new Error(`Trying update linked record, but record to link not found. Record to link: ${JSON.stringify(params)}`);
         }
       }
@@ -1261,11 +1184,7 @@ export class RegisterBusiness extends Business {
   async handleControlsCreate(record) {
     // Get key schema properties.
     await this.prepareData();
-    const {
-      schema: {
-        properties: keyProperties = {}
-      } = {}
-    } = this.keys.find(v => v.id === record.keyId);
+    const { schema: { properties: keyProperties = {} } = {} } = this.keys.find((v) => v.id === record.keyId);
 
     // Handle controls.
     for (const keyProperty in keyProperties) {
@@ -1285,7 +1204,7 @@ export class RegisterBusiness extends Business {
 
         // Get linked record list key info.
         await this.prepareData();
-        const linkedKeyInfo = this.keys.find(v => v.id === linkKeyId);
+        const linkedKeyInfo = this.keys.find((v) => v.id === linkKeyId);
 
         // Get needed indexed column.
         // Define that toSearchSting function returning single element or array.
@@ -1309,14 +1228,18 @@ export class RegisterBusiness extends Business {
         const params = {
           register_id: linkedKeyInfo.registerId,
           key_id: linkKeyId,
-          search: (!linkIndex || linkIndex === 1) ? linkedIndex : undefined,
-          search_2: (linkIndex === 2) ? linkedIndex : undefined,
-          search_3: (linkIndex === 3) ? linkedIndex : undefined
+          search: !linkIndex || linkIndex === 1 ? linkedIndex : undefined,
+          search_2: linkIndex === 2 ? linkedIndex : undefined,
+          search_3: linkIndex === 3 ? linkedIndex : undefined,
         };
-        const linkedRecord = await this.registerService.getRecords(params);
+        const linkedRecord = await this.registerService.getRecords(withDefaultRecordsSort(params));
 
         if (!linkedRecord.data || !linkedRecord.data.length) {
-          global.log.save('register-businesses|handle-control-create|record-to-link-not-found', { record, control: keyProperties[keyProperty], params }, 'error');
+          getLog().save(
+            'register-businesses|handle-control-create|record-to-link-not-found',
+            { record, control: keyProperties[keyProperty], params },
+            'error',
+          );
           throw new Error(`Trying create linked record, but record to link not found. Record to link: ${JSON.stringify(params)}`);
         }
       }
@@ -1332,9 +1255,11 @@ export class RegisterBusiness extends Business {
    */
   checkKeyContainsAllowTokensOptionFields(keyId) {
     this.prepareData();
-    const { schema: { properties } } = this.keys.find(k => k.id === keyId);
+    const {
+      schema: { properties },
+    } = this.keys.find((k) => k.id === keyId);
     const propsWithAllowTokens = JSONPath('$..allowTokens', properties);
-    return propsWithAllowTokens.some(el => Array.isArray(el) && el.length > 0);
+    return propsWithAllowTokens.some((el) => Array.isArray(el) && el.length > 0);
   }
 
   /**
@@ -1356,10 +1281,7 @@ export class RegisterBusiness extends Business {
         continue;
       }
 
-      const {
-        userUnitsAccess,
-        accessConfigMethod
-      } = await this.getAccessConfig(userUnitIds, this.AccessMethod[methodKey], false);
+      const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod[methodKey], false);
 
       const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId);
       if (!hasAccess) {
@@ -1378,7 +1300,7 @@ export class RegisterBusiness extends Business {
    * @returns {Promise<object>}
    */
   async getRollbackStatusWithDetails(rollbackId) {
-    return await this.registerService.getRollbackStatusWithDetails(rollbackId);
+    return await this.registerService.getRollbackStatus(rollbackId);
   }
 
   /**
@@ -1401,10 +1323,7 @@ export class RegisterBusiness extends Business {
         continue;
       }
 
-      const {
-        userUnitsAccess,
-        accessConfigMethod
-      } = await this.getAccessConfig(userUnitIds, this.AccessMethod[methodKey], false);
+      const { userUnitsAccess, accessConfigMethod } = await this.getAccessConfig(userUnitIds, this.AccessMethod[methodKey], false);
 
       const hasAccess = this.hasAccess(userUnitIds, userUnitsAccess, accessConfigMethod, keyId);
       if (!hasAccess) {
@@ -1438,4 +1357,3 @@ export class RegisterBusiness extends Business {
     return key.accessMode;
   }
 }
-

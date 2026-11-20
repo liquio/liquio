@@ -1,13 +1,16 @@
-import Multiconf from 'multiconf';
-import * as fs from 'node:fs';
+import { Config } from '@liquio/back-core';
 
-const config: any = {};
+import { setAppContext } from './context';
+import { buildTaskConfigSchema } from './config.schema';
+import type { TaskConfig } from './config.types';
+
+let config: TaskConfig | undefined;
 
 /**
  * Get config instance.
  * @returns {object} Config object.
  */
-export function getConfig() {
+export function getConfig(): TaskConfig {
   if (!config) {
     throw new Error('Config not loaded');
   }
@@ -17,10 +20,10 @@ export function getConfig() {
 /**
  * Load config.
  * @param {string} configPath Path to config directory.
+ * @returns {object} Config object.
  */
-export function loadConfig(configPath) {
-  const SECRET_PATH = process.env.SECRET_PATH;
-  const config = Multiconf.get([configPath, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], 'LIQUIO_BPMN_TASK_');
-  global.config = config;
+export function loadConfig(configPath: string): TaskConfig {
+  config = Config.load<TaskConfig>({ configPath, envPrefix: 'LIQUIO_BPMN_TASK_', schema: buildTaskConfigSchema() }).toObject();
+  setAppContext({ config });
   return config;
 }

@@ -1,29 +1,26 @@
 // @ts-nocheck
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { EventEmitter } from 'node:events';
+
 import supertest from 'supertest';
-import * as portfinder from 'portfinder';
 import * as pg from 'pg';
 import amqp from 'amqplib';
 import nock from 'nock';
-import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { EventEmitter } from 'node:events';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
-import * as Multiconf from 'multiconf';
-import moment from 'moment';
+import { Config } from '@liquio/back-core';
 
-import { Db } from '../src/lib/db';
-import { Log } from '../src/lib/log';
-import { ConsoleLogProvider } from '../src/lib/log/providers/console';
-import { MessageQueue } from '../src/lib/message_queue';
-import { RouterService } from '../src/services/router';
-import { GatewayBusiness } from '../src/businesses/gateway';
+import { bootstrap } from '../src/bootstrap';
+import { getConfig, getDb } from '../src/lib/context';
 
 const debug = createDebug;
 
 // E2E tests are slow, so we increase the timeout.
-jest.setTimeout(30000);
+// Covers beforeAll hooks that boot testcontainers (slow on loaded CI runners), not just test bodies.
+jest.setTimeout(120000);
 
 // Mock the log module, so tests don't spam the console and can hook into specific saved entries.
 jest.mock('../src/lib/log', () => {
@@ -68,11 +65,11 @@ jest.mock('../src/lib/log', () => {
 
 // Mock the configuration module.
 const configOverride: any = {};
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config-templates/gateway';
+const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-templates/gateway');
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_GATEWAY';
 
 // Obtain the default configuration object.
-const defaultConfig = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
+const defaultConfig = Config.load({ configPath: CONFIG_PATH, secretPath: null, envPrefix: `${LIQUIO_CONFIG_PREFIX}_` }).toObject();
 
 export class TestApp {
   static pgContainer;
@@ -81,7 +78,7 @@ export class TestApp {
   config: any;
   log: any;
   routerService: any;
-  messageQueue: any;
+  messageBus: any;
   gatewayBusiness: any;
   testAmqpConnection: any;
   testAmqpChannel: any;
@@ -90,7 +87,7 @@ export class TestApp {
     this.config = null;
     this.log = null;
     this.routerService = null;
-    this.messageQueue = null;
+    this.messageBus = null;
     this.gatewayBusiness = null;
     this.testAmqpConnection = null;
     this.testAmqpChannel = null;
@@ -103,17 +100,18 @@ export class TestApp {
     return app;
   }
 
+  static readonly MONITORING_TOKEN = 'test-monitoring-token';
+
   // Run this before all tests.
   static async beforeAll() {
     nock.restore();
 
     configOverride.server = {
       ...defaultConfig.server,
-      hostname: 'localhost',
-      port: await portfinder.getPortPromise({
-        host: 'localhost',
-        startPort: 60000 + (process.pid % 1000),
-      }),
+      monitoring: { isEnabled: true, token: TestApp.MONITORING_TOKEN },
+      // Bind explicitly to IPv4 loopback; port 0 lets the OS pick a free port atomically at listen time.
+      hostname: '127.0.0.1',
+      port: 0,
     };
 
     // Redis isn't exercised by the controllers/business under test.
@@ -154,7 +152,10 @@ export class TestApp {
     await TestApp.applyMigrations(configOverride.db);
 
     // Start RabbitMQ container.
-    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management').start();
+    this.rabbitmqContainer = await new RabbitMQContainer('rabbitmq:3-management')
+      // RabbitMQ boots slowly on loaded CI runners; the testcontainers default (30s) is too tight.
+      .withStartupTimeout(120000)
+      .start();
 
     configOverride.message_queue = {
       ...defaultConfig.message_queue,
@@ -195,39 +196,18 @@ export class TestApp {
     // Merge config with overrides.
     const config = { ...defaultConfig, ...configOverride };
     this.config = config;
-    global.config = config;
 
-    global.redisClient = null;
-
-    // Init log.
-    const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, { excludeParams: config.log.excludeParams });
-    const log = new Log([consoleLogProvider], ['console']);
+    const { log, gatewayBusiness, messageBus, routerService } = await bootstrap(config);
     this.log = log;
-    global.log = log;
-
-    // Save moment global to use in eval, mirroring src/index.ts's boot sequence.
-    global.moment = moment;
-
-    global.db = await Db.getInstance(config.db);
-
-    // Init gateway business.
-    this.gatewayBusiness = new GatewayBusiness();
-    await this.gatewayBusiness.init();
-
-    // Init message queue, mirroring src/index.ts's boot sequence.
-    this.messageQueue = new MessageQueue(config.message_queue, {
-      onInit: () => {
-        this.messageQueue.subscribeToConsuming(this.gatewayBusiness.createFromMessage.bind(this.gatewayBusiness));
-      },
-    });
-    await this.messageQueue.init();
-    global.messageQueue = this.messageQueue;
+    this.gatewayBusiness = gatewayBusiness;
+    this.messageBus = messageBus;
+    this.routerService = routerService;
   }
 
   async listen() {
-    // Init router.
-    this.routerService = new RouterService(this.config);
-    await this.routerService.init();
+    // Router is started by bootstrap; store the real port assigned by the OS, so request() and anything reading config can reach the server.
+    const { port } = this.routerService.httpServer.address();
+    this.config.server.port = port;
   }
 
   // Run this before each test.
@@ -251,7 +231,7 @@ export class TestApp {
 
   // Obtain a client instance to interact with the application.
   request() {
-    const address = `http://${global.config.server.hostname}:${global.config.server.port}`;
+    const address = `http://${getConfig().server.hostname}:${getConfig().server.port}`;
     return supertest(address);
   }
 
@@ -298,6 +278,18 @@ export class TestApp {
     });
   }
 
+  // Count the messages left on a queue (ready; unacked ones return to ready once the consumer connection is closed).
+  async countQueueMessages(queueName: string): Promise<number> {
+    const connection = await this.getTestConnection();
+    const channel = await connection.createChannel();
+    try {
+      const { messageCount } = await channel.checkQueue(queueName);
+      return messageCount;
+    } finally {
+      await channel.close().catch(() => undefined);
+    }
+  }
+
   // Destroy the application.
   async destroy() {
     if (this.testAmqpChannel) {
@@ -306,14 +298,18 @@ export class TestApp {
     if (this.testAmqpConnection) {
       await this.testAmqpConnection.close();
     }
-    if (this.messageQueue) {
-      await this.messageQueue.close();
+    if (this.messageBus) {
+      await this.messageBus.close();
     }
-    if (global.db) {
-      await global.db.close();
+    if (getDb()) {
+      await getDb().close();
     }
     if (this.routerService?.httpServer) {
-      this.routerService.httpServer.close();
+      const server = this.routerService.httpServer;
+      await new Promise((resolve) => {
+        server.close(() => resolve(undefined));
+        server.closeAllConnections?.();
+      });
     }
   }
 }

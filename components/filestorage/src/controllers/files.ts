@@ -8,10 +8,17 @@ import { P7sSignatureEntity } from '../entities/p7s_signature';
 import { FileModel } from '../models/file';
 import { SignatureModel } from '../models/signature';
 import { P7sSignatureModel } from '../models/p7s_signature';
-import { Stream } from '../lib/stream';
+import { Stream, PayloadTooLargeError } from '../lib/stream';
 import { FileHash } from '../lib/file_hash';
 import { Preview } from '../lib/preview';
 import { AsicManifest } from '../lib/asicmanifest';
+import { Helpers } from '../lib/helpers';
+import { getLog } from '../lib/context';
+
+const DEFAULT_MAX_UPLOAD_SIZE = 100 * 1024 * 1024;
+const DEFAULT_ARCHIVE_MAX_ENTRIES = 1000;
+const DEFAULT_ARCHIVE_MAX_RATIO = 100;
+const DEFAULT_ZIP_MAX_FILES = 100;
 
 /**
  * Files controller.
@@ -67,7 +74,7 @@ export class FilesController extends Controller {
         filter,
       });
     } catch (error) {
-      global.log.save('get-files-error', { error: error && error.message });
+      getLog().save('get-files-error', { error: error && error.message });
     }
     const { data: files, meta } = filesModelResponse || {};
 
@@ -89,7 +96,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findInfoById(id);
     } catch (error) {
-      global.log.save('get-file-main-info-by-id-error', { error: error && error.message });
+      getLog().save('get-file-main-info-by-id-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -116,7 +123,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findById(id);
     } catch (error) {
-      global.log.save('get-file-by-id-error', { error: error && error.message });
+      getLog().save('get-file-by-id-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -143,7 +150,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findWithoutDataById(id);
     } catch (error) {
-      global.log.save('get-file-by-id-error', { error: error && error.message });
+      getLog().save('get-file-by-id-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -166,8 +173,14 @@ export class FilesController extends Controller {
    */
   async downloadZip(req, res) {
     // Define params.
-    const { ids } = req.params;
-    const filesIds = ids.split(',');
+    let filesIds;
+    try {
+      filesIds = Helpers.parseIds(req.params.ids, this.getArchiveLimits().maxZipFiles);
+    } catch (error) {
+      return this.responseError(res, error, error.status || 400);
+    }
+    const { maxZipBytes } = this.getArchiveLimits();
+    let totalBytes = 0;
 
     // Define ZIP.
     const zip = new AdmZip();
@@ -180,7 +193,7 @@ export class FilesController extends Controller {
       try {
         fileModelResponse = await this.fileModel.findById(id);
       } catch (error) {
-        global.log.save('get-file-by-id-error', { error: error && error.message });
+        getLog().save('get-file-by-id-error', { error: error && error.message });
       }
       const { data: file } = fileModelResponse || {};
 
@@ -189,8 +202,15 @@ export class FilesController extends Controller {
         return this.responseError(res, 'Not found.', 404);
       }
 
+      // Check total size.
+      totalBytes += file.data?.length || 0;
+      if (totalBytes > maxZipBytes) {
+        getLog().save('zip-too-large', { limit: maxZipBytes });
+        return this.responseError(res, 'Payload too large.', 413);
+      }
+
       // Add file to ZIP archive.
-      zip.addFile(`${iterator}-${file.name}`, Buffer.from(file.data), file.contentType);
+      zip.addFile(`${iterator}-${Helpers.safeEntryName(file.name)}`, Buffer.from(file.data), file.contentType);
       iterator++;
     }
 
@@ -199,6 +219,50 @@ export class FilesController extends Controller {
 
     // Response.
     this.responseFile(res, zipContent, 'application/zip');
+  }
+
+  /**
+   * Get max upload size in bytes.
+   * @returns {number}
+   */
+  getMaxUploadSize(): number {
+    const value = Number(this.config?.server?.maxUploadSize);
+    return Number.isFinite(value) && value > 0 ? value : DEFAULT_MAX_UPLOAD_SIZE;
+  }
+
+  /**
+   * Get archive unpacking limits.
+   * @returns {{maxEntries: number, maxEntrySize: number, maxTotalSize: number, maxRatio: number, maxZipFiles: number, maxZipBytes: number}}
+   */
+  getArchiveLimits() {
+    const maxUploadSize = this.getMaxUploadSize();
+    const { archive = {} } = this.config?.server || {};
+    const pick = (value, fallback) => (Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback);
+    return {
+      maxEntries: pick(archive.maxEntries, DEFAULT_ARCHIVE_MAX_ENTRIES),
+      maxEntrySize: pick(archive.maxEntrySize, maxUploadSize),
+      maxTotalSize: pick(archive.maxTotalSize, maxUploadSize * 2),
+      maxRatio: pick(archive.maxRatio, DEFAULT_ARCHIVE_MAX_RATIO),
+      maxZipFiles: pick(archive.maxZipFiles, DEFAULT_ZIP_MAX_FILES),
+      maxZipBytes: pick(archive.maxZipBytes, maxUploadSize * 2),
+    };
+  }
+
+  /**
+   * Respond to a request body read error.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   * @param {Error} error Error.
+   */
+  responseReadError(req, res, error) {
+    if (error instanceof PayloadTooLargeError) {
+      getLog().save('upload-too-large', { limit: this.getMaxUploadSize() });
+      res.setHeader('Connection', 'close');
+      res.on('finish', () => req.destroy());
+      return this.responseError(res, 'Payload too large.', 413);
+    }
+    getLog().save('upload-read-error', { error: error && error.message });
+    return this.responseError(res, 'Can not read request body.', 400);
   }
 
   /**
@@ -221,16 +285,15 @@ export class FilesController extends Controller {
 
     // Read from stream.
     let archiveContentBuffer;
-    const chunks: any[] = [];
-    req.on('data', (data) => chunks.push(data));
-    req.on('end', () => {
-      archiveContentBuffer = Buffer.concat(chunks);
-    });
-    await Stream.waitEndEvent(req);
+    try {
+      archiveContentBuffer = await Stream.readWithLimit(req, this.getMaxUploadSize());
+    } catch (error) {
+      return this.responseReadError(req, res, error);
+    }
 
     // Check size.
     if (archiveContentBuffer.length === 0) {
-      global.log.save('upload-empty-file');
+      getLog().save('upload-empty-file');
       return this.responseError(res, 'Can not upload empty file.', 400);
     }
 
@@ -239,7 +302,7 @@ export class FilesController extends Controller {
     try {
       zip = new AdmZip(archiveContentBuffer);
     } catch (error) {
-      global.log.save('parse-archive-error', { error: error && error.message });
+      getLog().save('parse-archive-error', { error: error && error.message });
       return this.responseError(res, 'Can not parse archive.', 400);
     }
 
@@ -247,19 +310,42 @@ export class FilesController extends Controller {
     const zipEntries = zip.getEntries();
     const files = [];
 
+    // Check archive limits using declared header sizes, before any entry is decompressed.
+    const limits = this.getArchiveLimits();
+    if (zipEntries.length > limits.maxEntries) {
+      getLog().save('archive-too-many-entries', { count: zipEntries.length });
+      return this.responseError(res, 'Archive contains too many entries.', 413);
+    }
+    let totalSize = 0;
+    for (const zipEntry of zipEntries) {
+      if (zipEntry.isDirectory) {
+        continue;
+      }
+      const { size, compressedSize } = zipEntry.header;
+      totalSize += size;
+      if (size > limits.maxEntrySize || totalSize > limits.maxTotalSize) {
+        getLog().save('archive-too-large', { name: zipEntry.entryName, size, totalSize });
+        return this.responseError(res, 'Archive content is too large.', 413);
+      }
+      if (size > 0 && size / Math.max(compressedSize, 1) > limits.maxRatio) {
+        getLog().save('archive-ratio-too-high', { name: zipEntry.entryName, size, compressedSize });
+        return this.responseError(res, 'Archive compression ratio is too high.', 413);
+      }
+    }
+
     for (const zipEntry of zipEntries) {
       if (zipEntry.isDirectory) {
         continue;
       }
 
-      const name = zipEntry.entryName;
+      const name = Helpers.sanitizeFileName(zipEntry.entryName);
       const content = zipEntry.getData();
       const contentType = mime.lookup(name) || 'application/octet-stream';
       const contentLength = content.length;
 
       // Check size.
       if (content.length === 0) {
-        global.log.save('upload-empty-file', { name });
+        getLog().save('upload-empty-file', { name });
         return this.responseError(res, 'Can not upload empty file.', 400);
       }
 
@@ -283,7 +369,7 @@ export class FilesController extends Controller {
           user: req.auth.user,
         });
       } catch (error) {
-        global.log.save('upload-file-error', { error: error && error.message });
+        getLog().save('upload-file-error', { error: error && error.message });
       }
       const { data: file } = fileModelResponse || {};
 
@@ -322,18 +408,21 @@ export class FilesController extends Controller {
     let { 'content-length': contentLength } = req.headers;
     const { user } = req.auth;
 
+    if (typeof name === 'string' && name) {
+      name = Helpers.sanitizeFileName(name);
+    }
+
     if (isSetExtension === 'true') {
       name += `.${mime.extension(contentType)}`;
     }
 
     // Read from stream.
     let fileContentBuffer;
-    const chunks: any[] = [];
-    req.on('data', (data) => chunks.push(data));
-    req.on('end', () => {
-      fileContentBuffer = Buffer.concat(chunks);
-    });
-    await Stream.waitEndEvent(req);
+    try {
+      fileContentBuffer = await Stream.readWithLimit(req, this.getMaxUploadSize());
+    } catch (error) {
+      return this.responseReadError(req, res, error);
+    }
 
     if (!contentLength) {
       contentLength = fileContentBuffer.length;
@@ -341,7 +430,7 @@ export class FilesController extends Controller {
 
     // Check size.
     if (fileContentBuffer.length === 0) {
-      global.log.save('upload-empty-file', { name });
+      getLog().save('upload-empty-file', { name });
       return this.responseError(res, 'Can not upload empty file.', 400);
     }
 
@@ -355,7 +444,7 @@ export class FilesController extends Controller {
       try {
         previewContent = await this.preview.getPreview(fileContentBuffer, name);
       } catch (error) {
-        global.log.save('preview-generating-error', { name, containerId, error: error && error.message });
+        getLog().save('preview-generating-error', { name, containerId, error: error && error.message });
         previewContent = undefined;
       }
     }
@@ -376,7 +465,7 @@ export class FilesController extends Controller {
         user,
       });
     } catch (error) {
-      global.log.save('upload-file-error', { error: error && error.message });
+      getLog().save('upload-file-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -397,15 +486,22 @@ export class FilesController extends Controller {
   async update(req, res) {
     // Define params.
     const { id } = req.params;
-    const { name, description, containerId, meta } = req.body;
+    const { description, containerId, meta } = req.body;
+    let { name } = req.body;
     const { user } = req.auth;
+
+    // Sanitize the name the same way as on create (silent cleaning).
+    if (typeof name !== 'undefined') {
+      if (typeof name !== 'string') return this.responseError(res, 'Name should be a string.', 400);
+      name = Helpers.sanitizeFileName(name);
+    }
 
     // Update file.
     let fileModelResponse;
     try {
       fileModelResponse = await this.fileModel.update(id, { name, description, containerId, meta, user });
     } catch (error) {
-      global.log.save('update-file-error', { error: error && error.message });
+      getLog().save('update-file-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -432,7 +528,7 @@ export class FilesController extends Controller {
     try {
       deletedRowsCountModelResponse = await this.fileModel.delete(id);
     } catch (error) {
-      global.log.save('delete-file-error', { error: error && error.message });
+      getLog().save('delete-file-error', { error: error && error.message });
     }
     const { data: deletedRowsCount } = deletedRowsCountModelResponse || {};
 
@@ -453,13 +549,14 @@ export class FilesController extends Controller {
   async copy(req, res) {
     // Define params.
     const { id } = req.params;
+    const { user } = req.auth;
 
     // Copy file.
     let fileCopyModelResponse;
     try {
-      fileCopyModelResponse = await this.fileModel.copy(id);
+      fileCopyModelResponse = await this.fileModel.copy(id, user);
     } catch (error) {
-      global.log.save('copy-file-error', { error: error && error.message });
+      getLog().save('copy-file-error', { error: error && error.message });
     }
     const { data: fileCopy } = fileCopyModelResponse || {};
 
@@ -487,7 +584,7 @@ export class FilesController extends Controller {
     try {
       signaturesModelResponse = await this.p7sSignatureModel.findByFileId(fileId);
     } catch (error) {
-      global.log.save('get-p7s-signatures-error', { error: error && error.message });
+      getLog().save('get-p7s-signatures-error', { error: error && error.message });
       return this.responseError(res, 'Get P7S signature error.');
     }
     const { data: p7sSignature } = signaturesModelResponse || {};
@@ -513,7 +610,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findInfoById(fileId);
     } catch (error) {
-      global.log.save('get-file-main-info-by-id-error', { error: error && error.message });
+      getLog().save('get-file-main-info-by-id-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
     const { name: fileName } = file;
@@ -569,7 +666,7 @@ export class FilesController extends Controller {
       try {
         fileModelResponse = await this.fileModel.findWithoutDataById(id);
       } catch (error) {
-        global.log.save('get-file-by-id-error', { error: error && error.message });
+        getLog().save('get-file-by-id-error', { error: error && error.message });
       }
       const { data: file } = fileModelResponse || {};
 
@@ -606,7 +703,7 @@ export class FilesController extends Controller {
         user,
       });
     } catch (error) {
-      global.log.save('save-generated-manifest-file-error', { error: error && error.message });
+      getLog().save('save-generated-manifest-file-error', { error: error && error.message });
     }
     const { data: file } = fileModelResponse || {};
 
@@ -626,7 +723,15 @@ export class FilesController extends Controller {
    */
   async createAsice(req, res) {
     // Define params.
-    const { manifestFileId, filesIds } = req.body;
+    const { manifestFileId } = req.body;
+    let filesIds;
+    try {
+      filesIds = Helpers.parseIds(req.body.filesIds, this.getArchiveLimits().maxZipFiles);
+    } catch (error) {
+      return this.responseError(res, error, error.status || 400);
+    }
+    const { maxZipBytes } = this.getArchiveLimits();
+    let totalBytes = 0;
 
     // Define ZIP.
     const zip = new AdmZip();
@@ -642,7 +747,7 @@ export class FilesController extends Controller {
     try {
       manifestFileModelResponse = await this.fileModel.findById(manifestFileId);
     } catch (error) {
-      global.log.save('get-file-by-id-error', { error: error && error.message });
+      getLog().save('get-file-by-id-error', { error: error && error.message });
     }
     const { data: manifestFile } = manifestFileModelResponse || {};
 
@@ -651,15 +756,17 @@ export class FilesController extends Controller {
       return this.responseError(res, 'Manifest file not found.', 404);
     }
 
+    totalBytes += manifestFile.data?.length || 0;
+
     // Add manifest file to ZIP archive.
-    zip.addFile(`META-INF/${translit(manifestFile.name)}`, Buffer.from(manifestFile.data));
+    zip.addFile(`META-INF/${Helpers.safeEntryName(translit(manifestFile.name))}`, Buffer.from(manifestFile.data));
 
     // Add data from manifest as separate JSON file.
     let dataObjectBase64String;
     try {
       dataObjectBase64String = await AsicManifest.getDataObjectValue(manifestFile.data);
-    } catch {
-      global.log.save('get-data-object-from-asic-manifest-error', { manifestFileId, manifestFile: manifestFile.data });
+    } catch (error) {
+      getLog().save('get-data-object-from-asic-manifest-error', { manifestFileId, error: error && error.message });
     }
     const dataObjectJsonString = Buffer.from(dataObjectBase64String || '', 'base64').toString('utf8');
     zip.addFile('data.json', Buffer.from(dataObjectJsonString));
@@ -669,7 +776,7 @@ export class FilesController extends Controller {
     try {
       manifestSignaturesModelResponse = await this.p7sSignatureModel.findByFileId(manifestFileId);
     } catch (error) {
-      global.log.save('get-manifest-file-p7s-signatures-error', { error: error && error.message });
+      getLog().save('get-manifest-file-p7s-signatures-error', { error: error && error.message });
     }
     const { data: manifestP7sSignature } = manifestSignaturesModelResponse || {};
 
@@ -685,7 +792,7 @@ export class FilesController extends Controller {
       try {
         fileModelResponse = await this.fileModel.findById(fileId);
       } catch (error) {
-        global.log.save('get-file-by-id-error', { error: error && error.message });
+        getLog().save('get-file-by-id-error', { error: error && error.message });
       }
       const { data: file } = fileModelResponse || {};
 
@@ -694,21 +801,28 @@ export class FilesController extends Controller {
         return this.responseError(res, 'File not found.', 404);
       }
 
+      // Check total size.
+      totalBytes += file.data?.length || 0;
+      if (totalBytes > maxZipBytes) {
+        getLog().save('zip-too-large', { limit: maxZipBytes });
+        return this.responseError(res, 'Payload too large.', 413);
+      }
+
       // Add file to ZIP archive.
-      zip.addFile(`${translit(file.name)}`, Buffer.from(file.data));
+      zip.addFile(Helpers.safeEntryName(translit(file.name)), Buffer.from(file.data));
 
       // Get file P7S signatures.
       let signaturesModelResponse;
       try {
         signaturesModelResponse = await this.p7sSignatureModel.findByFileId(fileId);
       } catch (error) {
-        global.log.save('get-file-p7s-signatures-error', { error: error && error.message });
+        getLog().save('get-file-p7s-signatures-error', { error: error && error.message });
       }
       const { data: p7sSignature } = signaturesModelResponse || {};
 
       // Add file signature to ZIP archive if exists.
       if (p7sSignature) {
-        zip.addFile(`${translit(file.name)}.p7s`, Buffer.from(p7sSignature.p7s));
+        zip.addFile(`${Helpers.safeEntryName(translit(file.name))}.p7s`, Buffer.from(p7sSignature.p7s));
       }
     }
 
@@ -733,7 +847,7 @@ export class FilesController extends Controller {
     try {
       fileModelResponse = await this.fileModel.findById(fileId);
     } catch (error) {
-      global.log.save('get-file-by-id-error', { error: error && error.message });
+      getLog().save('get-file-by-id-error', { error: error && error.message });
     }
     const { data: fileInfo } = fileModelResponse || {};
 
@@ -743,16 +857,20 @@ export class FilesController extends Controller {
     }
 
     // Prepare file data.
-    const { name: fileName, data: fileBuffer } = fileInfo;
+    const { data: fileBuffer } = fileInfo;
+    const fileName = Helpers.sanitizeFileName(fileInfo.name);
 
     // Get signature.
     let signaturesModelResponse;
     try {
       signaturesModelResponse = await this.signatureModel.getAll({ limit: 1, filter: { file_id: fileId } });
     } catch (error) {
-      global.log.save('get-signatures-error', { error: error && error.message });
+      getLog().save('get-signatures-error', { error: error && error.message });
     }
     const { data: signatures } = signaturesModelResponse || {};
+    if (!Array.isArray(signatures)) {
+      return this.responseError(res, 'Can not get file signatures.', 400);
+    }
     const [signatureInfo] = signatures;
 
     // Check signature.
@@ -775,7 +893,8 @@ export class FilesController extends Controller {
     metaDirectory.file('signature.p7s', signatureBuffer);
     const zipReadStream = zip.generateNodeStream({ type: 'nodebuffer' });
 
-    // Response.
+    // Response. The signature is packaged as stored, it is NOT verified against the file here.
+    res.set('X-Signature-Verified', 'false');
     this.responseFile(res, zipReadStream, 'application/zip', undefined, asicsName);
   }
 
@@ -793,7 +912,7 @@ export class FilesController extends Controller {
     try {
       fileWithP7sMeta = await this.p7sSignatureModel.getP7sMetadataByFileIds(fileIds);
     } catch (error) {
-      global.log.save('get-p7s-by-file-ids-error', { error: error && error.message });
+      getLog().save('get-p7s-by-file-ids-error', { error: error && error.message });
       return this.responseError(res, 'Get P7S by file ids error.');
     }
     const fileWithP7sMetaString = JSON.stringify(fileWithP7sMeta);

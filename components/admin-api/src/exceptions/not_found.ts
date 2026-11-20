@@ -2,6 +2,7 @@ const DEFAULT_MESSAGE = 'Not found.';
 
 export class NotFoundError extends Error {
   httpStatusCode: number;
+  isPublic = true;
 
   constructor(message?: string) {
     super(message || DEFAULT_MESSAGE);

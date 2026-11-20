@@ -1,6 +1,8 @@
 import _ from 'lodash';
-import { Sandbox } from './sandbox';
+import { Sandbox } from '@liquio/back-core';
+
 import { InvalidSchemaError } from './errors';
+import { getConfig, getLog } from './context';
 
 // Constants.
 const REASSIGN_TRIGGER_ERROR = 'reassignTrigger error.';
@@ -31,7 +33,7 @@ export class Assigner {
       // Set params.
       this.taskModel = taskModel;
       this.unitModel = unitModel;
-      this.sandbox = new Sandbox();
+      this.sandbox = Sandbox.getInstance();
 
       // Init singleton.
       Assigner.singleton = this;
@@ -52,15 +54,7 @@ export class Assigner {
    * @param {TaskEntity.activityLog} taskActivityLog Task activity log.
    * @returns {Promise<{ids: string[], ipns: string[]}>} Calculated performer users (ID and IPN) promise.
    */
-  async calcPerformerUsers(
-    workflow,
-    documents,
-    events,
-    permissionDescription,
-    currentTaskPerformerUnitIds,
-    meta,
-    taskActivityLog
-  ) {
+  async calcPerformerUsers(workflow, documents, events, permissionDescription, currentTaskPerformerUnitIds, meta, taskActivityLog) {
     // Calculated performer users container.
     const performerUsers = [];
     const performerUsersIpn = [];
@@ -78,7 +72,7 @@ export class Assigner {
       performerUsersIsRandomHeadFromUnit,
       performerUsersIsRandomMemberFromUnit,
       performerUsersIsOptimalMemberFromUnit,
-      reassignTrigger
+      reassignTrigger,
     } = permissionDescription;
 
     // Use only reassign trigger if they defined.
@@ -86,13 +80,15 @@ export class Assigner {
       try {
         const userIdOrIds = this.sandbox.evalWithArgs(
           reassignTrigger.calcPerformerUsers,
-          [{
-            documents,
-            optionalProjectParams: global.config?.custom?.optionalProjectParams || {},
-            currentTaskPerformerUnitIds,
-            meta: meta,
-            taskActivityLog: _.cloneDeep(taskActivityLog)
-          }],
+          [
+            {
+              documents,
+              optionalProjectParams: getConfig()?.custom?.optionalProjectParams || {},
+              currentTaskPerformerUnitIds,
+              meta: meta,
+              taskActivityLog: _.cloneDeep(taskActivityLog),
+            },
+          ],
           { meta: { fn: 'calcPerformerUsers.calcPerformerUsers', workflowId: workflow.id } },
         );
 
@@ -102,13 +98,18 @@ export class Assigner {
         const userIds = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
         performerUsers.push(...userIds);
       } catch (error) {
-        global.log.save('task-permission-reassign-trigger-calc-users-error', { error: error && error.message, workflowId: workflow.id, permissionDescription, meta });
+        getLog().save('task-permission-reassign-trigger-calc-users-error', {
+          error: error && error.message,
+          workflowId: workflow.id,
+          permissionDescription,
+          meta,
+        });
         error.cause = REASSIGN_TRIGGER_ERROR;
         throw error;
       }
 
       // Normalize calculated performer users.
-      const definedPerformerUsers = performerUsers.filter(v => !!v);
+      const definedPerformerUsers = performerUsers.filter((v) => !!v);
       const normalizedPerformerUsers = [...new Set(definedPerformerUsers)];
 
       // Return calculated performer users (ID and IPN and Names lists).
@@ -118,30 +119,30 @@ export class Assigner {
     // Calc performer users.
     if (calcPerformerUsersFunction) {
       try {
-        const userIdOrIds = this.sandbox.evalWithArgs(
-          calcPerformerUsersFunction,
-          [documents, events],
-          { meta: { fn: 'calcPerformerUsers.calcPerformerUsers', workflowId: workflow.id } },
-        );
+        const userIdOrIds = this.sandbox.evalWithArgs(calcPerformerUsersFunction, [documents, events], {
+          meta: { fn: 'calcPerformerUsers.calcPerformerUsers', workflowId: workflow.id },
+        });
         const userIds = Array.isArray(userIdOrIds) ? userIdOrIds : [userIdOrIds];
         performerUsers.push(...userIds);
       } catch (error) {
-        global.log.save('task-permission-calc-users-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUsersFunction });
+        getLog().save('task-permission-calc-users-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUsersFunction });
       }
     }
 
     // Calc performer users IPN.
     if (calcPerformerUsersIpnFunction) {
       try {
-        const userIpnOrIpns = this.sandbox.evalWithArgs(
-          calcPerformerUsersIpnFunction,
-          [documents, events],
-          { meta: { fn: 'calcPerformerUsers.calcPerformerUsersIpn', workflowId: workflow.id } },
-        );
+        const userIpnOrIpns = this.sandbox.evalWithArgs(calcPerformerUsersIpnFunction, [documents, events], {
+          meta: { fn: 'calcPerformerUsers.calcPerformerUsersIpn', workflowId: workflow.id },
+        });
         const userIpns = Array.isArray(userIpnOrIpns) ? userIpnOrIpns : [userIpnOrIpns];
         performerUsersIpn.push(...userIpns);
       } catch (error) {
-        global.log.save('task-permission-calc-users-ipn-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUsersFunction });
+        getLog().save('task-permission-calc-users-ipn-error', {
+          error: error && error.message,
+          workflowId: workflow.id,
+          calcPerformerUsersFunction,
+        });
       }
     }
 
@@ -152,22 +153,28 @@ export class Assigner {
         const userEmails = Array.isArray(userEmailOrEmails) ? userEmailOrEmails : [userEmailOrEmails];
         performerUsersEmail.push(...userEmails);
       } catch (error) {
-        global.log.save('task-permission-calc-users-email-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUsersFunction });
+        getLog().save('task-permission-calc-users-email-error', {
+          error: error && error.message,
+          workflowId: workflow.id,
+          calcPerformerUsersFunction,
+        });
       }
     }
 
     // Calc performer users name.
     if (calcPerformerUsersNameFunction) {
       try {
-        const userNameOrNames = this.sandbox.evalWithArgs(
-          calcPerformerUsersNameFunction,
-          [documents, events],
-          { meta: { fn: 'calcPerformerUsers.calcPerformerUsersName', workflowId: workflow.id } },
-        );
+        const userNameOrNames = this.sandbox.evalWithArgs(calcPerformerUsersNameFunction, [documents, events], {
+          meta: { fn: 'calcPerformerUsers.calcPerformerUsersName', workflowId: workflow.id },
+        });
         const userNames = Array.isArray(userNameOrNames) ? userNameOrNames : [userNameOrNames];
         performerUsersName.push(...userNames);
       } catch (error) {
-        global.log.save('task-permission-calc-users-ipn-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUsersFunction });
+        getLog().save('task-permission-calc-users-ipn-error', {
+          error: error && error.message,
+          workflowId: workflow.id,
+          calcPerformerUsersFunction,
+        });
       }
     }
 
@@ -189,11 +196,12 @@ export class Assigner {
 
     // Calc random head from unit.
     if (performerUsersIsRandomHeadFromUnit) {
-      const unitId = typeof performerUsersIsRandomHeadFromUnit === 'string' && this.sandbox.evalWithArgs(
-        performerUsersIsRandomHeadFromUnit,
-        [documents, events],
-        { checkArrow: true, meta: { fn: 'calcPerformerUsers.performerUsersIsRandomHeadFromUnit', workflowId: workflow.id } },
-      );
+      const unitId =
+        typeof performerUsersIsRandomHeadFromUnit === 'string' &&
+        this.sandbox.evalWithArgs(performerUsersIsRandomHeadFromUnit, [documents, events], {
+          checkArrow: true,
+          meta: { fn: 'calcPerformerUsers.performerUsersIsRandomHeadFromUnit', workflowId: workflow.id },
+        });
       const unit = await this.unitModel.findById(unitId);
       if (unitId && unit) {
         const { heads } = unit;
@@ -205,11 +213,12 @@ export class Assigner {
 
     // Calc random member from unit.
     if (performerUsersIsRandomMemberFromUnit) {
-      const unitId = typeof performerUsersIsRandomMemberFromUnit === 'string' && this.sandbox.evalWithArgs(
-        performerUsersIsRandomMemberFromUnit,
-        [documents, events],
-        { checkArrow: true, meta: { fn: 'calcPerformerUsers.performerUsersIsRandomMemberFromUnit', workflowId: workflow.id } },
-      );
+      const unitId =
+        typeof performerUsersIsRandomMemberFromUnit === 'string' &&
+        this.sandbox.evalWithArgs(performerUsersIsRandomMemberFromUnit, [documents, events], {
+          checkArrow: true,
+          meta: { fn: 'calcPerformerUsers.performerUsersIsRandomMemberFromUnit', workflowId: workflow.id },
+        });
       const unit = await this.unitModel.findById(unitId);
       if (unitId && unit) {
         const { members } = unit;
@@ -236,25 +245,25 @@ export class Assigner {
             optimalUserTasksCount = memberTasksCount;
           }
         }
-        global.log.save('optimal-assign', { workflowId: workflow.id, optimalUserId, optimalUserTasksCount, userTasksInfoToLog });
+        getLog().save('optimal-assign', { workflowId: workflow.id, optimalUserId, optimalUserTasksCount, userTasksInfoToLog });
         performerUsers.push(optimalUserId);
       }
     }
 
     // Normalize calculated performer users.
-    const definedPerformerUsers = performerUsers.filter(v => !!v);
+    const definedPerformerUsers = performerUsers.filter((v) => !!v);
     const normalizedPerformerUsers = [...new Set(definedPerformerUsers)];
 
     // Normalize calculated performer users IPN.
-    const definedPerformerUsersIpn = performerUsersIpn.filter(v => !!v);
+    const definedPerformerUsersIpn = performerUsersIpn.filter((v) => !!v);
     const normalizedPerformerUsersIpn = [...new Set(definedPerformerUsersIpn)];
 
     // Normalize calculated performer users email.
-    const definedPerformerUsersEmail = performerUsersEmail.filter(v => !!v);
+    const definedPerformerUsersEmail = performerUsersEmail.filter((v) => !!v);
     const normalizedPerformerUsersEmail = [...new Set(definedPerformerUsersEmail)];
 
     // Normalize calculated performer users name.
-    const definedPerformerUsersName = performerUsersName.filter(v => !!v);
+    const definedPerformerUsersName = performerUsersName.filter((v) => !!v);
     const normalizedPerformerUsersName = [...new Set(definedPerformerUsersName)];
 
     // Return calculated performer users (ID and IPN and Names lists).
@@ -279,17 +288,7 @@ export class Assigner {
    * @param {TaskEntity.activityLog} taskActivityLog Task activity log.
    * @returns {string[]} Calculated performer users.
    */
-  async calcPerformerUnits(
-    workflow,
-    documents,
-    permissionDescription,
-    user,
-    units,
-    events,
-    currentTaskPerformerUnitIds,
-    meta,
-    taskActivityLog
-  ) {
+  async calcPerformerUnits(workflow, documents, permissionDescription, user, units, events, currentTaskPerformerUnitIds, meta, taskActivityLog) {
     // Calculated performer users container.
     const performerUnits = [];
 
@@ -301,13 +300,15 @@ export class Assigner {
       try {
         const unitIdOrIds = this.sandbox.evalWithArgs(
           reassignTrigger?.calcPerformerUnits,
-          [{
-            documents,
-            optionalProjectParams: global.config?.custom?.optionalProjectParams || {},
-            currentTaskPerformerUnitIds,
-            meta: meta,
-            taskActivityLog: _.cloneDeep(taskActivityLog)
-          }],
+          [
+            {
+              documents,
+              optionalProjectParams: getConfig()?.custom?.optionalProjectParams || {},
+              currentTaskPerformerUnitIds,
+              meta: meta,
+              taskActivityLog: _.cloneDeep(taskActivityLog),
+            },
+          ],
           { meta: { fn: 'calcPerformerUnits.reassignTrigger.calcPerformerUnits', workflowId: workflow.id } },
         );
 
@@ -317,13 +318,18 @@ export class Assigner {
         const unitIds = Array.isArray(unitIdOrIds) ? unitIdOrIds : [unitIdOrIds];
         performerUnits.push(...unitIds);
       } catch (error) {
-        global.log.save('task-permission-reassign-trigger-calc-units-error', { error: error.toString(), workflowId: workflow.id, permissionDescription, meta });
+        getLog().save('task-permission-reassign-trigger-calc-units-error', {
+          error: error.toString(),
+          workflowId: workflow.id,
+          permissionDescription,
+          meta,
+        });
         error.cause = REASSIGN_TRIGGER_ERROR;
         throw error;
       }
 
       // Normalize and return calculated performer units.
-      const definedPerformerUnits = performerUnits.filter(v => !!v);
+      const definedPerformerUnits = performerUnits.filter((v) => !!v);
       const normalizedPerformerUnits = [...new Set(definedPerformerUnits)];
       return normalizedPerformerUnits;
     }
@@ -331,20 +337,18 @@ export class Assigner {
     // Calc performer units.
     if (calcPerformerUnitsFunction) {
       try {
-        const unitIdOrIds = this.sandbox.evalWithArgs(
-          calcPerformerUnitsFunction,
-          [documents, user, units, events],
-          { meta: { fn: 'calcPerformerUnits.calcPerformerUnits', workflowId: workflow.id } },
-        );
+        const unitIdOrIds = this.sandbox.evalWithArgs(calcPerformerUnitsFunction, [documents, user, units, events], {
+          meta: { fn: 'calcPerformerUnits.calcPerformerUnits', workflowId: workflow.id },
+        });
         const unitIds = Array.isArray(unitIdOrIds) ? unitIdOrIds : [unitIdOrIds];
         performerUnits.push(...unitIds);
       } catch (error) {
-        global.log.save('task-permission-calc-units-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUnitsFunction });
+        getLog().save('task-permission-calc-units-error', { error: error && error.message, workflowId: workflow.id, calcPerformerUnitsFunction });
       }
     }
 
     // Normalize and return calculated performer units.
-    const definedPerformerUnits = performerUnits.filter(v => !!v);
+    const definedPerformerUnits = performerUnits.filter((v) => !!v);
     const normalizedPerformerUnits = [...new Set(definedPerformerUnits)];
     return normalizedPerformerUnits;
   }
@@ -371,7 +375,7 @@ export class Assigner {
     events,
     currentTaskPerformerUnitIds,
     meta,
-    taskActivityLog
+    taskActivityLog,
   ) {
     // Calculated performer users container.
     const requiredPerformerUnits = [];
@@ -384,13 +388,15 @@ export class Assigner {
       try {
         const unitIdOrIds = this.sandbox.evalWithArgs(
           reassignTrigger?.calcRequiredPerformerUnits,
-          [{
-            documents,
-            optionalProjectParams: global.config?.custom?.optionalProjectParams || {},
-            currentTaskPerformerUnitIds,
-            meta: meta,
-            taskActivityLog: _.cloneDeep(taskActivityLog)
-          }],
+          [
+            {
+              documents,
+              optionalProjectParams: getConfig()?.custom?.optionalProjectParams || {},
+              currentTaskPerformerUnitIds,
+              meta: meta,
+              taskActivityLog: _.cloneDeep(taskActivityLog),
+            },
+          ],
           { meta: { fn: 'calcRequiredPerformerUnits.reassignTrigger.calcRequiredPerformerUnits', workflowId: workflow.id } },
         );
 
@@ -400,13 +406,18 @@ export class Assigner {
         const unitIds = Array.isArray(unitIdOrIds) ? unitIdOrIds : [unitIdOrIds];
         requiredPerformerUnits.push(...unitIds);
       } catch (error) {
-        global.log.save('task-permission-reassign-trigger-calc-units-error', { error: error.toString(), workflowId: workflow.id, permissionDescription, meta });
+        getLog().save('task-permission-reassign-trigger-calc-units-error', {
+          error: error.toString(),
+          workflowId: workflow.id,
+          permissionDescription,
+          meta,
+        });
         error.cause = REASSIGN_TRIGGER_ERROR;
         throw error;
       }
 
       // Normalize and return calculated performer units.
-      const definedRequiredPerformerUnits = requiredPerformerUnits.filter(v => !!v);
+      const definedRequiredPerformerUnits = requiredPerformerUnits.filter((v) => !!v);
       const normalizedRequiredPerformerUnits = [...new Set(definedRequiredPerformerUnits)];
       return normalizedRequiredPerformerUnits;
     }
@@ -414,20 +425,22 @@ export class Assigner {
     // Calc performer units.
     if (calcRequiredPerformerUnitsFunction) {
       try {
-        const unitIdOrIds = this.sandbox.evalWithArgs(
-          calcRequiredPerformerUnitsFunction,
-          [documents, user, units, events],
-          { meta: { fn: 'calcRequiredPerformerUnits.calcRequiredPerformerUnits', workflowId: workflow.id } },
-        );
+        const unitIdOrIds = this.sandbox.evalWithArgs(calcRequiredPerformerUnitsFunction, [documents, user, units, events], {
+          meta: { fn: 'calcRequiredPerformerUnits.calcRequiredPerformerUnits', workflowId: workflow.id },
+        });
         const unitIds = Array.isArray(unitIdOrIds) ? unitIdOrIds : [unitIdOrIds];
         requiredPerformerUnits.push(...unitIds);
       } catch (error) {
-        global.log.save('task-permission-calc-units-error', { error: error && error.message, workflowId: workflow.id, calcRequiredPerformerUnitsFunction });
+        getLog().save('task-permission-calc-units-error', {
+          error: error && error.message,
+          workflowId: workflow.id,
+          calcRequiredPerformerUnitsFunction,
+        });
       }
     }
 
     // Normalize and return calculated performer units.
-    const definedRequiredPerformerUnits = requiredPerformerUnits.filter(v => !!v);
+    const definedRequiredPerformerUnits = requiredPerformerUnits.filter((v) => !!v);
     const normalizedRequiredPerformerUnits = [...new Set(definedRequiredPerformerUnits)];
     return normalizedRequiredPerformerUnits;
   }
@@ -440,6 +453,4 @@ export class Assigner {
   getRandomInteger(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
-
 }
-

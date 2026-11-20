@@ -1,8 +1,8 @@
 import { AsyncLocalStorage } from 'async_hooks';
+import { randomUUID } from 'crypto';
 
 import { Global, MiddlewareConsumer, Module } from '@nestjs/common';
 import type { Request } from 'express';
-import { randomUUID } from 'crypto';
 
 import { LoggerService } from '@components/observability/logger.service';
 

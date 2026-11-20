@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -90,7 +89,7 @@ export class WorkflowEntity extends Entity {
     createdByUnits,
     observerUnits,
     isPersonal,
-    statuses
+    statuses,
   }) {
     super();
 
@@ -144,7 +143,7 @@ export class WorkflowEntity extends Entity {
       'createdByUnits',
       'observerUnits',
       'isPersonal',
-      'statuses'
+      'statuses',
     ];
   }
 
@@ -174,7 +173,7 @@ export class WorkflowEntity extends Entity {
       'createdByUnits',
       'observerUnits',
       'isPersonal',
-      'statuses'
+      'statuses',
     ];
   }
 
@@ -213,7 +212,7 @@ export class WorkflowEntity extends Entity {
    * @returns {boolean} Is performer indicator.
    */
   isCreatedByUnitHeads(units) {
-    return (this.createdByUnitHeads || []).some(v => units.includes(v));
+    return (this.createdByUnitHeads || []).some((v) => units.includes(v));
   }
 
   /**
@@ -222,7 +221,7 @@ export class WorkflowEntity extends Entity {
    * @returns {boolean} Is performer indicator.
    */
   isCreatedByUnits(units) {
-    return (this.createdByUnits || []).some(v => units.includes(v));
+    return (this.createdByUnits || []).some((v) => units.includes(v));
   }
 
   /**
@@ -231,7 +230,6 @@ export class WorkflowEntity extends Entity {
    * @returns {boolean} Is performer indicator.
    */
   isObserverUnits(units) {
-    return (this.observerUnits || []).some(v => units.includes(v));
+    return (this.observerUnits || []).some((v) => units.includes(v));
   }
 }
-

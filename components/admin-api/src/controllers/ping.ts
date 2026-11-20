@@ -1,8 +1,9 @@
+import { IdApiClient, getIdApiClient, RegisterApiClient, getRegisterApiClient } from '@liquio/back-core';
+
 import { Controller } from './controller';
-import { AuthService } from '../services/auth';
-import { RegisterService } from '../services/register';
 import { TaskService } from '../services/task';
 import { NotifierService } from '../services/notifier';
+import { getConfig, getLog } from '../lib/context';
 
 // Constants.
 const MESSAGE_PONG = 'pong';
@@ -20,8 +21,8 @@ const DEFAULT_ENVIRONMENT = '0';
 export class PingController extends Controller {
   private static singleton: PingController;
 
-  private auth: AuthService;
-  private registerService: RegisterService;
+  private idApiClient: IdApiClient;
+  private readonly registerService: RegisterApiClient;
   private taskService: TaskService;
   private notifyService: NotifierService;
 
@@ -33,8 +34,8 @@ export class PingController extends Controller {
     // Define singleton.
     if (!PingController.singleton) {
       super(config);
-      this.auth = new AuthService(config.auth);
-      this.registerService = new RegisterService();
+      this.idApiClient = getIdApiClient();
+      this.registerService = getRegisterApiClient();
       this.taskService = new TaskService();
       this.notifyService = new NotifierService();
       PingController.singleton = this;
@@ -43,11 +44,20 @@ export class PingController extends Controller {
   }
 
   /**
-   * Ping.
+   * Public liveness ping. Reveals nothing but the pong message.
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
   async ping(req, res) {
+    this.responseData(res, { message: MESSAGE_PONG });
+  }
+
+  /**
+   * Authenticated ping with optional downstream health check.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async pingWithAuth(req, res) {
     // Define query params.
     const healthCheck = req.query.health_check;
 
@@ -62,9 +72,9 @@ export class PingController extends Controller {
       // Check auth service.
       let authServiceResponse;
       try {
-        authServiceResponse = await this.auth.sendPingRequest();
+        authServiceResponse = await this.idApiClient.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-auth-service-error', { error: error && error.message });
+        getLog().save('test-ping-auth-service-error', { error: error && error.message });
       }
       const authPongMessage = authServiceResponse && authServiceResponse.body && authServiceResponse.body.message === MESSAGE_PONG ? true : false;
       const authWideCheckRes = this.wideCheck(authServiceResponse, AUTH_SERVICE_NAME, authPongMessage);
@@ -79,7 +89,7 @@ export class PingController extends Controller {
       try {
         registerServiceResponse = await this.registerService.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-register-service-error', { error: error && error.message });
+        getLog().save('test-ping-register-service-error', { error: error && error.message });
       }
       const registerPongMessage =
         registerServiceResponse &&
@@ -102,7 +112,7 @@ export class PingController extends Controller {
       try {
         taskServiceResponse = await this.taskService.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-bpmn-task-service-error', { error: error && error.message });
+        getLog().save('test-ping-bpmn-task-service-error', { error: error && error.message });
       }
       const taskPongMessage =
         taskServiceResponse && taskServiceResponse.body && taskServiceResponse.body.data && taskServiceResponse.body.data.message === MESSAGE_PONG
@@ -120,7 +130,7 @@ export class PingController extends Controller {
       try {
         notifyServiceResponse = await this.notifyService.sendPingRequest();
       } catch (error) {
-        global.log.save('test-ping-notify-service-error', { error: error && error.message });
+        getLog().save('test-ping-notify-service-error', { error: error && error.message });
       }
       const notifierPongMessage =
         notifyServiceResponse && notifyServiceResponse.body && notifyServiceResponse.body.message === MESSAGE_PONG ? true : false;
@@ -147,7 +157,7 @@ export class PingController extends Controller {
     try {
       responseData = await this.taskService.pingServices();
     } catch (error) {
-      global.log.save('test-ping-services-error', { error: error && error.message });
+      getLog().save('test-ping-services-error', { error: error && error.message });
     }
 
     this.responseData(res, responseData, true);
@@ -160,10 +170,10 @@ export class PingController extends Controller {
    * @param {string} serviceVersion Service version.
    */
   checkServiceVersion(serviceName, serviceVersion) {
-    const serviceVersionInfo = global.config.versions && global.config.versions.services.find((v) => v.name === serviceName);
+    const serviceVersionInfo = getConfig().versions && getConfig().versions.services.find((v) => v.name === serviceName);
     const serviceMinVersion = (serviceVersionInfo && serviceVersionInfo.minVersion) || DEFAULT_VERSION;
     if (!serviceMinVersion || !serviceVersion) {
-      global.log.save('can-not-find-service-min-version');
+      getLog().save('can-not-find-service-min-version');
       return false;
     }
 
@@ -202,7 +212,7 @@ export class PingController extends Controller {
   checkCustomer(partnerServiceCustomer) {
     const curentServiceCustomer = (this.config.server && this.config.server.customer) || DEFAULT_CUSTOMER;
     if (!partnerServiceCustomer || !curentServiceCustomer) {
-      global.log.save('ping-can-not-check-services-customer');
+      getLog().save('ping-can-not-check-services-customer');
       return false;
     }
     return curentServiceCustomer === partnerServiceCustomer;
@@ -216,7 +226,7 @@ export class PingController extends Controller {
   checkEnvironment(partnerServiceEnvironment) {
     const curentServiceEnvironment = (this.config.server && this.config.server.environment) || DEFAULT_ENVIRONMENT;
     if (!partnerServiceEnvironment || !curentServiceEnvironment) {
-      global.log.save('ping-can-not-check-services-environment');
+      getLog().save('ping-can-not-check-services-environment');
       return false;
     }
     return curentServiceEnvironment === partnerServiceEnvironment;

@@ -102,7 +102,7 @@
           "Auth"
         ],
         "summary": "Get data to sign",
-        "description": "Returns data to sign.",
+        "description": "Returns a single-use challenge to sign. The challenge is bound to the caller's session cookie and must be redeemed from the same session within its lifetime.",
         "produces": [
           "application/json"
         ],
@@ -130,16 +130,7 @@
           "Auth"
         ],
         "summary": "Check signed data.",
-        "description": "Returns sign info."
-      }
-    },
-    "/authorise/eds": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Auth user with EDS strategy.",
-        "description": "Auth user or redirect to registration."
+        "description": "Checks a signature over a challenge issued to the same session and returns signer info. The challenge is consumed on success."
       }
     },
     "/authorise/eds/serverList": {
@@ -226,7 +217,7 @@
         "tags": [
           "Sign in"
         ],
-        "summary": "Render sign in requirements page"
+        "summary": "Retired (410): phone verification requires an SMS code"
       }
     },
     "/sign_in/requirements_phone": {
@@ -242,7 +233,7 @@
         "tags": [
           "Sign in"
         ],
-        "summary": "Render sign in requirements page"
+        "summary": "Retired (410): phone verification requires an SMS code"
       }
     },
     "/sign_in/requirements_phone_set/confirm": {
@@ -250,7 +241,7 @@
         "tags": [
           "Sign in"
         ],
-        "summary": "Set phone is valid"
+        "summary": "Retired (410): phone verification requires an SMS code"
       }
     },
     "/relogin": {
@@ -444,7 +435,23 @@
         "tags": [
           "User"
         ],
-        "summary": "Set current user phone validation indicator"
+        "summary": "Retired (410): use POST /user/info/phone/confirm"
+      }
+    },
+    "/user/info/phone/send": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Send an SMS code bound to the current user and the given phone (body: phone)"
+      }
+    },
+    "/user/info/phone/confirm": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Verify the phone with the SMS code issued to the current user for that phone (body: phone, code)"
       }
     },
     "/removeConfirmCode": {

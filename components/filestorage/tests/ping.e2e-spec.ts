@@ -1,0 +1,103 @@
+import type { Response as SupertestResponse } from 'supertest';
+
+import { TestApp, TEST_AUTH_HEADER } from './test-app';
+
+describe('Test Controller', () => {
+  let app: TestApp;
+
+  beforeAll(async () => {
+    await TestApp.beforeAll();
+    app = await TestApp.setup();
+  });
+
+  afterAll(async () => {
+    await app?.destroy();
+    await TestApp.afterAll();
+  });
+
+  beforeEach(async () => {
+    await TestApp.beforeEach();
+  });
+
+  describe('GET /test/ping', () => {
+    it('should return only pong', async () => {
+      await app
+        .request()
+        .get('/test/ping')
+        .expect(200)
+        .expect((response: SupertestResponse) => {
+          expect(response.body.data).toEqual({ message: 'pong' });
+        });
+    });
+
+    it('should not require auth', async () => {
+      await app.request().get('/test/ping').expect(200);
+    });
+
+    it('should ignore health_check without auth and not reveal internal status', async () => {
+      await app
+        .request()
+        .get('/test/ping')
+        .query({ health_check: 'true' })
+        .expect(200)
+        .expect((response: SupertestResponse) => {
+          expect(response.body.data).toEqual({ message: 'pong' });
+        });
+    });
+  });
+
+  describe('GET /test/ping_with_auth', () => {
+    it('should require a valid basic auth token', async () => {
+      await app.request().get('/test/ping_with_auth').expect(401);
+    });
+
+    it('should return pong when a valid token is provided', async () => {
+      await app
+        .request()
+        .get('/test/ping_with_auth')
+        .set('Authorization', TEST_AUTH_HEADER)
+        .expect(200)
+        .expect((response: SupertestResponse) => {
+          expect(response.body.data).toHaveProperty('message', 'pong');
+          expect(typeof response.body.data.processPid).toBe('number');
+        });
+    });
+
+    it('should return 401 for health_check without auth', async () => {
+      await app.request().get('/test/ping_with_auth').query({ health_check: 'true' }).expect(401);
+    });
+
+    it('should tolerate the preview service being unreachable when health_check is requested with auth', async () => {
+      await app
+        .request()
+        .get('/test/ping_with_auth')
+        .query({ health_check: 'true' })
+        .set('Authorization', TEST_AUTH_HEADER)
+        .expect(200)
+        .expect((response: SupertestResponse) => {
+          expect(response.body.data).toHaveProperty('message', 'pong');
+          expect(response.body.data.previewServiceResponse).toBe(false);
+        });
+
+      const [, logData] = await app.log.waitForLog('test-ping-preview-service-error');
+      expect(logData.error).toBeDefined();
+    });
+  });
+
+  describe('GET /test/file_provider', () => {
+    it('should require a valid basic auth token', async () => {
+      await app.request().get('/test/file_provider').expect(401);
+    });
+
+    it('should return 404 without leaking details when OpenStack is not the active provider', async () => {
+      await app
+        .request()
+        .get('/test/file_provider')
+        .set('Authorization', TEST_AUTH_HEADER)
+        .expect(404)
+        .expect((response: SupertestResponse) => {
+          expect(response.body.error.message).toBe('Not found');
+        });
+    });
+  });
+});

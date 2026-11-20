@@ -1,13 +1,13 @@
 import crypto from 'node:crypto';
 
+import { getRegisterApiClient, RegisterApiClient } from '@liquio/back-core';
 import _ from 'lodash';
 import jp from 'jsonpath';
 import moment from 'moment';
 
 import { Exceptions } from '../exceptions';
 import { XmlJsConverter } from '../lib/xml_js_converter';
-import { RegisterService } from '../services/register';
-import { Sandbox } from '../lib/sandbox';
+import { isFunctionString } from '../lib/function_string';
 import { WorkflowTemplateEntity } from '../entities/workflow_template';
 import { WorkflowTemplateCategoryEntity } from '../entities/workflow_template_category';
 import { TaskTemplateEntity } from '../entities/task_template';
@@ -16,6 +16,9 @@ import { GatewayTemplateEntity } from '../entities/gateway_template';
 import { EventTemplateEntity } from '../entities/event_template';
 import { WorkflowHistoryEntity } from '../entities/workflow_history';
 import { NumberTemplateEntity } from '../entities/number_template';
+import { toLogUser } from '../lib/log_sanitize';
+import { PublicError } from '../lib/public_error';
+import { getConfig, getDb, getLog, getModels, getRedis } from '../lib/context';
 
 const DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS = 1800;
 
@@ -27,8 +30,7 @@ export class BpmnWorkflowBusiness {
 
   public config: any;
   private xmlJsConverter: XmlJsConverter;
-  private registerService: RegisterService;
-  private sandbox: Sandbox;
+  private readonly registerService: RegisterApiClient;
 
   /**
    * Constructor.
@@ -39,8 +41,7 @@ export class BpmnWorkflowBusiness {
     if (!BpmnWorkflowBusiness.singleton) {
       this.config = config;
       this.xmlJsConverter = new XmlJsConverter();
-      this.registerService = new RegisterService();
-      this.sandbox = new Sandbox();
+      this.registerService = getRegisterApiClient();
       BpmnWorkflowBusiness.singleton = this;
     }
 
@@ -99,7 +100,7 @@ export class BpmnWorkflowBusiness {
       typeof data.eventTemplates === 'undefined' ||
       !Array.isArray(data.eventTemplates)
     ) {
-      throw new Error('Invalid data.');
+      throw new PublicError('Invalid data.');
     }
 
     // Disable to import errors subscribers.
@@ -107,37 +108,34 @@ export class BpmnWorkflowBusiness {
       delete data.workflowTemplate.errorsSubscribers;
     }
 
-    if ((await global.models.workflowTemplate.findById(data.workflowTemplate.id)) && force === false) {
+    if ((await getModels().workflowTemplate.findById(data.workflowTemplate.id)) && force === false) {
       throw new Exceptions.COMMITED(Exceptions.COMMITED.Messages.WORKFLOW);
     }
 
-    const bpmnWorkflowTransaction = await global.db.transaction();
+    const bpmnWorkflowTransaction = await getDb().transaction();
 
     try {
       let registerErrors = [];
-      let registerKeys = await this.registerService.getKeys({ limit: global.config.register.limit });
-      registerKeys = (registerKeys.data && registerKeys.data.map((v) => v.id)) || [];
+      const registerKeysResponse = await this.registerService.getKeys({ limit: getConfig().register.limit });
+      const registerKeys: any[] = (registerKeysResponse.data && registerKeysResponse.data.map((v) => v.id)) || [];
 
       // Import workflow template category.
       if (data.workflowTemplateCategory) {
-        global.log.save('import|workflow-template-category', { user, data: data.workflowTemplateCategory });
-        await global.models.workflowTemplateCategory.create(
-          new WorkflowTemplateCategoryEntity(data.workflowTemplateCategory),
-          bpmnWorkflowTransaction,
-        );
+        getLog().save('import|workflow-template-category', { user: toLogUser(user), data: data.workflowTemplateCategory });
+        await getModels().workflowTemplateCategory.create(new WorkflowTemplateCategoryEntity(data.workflowTemplateCategory), bpmnWorkflowTransaction);
       }
 
       if (data.numberTemplates && data.numberTemplates.length > 0) {
         for (const numberTemplate of data.numberTemplates) {
-          global.log.save('import|number-template', { user, id: numberTemplate.id });
-          await global.models.numberTemplate.create(new NumberTemplateEntity(numberTemplate), bpmnWorkflowTransaction);
+          getLog().save('import|number-template', { user: toLogUser(user), id: numberTemplate.id });
+          await getModels().numberTemplate.create(new NumberTemplateEntity(numberTemplate), bpmnWorkflowTransaction);
         }
       }
 
       // Import workflow template.
       let numberTemplateError;
       if (data.workflowTemplate.data && data.workflowTemplate.data.numberTemplateId) {
-        const numberTemplate = await global.models.numberTemplate.findById(data.workflowTemplate.data.numberTemplateId, bpmnWorkflowTransaction);
+        const numberTemplate = await getModels().numberTemplate.findById(data.workflowTemplate.data.numberTemplateId, bpmnWorkflowTransaction);
         if (!numberTemplate) {
           numberTemplateError = new Exceptions.WORKFLOW(
             `Number template ${data.workflowTemplate.data.numberTemplateId} doesn't exists but exists in workflow.`,
@@ -145,8 +143,8 @@ export class BpmnWorkflowBusiness {
         }
       }
 
-      global.log.save('import|workflow-template', { user, id: data.workflowTemplate.id });
-      await global.models.workflowTemplate.create(new WorkflowTemplateEntity(data.workflowTemplate), bpmnWorkflowTransaction);
+      getLog().save('import|workflow-template', { user: toLogUser(user), id: data.workflowTemplate.id });
+      await getModels().workflowTemplate.create(new WorkflowTemplateEntity(data.workflowTemplate), bpmnWorkflowTransaction);
 
       // Import document templates.
       for (const documentTemplate of data.documentTemplates) {
@@ -166,13 +164,7 @@ export class BpmnWorkflowBusiness {
         const registerControlsWithWhiteListInSchema = _.flattenDeep(jp.query(documentTemplate.jsonSchema, '$..[?(@.keyId && @.whiteList)]'));
         for (const { keyId = '', whiteList = [] } of registerControlsWithWhiteListInSchema) {
           const whiteListNumeric = whiteList.map((el) => parseInt(el));
-          let isKeyIdFunction = false;
-          try {
-            const keyIdEvalResult = this.sandbox.eval(keyId);
-            isKeyIdFunction = typeof keyIdEvalResult === 'function';
-          } catch {
-            // keyId is not a function
-          }
+          const isKeyIdFunction = isFunctionString(keyId);
 
           // keyId is a function string - "() => 123" AND register control has whiteList option
           if (isKeyIdFunction && whiteListNumeric.length > 0) {
@@ -187,8 +179,8 @@ export class BpmnWorkflowBusiness {
           }
         }
 
-        global.log.save('import|document-template', { user, id: documentTemplate.id });
-        await global.models.documentTemplate.create(new DocumentTemplateEntity(documentTemplate), bpmnWorkflowTransaction);
+        getLog().save('import|document-template', { user: toLogUser(user), id: documentTemplate.id });
+        await getModels().documentTemplate.create(new DocumentTemplateEntity(documentTemplate), bpmnWorkflowTransaction);
       }
 
       // Import task templates.
@@ -199,7 +191,7 @@ export class BpmnWorkflowBusiness {
           for (const permission of taskTemplate.jsonSchema.setPermissions) {
             if (Array.isArray(permission.performerUnits)) {
               for (const performerUnit of permission.performerUnits) {
-                const unit = await global.models.unit.findById(performerUnit);
+                const unit = await getModels().unit.findById(performerUnit);
                 if (!unit) {
                   unitErrors.push({ unitId: performerUnit, taskTemplateId: taskTemplate.id });
                 }
@@ -208,8 +200,8 @@ export class BpmnWorkflowBusiness {
           }
         }
 
-        global.log.save('import|task-template', { user, id: taskTemplate.id });
-        await global.models.taskTemplate.create(new TaskTemplateEntity(taskTemplate), bpmnWorkflowTransaction);
+        getLog().save('import|task-template', { user: toLogUser(user), id: taskTemplate.id });
+        await getModels().taskTemplate.create(new TaskTemplateEntity(taskTemplate), bpmnWorkflowTransaction);
       }
 
       if (unitErrors) {
@@ -220,8 +212,8 @@ export class BpmnWorkflowBusiness {
 
       // Import gateway templates.
       for (const gatewayTemplate of data.gatewayTemplates) {
-        global.log.save('import|gateway-template', { user, id: gatewayTemplate.id });
-        await global.models.gatewayTemplate.create(new GatewayTemplateEntity(gatewayTemplate), bpmnWorkflowTransaction);
+        getLog().save('import|gateway-template', { user: toLogUser(user), id: gatewayTemplate.id });
+        await getModels().gatewayTemplate.create(new GatewayTemplateEntity(gatewayTemplate), bpmnWorkflowTransaction);
       }
 
       // Import event templates.
@@ -236,8 +228,8 @@ export class BpmnWorkflowBusiness {
           }
         }
 
-        global.log.save('import|event-template', { user, id: eventTemplate.id });
-        await global.models.eventTemplate.create(new EventTemplateEntity(eventTemplate), bpmnWorkflowTransaction);
+        getLog().save('import|event-template', { user: toLogUser(user), id: eventTemplate.id });
+        await getModels().eventTemplate.create(new EventTemplateEntity(eventTemplate), bpmnWorkflowTransaction);
       }
 
       if (registerErrors.length || unitErrors.length || numberTemplateError) {
@@ -249,7 +241,7 @@ export class BpmnWorkflowBusiness {
 
       // Set new version.
       let version = '1.0.0';
-      const lastVersionWorkflowHistory = await global.models.workflowHistory.findLastVersionByWorkflowTemplateId(data.workflowTemplate.id);
+      const lastVersionWorkflowHistory = await getModels().workflowHistory.findLastVersionByWorkflowTemplateId(data.workflowTemplate.id);
       if (lastVersionWorkflowHistory) {
         const currentVersion = lastVersionWorkflowHistory.version;
         if (typeof currentVersion === 'string') {
@@ -266,11 +258,11 @@ export class BpmnWorkflowBusiness {
       }
 
       // Delete flag is_current_version.
-      await global.models.workflowHistory.deleteIsCurrentVersionByWorkflowTemplateId(data.workflowTemplate.id);
+      await getModels().workflowHistory.deleteIsCurrentVersionByWorkflowTemplateId(data.workflowTemplate.id);
 
       // Create commit.
-      global.log.save('import|workflow-history', { user, id: data.workflowTemplate.id });
-      await global.models.workflowHistory.create(
+      getLog().save('import|workflow-history', { user: toLogUser(user), id: data.workflowTemplate.id });
+      await getModels().workflowHistory.create(
         new WorkflowHistoryEntity({
           workflowTemplateId: data.workflowTemplate.id,
           userId: user.userId || 'SYSTEM',
@@ -286,7 +278,7 @@ export class BpmnWorkflowBusiness {
 
       await bpmnWorkflowTransaction.commit();
 
-      global.log.save('user-imported-bpmn-workflow', { user, data: data });
+      getLog().save('user-imported-bpmn-workflow', { user: toLogUser(user), data: data });
     } catch (error) {
       await bpmnWorkflowTransaction.rollback();
       throw error;
@@ -301,7 +293,7 @@ export class BpmnWorkflowBusiness {
    * @returns {Promise<object>}
    */
   async getBpmnWorkflowReferences(id) {
-    const workflowTemplate = await global.models.workflowTemplate.findById(id);
+    const workflowTemplate = await getModels().workflowTemplate.findById(id);
 
     if (!workflowTemplate) {
       throw new Exceptions.NOT_FOUND(Exceptions.NOT_FOUND.Messages.WORKFLOW_TEMPLATE);
@@ -336,7 +328,7 @@ export class BpmnWorkflowBusiness {
 
     sequences = [...new Set(sequences)].filter(Boolean);
 
-    const workflowTemplateCategory = await global.models.workflowTemplateCategory.findById(workflowTemplate.workflowTemplateCategoryId);
+    const workflowTemplateCategory = await getModels().workflowTemplateCategory.findById(workflowTemplate.workflowTemplateCategoryId);
 
     let workflow = {
       workflowTemplate,
@@ -353,7 +345,7 @@ export class BpmnWorkflowBusiness {
         if (!taskId) {
           continue;
         }
-        const taskTemplate = await global.models.taskTemplate.findById(taskId);
+        const taskTemplate = await getModels().taskTemplate.findById(taskId);
         if (!taskTemplate) {
           continue;
         }
@@ -367,7 +359,7 @@ export class BpmnWorkflowBusiness {
         // Prepare document templates
         const documentTemplateAlreadyExists = workflow.documentTemplates.find((item) => item.id === taskTemplate.documentTemplateId);
         if (!documentTemplateAlreadyExists) {
-          const documentTemplate = await global.models.documentTemplate.findById(taskTemplate.documentTemplateId);
+          const documentTemplate = await getModels().documentTemplate.findById(taskTemplate.documentTemplateId);
 
           if (documentTemplate) {
             workflow.documentTemplates.push(documentTemplate);
@@ -379,7 +371,7 @@ export class BpmnWorkflowBusiness {
           continue;
         }
 
-        const gatewayTemplate = await global.models.gatewayTemplate.findById(gatewayId);
+        const gatewayTemplate = await getModels().gatewayTemplate.findById(gatewayId);
         if (!gatewayTemplate) {
           continue;
         }
@@ -395,7 +387,7 @@ export class BpmnWorkflowBusiness {
           continue;
         }
 
-        const eventTemplate = await global.models.eventTemplate.findById(eventId);
+        const eventTemplate = await getModels().eventTemplate.findById(eventId);
         if (!eventTemplate) {
           continue;
         }
@@ -417,7 +409,7 @@ export class BpmnWorkflowBusiness {
    * @returns {Promise<object[]>}
    */
   async getVersionsByWorkflowTemplateId(workflowTemplateId) {
-    const versions = await global.models.workflowHistory.getVersionsByWorkflowTemplateId(workflowTemplateId);
+    const versions = await getModels().workflowHistory.getVersionsByWorkflowTemplateId(workflowTemplateId);
 
     return versions;
   }
@@ -429,7 +421,7 @@ export class BpmnWorkflowBusiness {
    * @returns {Promise<object>}
    */
   async findVersionByWorkflowTemplateIdAndVersion(workflowTemplateId, version) {
-    const versions = await global.models.workflowHistory.findVersionByWorkflowTemplateIdAndVersion(workflowTemplateId, version);
+    const versions = await getModels().workflowHistory.findVersionByWorkflowTemplateIdAndVersion(workflowTemplateId, version);
 
     return versions;
   }
@@ -445,7 +437,7 @@ export class BpmnWorkflowBusiness {
    * @returns {Promise<object>}
    */
   async saveVersion(workflowTemplateId, { type, name, description, user }) {
-    const transaction = await global.db.transaction();
+    const transaction = await getDb().transaction();
 
     try {
       let bpmnWorkflow = await this.getBpmnWorkflowReferences(workflowTemplateId);
@@ -455,7 +447,7 @@ export class BpmnWorkflowBusiness {
 
       // Set new version.
       let version = '1.0.0';
-      const lastVersionWorkflowHistory = await global.models.workflowHistory.findLastVersionByWorkflowTemplateId(workflowTemplateId);
+      const lastVersionWorkflowHistory = await getModels().workflowHistory.findLastVersionByWorkflowTemplateId(workflowTemplateId);
       if (lastVersionWorkflowHistory) {
         const currentVersion = lastVersionWorkflowHistory.version;
         if (typeof currentVersion === 'string') {
@@ -474,10 +466,10 @@ export class BpmnWorkflowBusiness {
       }
 
       // Delete flag is_current_version.
-      await global.models.workflowHistory.deleteIsCurrentVersionByWorkflowTemplateId(workflowTemplateId);
+      await getModels().workflowHistory.deleteIsCurrentVersionByWorkflowTemplateId(workflowTemplateId);
 
       // Create commit.
-      const workflowHistory = await global.models.workflowHistory.create(
+      const workflowHistory = await getModels().workflowHistory.create(
         new WorkflowHistoryEntity({
           workflowTemplateId,
           userId: user.userId,
@@ -507,12 +499,12 @@ export class BpmnWorkflowBusiness {
    * @returns {Promise<object>}
    */
   async autoSaveVersion(workflowTemplateId, { user }) {
-    const lastWorkflowHistory = await global.models.workflowHistory.findLastByWorkflowTemplateId(workflowTemplateId);
+    const lastWorkflowHistory = await getModels().workflowHistory.findLastByWorkflowTemplateId(workflowTemplateId);
     if (!lastWorkflowHistory) {
       return this.saveVersion(workflowTemplateId, { user } as any);
     }
 
-    const configuredAutoSaveVersionAfter = Number(global.config.workflow_history?.autoSaveVersionAfter ?? DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS);
+    const configuredAutoSaveVersionAfter = Number(getConfig().workflow_history?.autoSaveVersionAfter ?? DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS);
     const autoSaveVersionAfter = Number.isFinite(configuredAutoSaveVersionAfter)
       ? configuredAutoSaveVersionAfter
       : DEFAULT_AUTO_SAVE_VERSION_AFTER_SECONDS;
@@ -533,7 +525,7 @@ export class BpmnWorkflowBusiness {
    * @returns {Promise<object>}
    */
   async copyPreparation(workflowTemplateId) {
-    const workflowTemplate = await global.models.workflowTemplate.findById(workflowTemplateId);
+    const workflowTemplate = await getModels().workflowTemplate.findById(workflowTemplateId);
     if (!workflowTemplate) {
       throw new Exceptions.NOT_FOUND(Exceptions.NOT_FOUND.Messages.WORKFLOW_TEMPLATE);
     }
@@ -581,7 +573,7 @@ export class BpmnWorkflowBusiness {
         if (!taskId) {
           continue;
         }
-        const taskTemplate = await global.models.taskTemplate.findById(taskId);
+        const taskTemplate = await getModels().taskTemplate.findById(taskId);
         if (!taskTemplate) {
           continue;
         }
@@ -595,7 +587,7 @@ export class BpmnWorkflowBusiness {
         // Prepare document templates
         const documentTemplateAlreadyExists = documentTemplates.find((item) => item.id === taskTemplate.documentTemplateId);
         if (!documentTemplateAlreadyExists) {
-          const documentTemplate = await global.models.documentTemplate.findById(taskTemplate.documentTemplateId);
+          const documentTemplate = await getModels().documentTemplate.findById(taskTemplate.documentTemplateId);
 
           if (documentTemplate) {
             documentTemplates.push({ ...documentTemplate, jsonSchemaRaw: undefined, createdAt: undefined });
@@ -607,7 +599,7 @@ export class BpmnWorkflowBusiness {
           continue;
         }
 
-        const gatewayTemplate = await global.models.gatewayTemplate.findById(gatewayId);
+        const gatewayTemplate = await getModels().gatewayTemplate.findById(gatewayId);
         if (!gatewayTemplate) {
           continue;
         }
@@ -623,7 +615,7 @@ export class BpmnWorkflowBusiness {
           continue;
         }
 
-        const eventTemplate = await global.models.eventTemplate.findById(eventId);
+        const eventTemplate = await getModels().eventTemplate.findById(eventId);
         if (!eventTemplate) {
           continue;
         }
@@ -635,7 +627,7 @@ export class BpmnWorkflowBusiness {
         }
       }
     }
-    const { id: lastWorkflowTemplateId } = await global.models.workflowTemplate.getLatest();
+    const { id: lastWorkflowTemplateId } = await getModels().workflowTemplate.getLatest();
     const newWorkflowTemplateId = lastWorkflowTemplateId + 1;
     const diffs = [];
     getDiffsFromTemplate(taskTemplates, 'taskTemplate', diffs, workflowTemplateId, newWorkflowTemplateId);
@@ -693,8 +685,8 @@ export class BpmnWorkflowBusiness {
     };
     const requestId = crypto.randomBytes(16).toString('hex');
     const redisKeyName = `${workflowTemplateId}-${requestId}`;
-    if (global.redis) {
-      await global.redis.set(redisKeyName, JSON.stringify(workflowTemplateWithDependenciesToSave), 'EX', 15 * 60);
+    if (getRedis()) {
+      await getRedis().set(redisKeyName, JSON.stringify(workflowTemplateWithDependenciesToSave), 15 * 60);
     }
     return { requestId, diffs, length: diffs.length };
   }
@@ -710,7 +702,7 @@ export class BpmnWorkflowBusiness {
   async copy(workflowTemplateId, requestId, notReplacingDiffIds, user) {
     const redisKeyName = `${workflowTemplateId}-${requestId}`;
 
-    const redisRecord = global.redis ? await global.redis.get(redisKeyName) : null;
+    const redisRecord = getRedis() ? await getRedis().get(redisKeyName) : null;
     if (!redisRecord) {
       throw new Error("Saved workflowTemplate did't find");
     }
@@ -725,10 +717,10 @@ export class BpmnWorkflowBusiness {
     };
 
     const notReplacingDiffs = diffs.filter((diff) => notReplacingDiffIds.includes(diff.id));
-    const { id: lastWorkflowTemplateId } = await global.models.workflowTemplate.getLatest();
+    const { id: lastWorkflowTemplateId } = await getModels().workflowTemplate.getLatest();
     const newWorkflowTemplateId = lastWorkflowTemplateId + 1;
 
-    const bpmnWorkflowTransaction = await global.db.transaction();
+    const bpmnWorkflowTransaction = await getDb().transaction();
     try {
       // Saving workflowTemplate.
       const newWorkflowTemplate = {
@@ -744,7 +736,7 @@ export class BpmnWorkflowBusiness {
       };
       const workflowTemplateEntity = new WorkflowTemplateEntity(newWorkflowTemplate);
       newWorkflowTemplateWithDependencies.workflowTemplate = workflowTemplateEntity;
-      await global.models.workflowTemplate.create(workflowTemplateEntity, bpmnWorkflowTransaction);
+      await getModels().workflowTemplate.create(workflowTemplateEntity, bpmnWorkflowTransaction);
 
       // Saving documentTemplates.
       for (const documentTemplate of documentTemplates) {
@@ -762,7 +754,7 @@ export class BpmnWorkflowBusiness {
         };
         const documentTemplateEntity = new DocumentTemplateEntity(newDocumentTemplate);
         newWorkflowTemplateWithDependencies.documentTemplates.push(documentTemplateEntity);
-        await global.models.documentTemplate.create(documentTemplateEntity, bpmnWorkflowTransaction);
+        await getModels().documentTemplate.create(documentTemplateEntity, bpmnWorkflowTransaction);
       }
 
       // Saving taskTemplates.
@@ -784,7 +776,7 @@ export class BpmnWorkflowBusiness {
         };
         const taskTemplateEntity = new TaskTemplateEntity(newTaskTemplate);
         newWorkflowTemplateWithDependencies.taskTemplates.push(taskTemplateEntity);
-        await global.models.taskTemplate.create(taskTemplateEntity, bpmnWorkflowTransaction);
+        await getModels().taskTemplate.create(taskTemplateEntity, bpmnWorkflowTransaction);
       }
 
       // Saving gatewayTemplates.
@@ -803,7 +795,7 @@ export class BpmnWorkflowBusiness {
         };
         const gatewayTemplateEntity = new GatewayTemplateEntity(newGatewayTemplate);
         newWorkflowTemplateWithDependencies.gatewayTemplates.push(gatewayTemplateEntity);
-        await global.models.gatewayTemplate.create(gatewayTemplateEntity, bpmnWorkflowTransaction);
+        await getModels().gatewayTemplate.create(gatewayTemplateEntity, bpmnWorkflowTransaction);
       }
 
       // Saving eventTemplates.
@@ -822,11 +814,11 @@ export class BpmnWorkflowBusiness {
         };
         const eventTemplateEntity = new EventTemplateEntity(newEventTemplate);
         newWorkflowTemplateWithDependencies.eventTemplates.push(eventTemplateEntity);
-        await global.models.eventTemplate.create(eventTemplateEntity, bpmnWorkflowTransaction);
+        await getModels().eventTemplate.create(eventTemplateEntity, bpmnWorkflowTransaction);
       }
 
       // Create commit.
-      await global.models.workflowHistory.create(
+      await getModels().workflowHistory.create(
         new WorkflowHistoryEntity({
           workflowTemplateId: newWorkflowTemplateId,
           userId: user.userId || 'SYSTEM',
@@ -839,11 +831,15 @@ export class BpmnWorkflowBusiness {
       );
 
       await bpmnWorkflowTransaction.commit();
-      if (global.redis) {
-        await global.redis.del(redisKeyName);
+      if (getRedis()) {
+        await getRedis().delete(redisKeyName);
       }
 
-      global.log.save('user-copied-bpmn-workflow', { user, fromTemplateId: workflowTemplateId, toTemplateId: newWorkflowTemplateId });
+      getLog().save('user-copied-bpmn-workflow', {
+        user: toLogUser(user),
+        fromTemplateId: workflowTemplateId,
+        toTemplateId: newWorkflowTemplateId,
+      });
     } catch (error) {
       await bpmnWorkflowTransaction.rollback();
       throw error;

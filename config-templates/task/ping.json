@@ -3,13 +3,15 @@
     "url": "https://id.liquio.local/test/ping"
   },
   "event": {
-    "url": "https://event.liquio.local/test/ping"
+    "url": "https://event.liquio.local/healthz"
   },
   "manager": {
-    "url": "https://manager.liquio.local/test/ping"
+    "url": "https://manager.liquio.local/test/ping",
+    "monitoringToken": ""
   },
   "gateway": {
-    "url": "https://gw.liquio.local/test/ping"
+    "url": "https://gw.liquio.local/test/ping",
+    "monitoringToken": ""
   },
   "workflow": {
     "url": "https://workflow.liquio.local/test/ping"

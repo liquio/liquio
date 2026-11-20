@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
 import { AxiosError } from 'axios';
+
 import typeOf from './type_of';
 
 interface AxiosErrorLog {

@@ -1,13 +1,24 @@
 import { BasePlugin, PluginContext } from "./base_provider";
-import { TaskPaymentProvider } from "./task_payment_provider";
+import {
+  TaskCalculatedPaymentData,
+  TaskPaymentData,
+  TaskPaymentProvider,
+  TaskPaymentStatusInfo,
+} from "./task_payment_provider";
 
 interface TestOptions {
   providerName: string;
 }
 
 class TestProvider extends TaskPaymentProvider<TestOptions> {
-  async calculatePayment(data: unknown): Promise<unknown> {
-    return { calculatePayment: data };
+  // These two stubs return values that don't actually satisfy TaskCalculatedPaymentData/
+  // TaskPaymentStatusInfo - the tests below only check that the abstract class dispatches to
+  // whatever the subclass returns, not schema compliance, so the cast keeps that generic
+  // pass-through behavior under the now-stricter abstract signatures.
+  async calculatePayment(
+    data: TaskPaymentData,
+  ): Promise<TaskCalculatedPaymentData> {
+    return { calculatePayment: data } as unknown as TaskCalculatedPaymentData;
   }
 
   async handleStatus(
@@ -17,7 +28,7 @@ class TestProvider extends TaskPaymentProvider<TestOptions> {
     queryParamsObject: unknown,
     headersObject: unknown,
     checkPrevTransaction?: boolean,
-  ): Promise<unknown> {
+  ): Promise<TaskPaymentStatusInfo> {
     return {
       data,
       providerOptions,
@@ -25,7 +36,7 @@ class TestProvider extends TaskPaymentProvider<TestOptions> {
       queryParamsObject,
       headersObject,
       checkPrevTransaction,
-    };
+    } as unknown as TaskPaymentStatusInfo;
   }
 
   async confirmBySmsCode(
@@ -107,9 +118,36 @@ describe("TaskPaymentProvider", () => {
   it("resolves calculatePayment() to the expected result", async () => {
     const provider = new TestProvider(context, options);
 
-    await expect(provider.calculatePayment("payload")).resolves.toEqual({
-      calculatePayment: "payload",
+    const singlePayment: TaskPaymentData = {
+      amount: 15,
+      currency: "EUR",
+      orderId: "order-1",
+      documentId: "document-1",
+    };
+
+    await expect(provider.calculatePayment(singlePayment)).resolves.toEqual({
+      calculatePayment: singlePayment,
     });
+  });
+
+  it("accepts the recipients-list payload produced by task payment controls", async () => {
+    const provider = new TestProvider(context, options);
+    const recipientsPayment: TaskPaymentData = {
+      documentId: "document-2",
+      paymentControlPath: "payment.properties.paymentControl",
+      recipients: [
+        {
+          amount: 15,
+          currency: "EUR",
+          description: "Test payment",
+          orderId: "order-2",
+        },
+      ],
+    };
+
+    await expect(provider.calculatePayment(recipientsPayment)).resolves.toEqual(
+      { calculatePayment: recipientsPayment },
+    );
   });
 
   it("resolves handleStatus() to the expected result", async () => {

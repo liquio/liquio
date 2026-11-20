@@ -1,6 +1,8 @@
 import { camelCase, upperFirst } from 'lodash';
 import { ModelStatic, Sequelize, Model as SequelizeModel } from 'sequelize';
 
+import { getConfig, getDb, getLog } from '../lib/context';
+
 export type PaginationMeta = {
   total: number;
   perPage: number;
@@ -58,7 +60,7 @@ export class Model {
   public model: ModelStatic<SequelizeModel>;
 
   constructor(dbInstance?: Sequelize) {
-    this.db = dbInstance || global.db;
+    this.db = dbInstance || getDb();
   }
 
   /**
@@ -78,7 +80,7 @@ export class Model {
       order: [],
     };
 
-    const limitPerPage = global.config.model?.pagination?.limitPerPage || 100;
+    const limitPerPage = getConfig().model?.pagination?.limitPerPage || 100;
     if (!briefInfo && perPage > limitPerPage) {
       perPage = limitPerPage;
     }
@@ -172,7 +174,7 @@ export class Model {
         }
       }
     } catch (error) {
-      global.log.save('relation-error', error);
+      getLog().save('relation-error', error);
       throw error;
     }
 

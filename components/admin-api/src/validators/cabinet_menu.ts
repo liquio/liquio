@@ -3,8 +3,7 @@ import { checkSchema } from 'express-validator';
 import { ValidationConfig, Validator } from './validator';
 
 const isNullableUuid = (value) =>
-  value === null ||
-  (typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+  value === null || (typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 
 const isNullableString = (value) => value === null || typeof value === 'string';
 const isPlainObject = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);

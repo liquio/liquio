@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { LocalizationLanguageEntity } from '../entities/localization_language';
 
@@ -10,39 +11,38 @@ export class LocalizationLanguageModel extends Model {
 
   model: any;
 
-  constructor () {
+  constructor() {
     super();
     if (!LocalizationLanguageModel.singleton) {
-
       this.model = this.db.define(
         'localization_language',
         {
           code: {
             type: Sequelize.STRING(5),
             primaryKey: true,
-            allowNull: false
+            allowNull: false,
           },
           name: {
             type: Sequelize.JSONB,
-            allowNull: false
+            allowNull: false,
           },
           is_active: {
             type: Sequelize.BOOLEAN,
             allowNull: false,
-            defaultValue: true
+            defaultValue: true,
           },
           meta: {
             type: Sequelize.JSONB,
             allowNull: false,
-            defaultValue: {}
-          }
+            defaultValue: {},
+          },
         },
         {
           tableName: 'localization_languages',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
       this.model.prototype.prepareEntity = this.prepareEntity;
       this.model.paginate = this.paginate;
@@ -58,12 +58,12 @@ export class LocalizationLanguageModel extends Model {
    * @param {object} params.sort Sort.
    * @returns {Promise<LocalizationLanguageEntity[]>}
    */
-  async getAll ({ filters }) {
+  async getAll({ filters }) {
     const options = {
-      where: { 
-        is_active: true  // Get active languages only.
+      where: {
+        is_active: true, // Get active languages only.
       },
-      order: [['created_at', 'desc']]
+      order: [['created_at', 'desc']],
     };
 
     if (typeof filters.code !== 'undefined') {
@@ -81,13 +81,13 @@ export class LocalizationLanguageModel extends Model {
    * @param {object} item Item.
    * @returns {LocalizationLanguageEntity}
    */
-  prepareEntity (item) {
+  prepareEntity(item) {
     const { code, name, created_at, updated_at } = item;
     return new LocalizationLanguageEntity({
       code,
       name,
       createdAt: created_at,
-      updatedAt: updated_at
+      updatedAt: updated_at,
     });
   }
 
@@ -97,13 +97,12 @@ export class LocalizationLanguageModel extends Model {
    * @returns {object}
    */
   prepareForModel(item) {
-    const { code, name,  createdAt, updatedAt } = item;
+    const { code, name, createdAt, updatedAt } = item;
     return {
       code,
       name,
       created_at: createdAt,
-      updated_at: updatedAt
+      updated_at: updatedAt,
     };
   }
 }
-

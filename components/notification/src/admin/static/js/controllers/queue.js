@@ -70,20 +70,25 @@ angular.module('admin').controller('queue', function ($scope, $http,$rootScope) 
     $scope.setPage(1);
   });
 
+  var applyQueue = function (resp) {
+    $scope.queue = resp.data.queue;
+    $rootScope.queueCounter = resp.data.smsQueueCount;
+    $scope.setPage(1);
+  };
+
+  // sms_id omitted: act on the whole queue through the explicit *-all routes (confirm required by the server).
   $scope.clearQueue = function (sms_id) {
-    $http.get('/admin/api/queue/clear/'+sms_id).then(function (resp) {
-      $scope.queue = resp.data.queue;
-      $rootScope.queueCounter = resp.data.smsQueueCount;
-      $scope.setPage(1);
-    });
+    var request = sms_id
+      ? $http.post('/admin/api/queue/clear/' + encodeURIComponent(sms_id), {})
+      : $http.post('/admin/api/queue/clear-all', { confirm: true });
+    request.then(applyQueue);
   };
 
   $scope.resendSMS = function (sms_id) {
-    $http.get('/admin/api/queue/resend/'+sms_id).then(function (resp) {
-      $scope.queue = resp.data.queue;
-      $rootScope.queueCounter = resp.data.smsQueueCount;
-      $scope.setPage(1);
-    });
+    var request = sms_id
+      ? $http.post('/admin/api/queue/resend/' + encodeURIComponent(sms_id), {})
+      : $http.post('/admin/api/queue/resend-all', { confirm: true });
+    request.then(applyQueue);
   };
 
 });

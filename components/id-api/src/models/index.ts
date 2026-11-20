@@ -1,5 +1,6 @@
 import NodeCache from 'node-cache';
 import { Dialect, Sequelize, Options as SequelizeOptions } from 'sequelize';
+import { Log } from '@liquio/back-core';
 
 export { WhereAttributeHash, WhereOptions } from 'sequelize';
 export { AccessTokenAttributes } from './access_token.model';
@@ -16,8 +17,7 @@ export { UserOldDataAttributes, UserOldDataCreationAttributes } from './user_old
 export { UserServicesAttributes, UserServicesCreationAttributes } from './user_services.model';
 export { UserTotpSecretAttributes, UserTotpSecretCreationAttributes } from './user_totp_secret.model';
 
-import { Config } from '../config';
-import { Log } from '@liquio/back-core';
+import { IdApiConfig } from '../config';
 import { AccessTokenModel } from './access_token.model';
 import { AuthCodeModel } from './auth_code.model';
 import { BaseModel } from './base_model';
@@ -70,7 +70,7 @@ export class Models {
   public readonly models!: ModelsCollection;
   private readonly nodeCache!: NodeCache;
 
-  constructor(private readonly config: Config['db']) {
+  constructor(private readonly config: IdApiConfig['db']) {
     if (Models.singleton) {
       throw new Error('Models already initialized.');
     }

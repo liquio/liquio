@@ -1,7 +1,8 @@
-import axios from 'axios';
-import bodyParser from 'body-parser';
 import http from 'node:http';
 import https from 'node:https';
+
+import axios from 'axios';
+import bodyParser from 'body-parser';
 
 // Constants.
 const DEFAULT_MAX_BODY_SIZE = '10mb';
@@ -75,6 +76,7 @@ export class HttpRequest {
    * @param {object} [requestOptions.headers] Headers in format {"key": "value"}.
    * @param {string} [requestOptions.body] Body string.
    * @param {number} [requestOptions.timeout] Connection timeout.
+   * @param {https.Agent} [requestOptions.httpsAgent] Custom HTTPS agent (CA / TLS options).
    * @returns {Promise<object>}
    */
   static async send(requestOptions) {
@@ -84,6 +86,7 @@ export class HttpRequest {
         method: requestOptions.method,
         headers: requestOptions.headers,
         timeout: requestOptions.timeout,
+        ...(requestOptions.httpsAgent ? { httpsAgent: requestOptions.httpsAgent } : {}),
         validateStatus: () => true, // Don't throw on any status code
       };
 
@@ -107,15 +110,12 @@ export class HttpRequest {
       }
 
       const response = await axiosInstance(axiosConfig);
-      
+
       // Return parsed body object - only the data part to avoid circular refs
       return parseBody(response.data);
     } catch (error) {
-      // Handle axios errors
-      if (error.response) {
-        // Server responded with error status - only return the data part
-        return parseBody(error.response.data);
-      }
+      // Non-2xx statuses resolve in the try path (validateStatus), so any error here is a transport failure
+      // (timeout, aborted or broken body stream) and must reject instead of returning a partial body.
       // Network or other errors - throw a clean error message
       const wrappedError = new Error(error.message || 'Network error');
       (wrappedError as any).cause = error;
@@ -131,6 +131,7 @@ export class HttpRequest {
    * @param {object} [requestOptions.headers] Headers in format {"key": "value"}.
    * @param {string} [requestOptions.body] Body string.
    * @param {number} [requestOptions.timeout] Connection timeout.
+   * @param {https.Agent} [requestOptions.httpsAgent] Custom HTTPS agent (CA / TLS options).
    * @return {Promise<{body: object, headers: object, rawResponse: object}>} Response body and headers promise.
    */
   static async sendDetailed(requestOptions) {
@@ -140,6 +141,7 @@ export class HttpRequest {
         method: requestOptions.method,
         headers: requestOptions.headers,
         timeout: requestOptions.timeout,
+        ...(requestOptions.httpsAgent ? { httpsAgent: requestOptions.httpsAgent } : {}),
         validateStatus: () => true, // Don't throw on any status code
       };
 
@@ -163,31 +165,20 @@ export class HttpRequest {
       }
 
       const response = await axiosInstance(axiosConfig);
-      
+
       // Return parsed body object and headers - only the data part to avoid circular refs
-      return { 
-        body: parseBody(response.data), 
-        headers: response.headers, 
+      return {
+        body: parseBody(response.data),
+        headers: response.headers,
         rawResponse: {
           status: response.status,
           statusText: response.statusText,
-          headers: response.headers
-        } 
+          headers: response.headers,
+        },
       };
     } catch (error) {
-      // Handle axios errors
-      if (error.response) {
-        // Server responded with error status - return detailed error info
-        return { 
-          body: parseBody(error.response.data), 
-          headers: error.response.headers,
-          rawResponse: {
-            status: error.response.status,
-            statusText: error.response.statusText,
-            headers: error.response.headers
-          }
-        };
-      }
+      // Non-2xx statuses resolve in the try path (validateStatus), so any error here is a transport failure
+      // (timeout, aborted or broken body stream) and must reject instead of returning a partial body.
       // Network or other errors - throw a clean error message
       const wrappedError = new Error(error.message || 'Network error');
       (wrappedError as any).cause = error;
@@ -202,7 +193,7 @@ export class HttpRequest {
    */
   static parseBodyJson(app, maxBodySize = DEFAULT_MAX_BODY_SIZE) {
     // Parse body for content-type "application/json".
-    app.use(bodyParser.json({ limit: maxBodySize }));
+    app.use(withEmptyBodyDefault(bodyParser.json({ limit: maxBodySize })));
   }
 
   /**
@@ -211,7 +202,7 @@ export class HttpRequest {
    */
   static parseBodyUrlencoded(app) {
     // Parse body for content-type "application/x-www-form-urlencoded".
-    app.use(bodyParser.urlencoded({ extended: false }));
+    app.use(withEmptyBodyDefault(bodyParser.urlencoded({ extended: false })));
   }
 
   /**
@@ -225,12 +216,30 @@ export class HttpRequest {
     if (httpsAgent) {
       httpsAgent.destroy();
     }
-    
+
     // Clear any axios instance defaults and interceptors
     (axiosInstance as any).defaults = {};
     axiosInstance.interceptors.request.clear();
     axiosInstance.interceptors.response.clear();
   }
+}
+
+/**
+ * Keep body-parser 1.x behavior: body-parser 2.x leaves `req.body` undefined when nothing was parsed,
+ * while route handlers destructure it as an object.
+ * @private
+ * @param {function} parser Body parser middleware.
+ * @returns {function}
+ */
+function withEmptyBodyDefault(parser) {
+  return (req, res, next) => {
+    parser(req, res, (error) => {
+      if (req.body === undefined) {
+        req.body = {};
+      }
+      next(error);
+    });
+  };
 }
 
 /**
@@ -244,7 +253,7 @@ function parseBody(body) {
   if (typeof body === 'object') {
     return body;
   }
-  
+
   // If body is string, try to parse as JSON
   if (typeof body === 'string') {
     try {
@@ -254,7 +263,7 @@ function parseBody(body) {
       return body;
     }
   }
-  
+
   // Return body as is for other types
   return body;
 }

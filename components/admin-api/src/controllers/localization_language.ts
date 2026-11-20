@@ -3,6 +3,7 @@ import { matchedData } from 'express-validator';
 import { Stream } from '../lib/stream';
 import { Controller } from './controller';
 import { LocalizationLanguageBusiness } from '../businesses/localization_language';
+import { getLog } from '../lib/context';
 
 /**
  * Localization language controller.
@@ -77,7 +78,7 @@ export class LocalizationLanguageController extends Controller {
         },
       );
     } catch (error) {
-      await global.log.save('localization-language-create-error|cannot-create-language', {
+      await getLog().save('localization-language-create-error|cannot-create-language', {
         error: error.message,
         cause: error.cause,
         fieds: error.fieds,

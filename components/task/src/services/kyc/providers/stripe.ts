@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { KycProvider } from './provider';
+import { getLog } from '../../../lib/context';
 
 const STATUS_MAP = {
   requires_input: 'waiting',
@@ -37,7 +38,7 @@ export class StripeProvider extends KycProvider {
       this.config.timeout = 30000;
     }
 
-    global.log.save('kyc-provider|stripe|initialized', true);
+    getLog().save('kyc-provider|stripe|initialized', true);
   }
 
   async testConnection() {
@@ -51,13 +52,13 @@ export class StripeProvider extends KycProvider {
   }
 
   async createSession(userId, returnUrl) {
-    const data = await this.sendRequest(
-      'post',
-      'v1/identity/verification_sessions',
-      { type: 'document', client_reference_id: userId, return_url: returnUrl }
-    );
+    const data = await this.sendRequest('post', 'v1/identity/verification_sessions', {
+      type: 'document',
+      client_reference_id: userId,
+      return_url: returnUrl,
+    });
 
-    global.log.save('kyc-provider|stripe|create-session', { data });
+    getLog().save('kyc-provider|stripe|create-session', { data });
 
     return {
       sessionId: data.id,
@@ -67,12 +68,9 @@ export class StripeProvider extends KycProvider {
   }
 
   async getSession(sessionId) {
-    const data = await this.sendRequest(
-      'get',
-      `v1/identity/verification_sessions/${sessionId}`
-    );
+    const data = await this.sendRequest('get', `v1/identity/verification_sessions/${sessionId}`);
 
-    global.log.save('kyc-provider|stripe|get-session', { data });
+    getLog().save('kyc-provider|stripe|get-session', { data });
 
     return {
       status: STATUS_MAP[data.status] || 'waiting',
@@ -85,11 +83,9 @@ export class StripeProvider extends KycProvider {
    * @private
    */
   get headers() {
-    const basicToken = Buffer.from(`${this.config.secretKey}:`).toString(
-      'base64'
-    );
+    const basicToken = Buffer.from(`${this.config.secretKey}:`).toString('base64');
     return {
-      'Authorization': `Basic ${basicToken}`,
+      Authorization: `Basic ${basicToken}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     };
   }
@@ -108,7 +104,7 @@ export class StripeProvider extends KycProvider {
         data: body,
       };
 
-      global.log.save('kyc-provider|stripe|request', {
+      getLog().save('kyc-provider|stripe|request', {
         ...requestOptions,
         headers: { Authorization: 'Basic ***' },
       });
@@ -116,7 +112,7 @@ export class StripeProvider extends KycProvider {
       const response = await axios(requestOptions);
       return response.data;
     } catch (error) {
-      global.log.save(
+      getLog().save(
         'kyc-provider|stripe|request-error',
         {
           error: error.message,
@@ -125,7 +121,7 @@ export class StripeProvider extends KycProvider {
           body,
           response: error.response?.data,
         },
-        'error'
+        'error',
       );
       const wrapped: any = new Error(`Stripe request failed: ${error.message}`);
       wrapped.cause = error;
@@ -133,4 +129,3 @@ export class StripeProvider extends KycProvider {
     }
   }
 }
-

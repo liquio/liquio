@@ -1,5 +1,5 @@
-
 import { checkSchema } from 'express-validator';
+
 import { Validator } from './validator';
 
 /**
@@ -29,24 +29,24 @@ export class CustomValidator extends Validator {
     return checkSchema({
       ['regionName']: {
         in: ['query', 'body'],
-        isString: true
+        isString: true,
       },
       ['districtName']: {
         in: ['query', 'body'],
-        isString: true
+        isString: true,
       },
       ['cityName']: {
         in: ['query', 'body'],
-        isString: true
+        isString: true,
       },
       ['streetName']: {
         in: ['query', 'body'],
-        isString: true
+        isString: true,
       },
       ['buildingNumber']: {
         in: ['query', 'body'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -59,22 +59,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -87,22 +87,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -115,22 +115,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -143,22 +143,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -171,22 +171,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -199,22 +199,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -227,22 +227,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -255,27 +255,27 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['service_id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -288,27 +288,27 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['service_id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -321,27 +321,27 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['service_id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -354,22 +354,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -382,27 +382,27 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['service_id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -415,27 +415,27 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['endpoint_id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -448,27 +448,27 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['endpoint_id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -481,27 +481,27 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['endpoint_id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -513,8 +513,8 @@ export class CustomValidator extends Validator {
       ['id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -526,8 +526,8 @@ export class CustomValidator extends Validator {
       ['id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -539,8 +539,8 @@ export class CustomValidator extends Validator {
       ['id']: {
         in: ['query', 'body'],
         isInt: true,
-        toInt: true
-      }
+        toInt: true,
+      },
     });
   }
 
@@ -553,22 +553,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -581,22 +581,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -609,22 +609,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -635,8 +635,8 @@ export class CustomValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['query', 'body'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -647,8 +647,8 @@ export class CustomValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['query', 'body'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -661,22 +661,22 @@ export class CustomValidator extends Validator {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query', 'body'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query', 'body'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query', 'body'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -687,20 +687,20 @@ export class CustomValidator extends Validator {
     return checkSchema({
       ['owner']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['service']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['endpoint']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['caller']: {
         in: ['params'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -711,16 +711,16 @@ export class CustomValidator extends Validator {
     return checkSchema({
       ['owner']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['service']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['endpoint']: {
         in: ['params'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -731,12 +731,12 @@ export class CustomValidator extends Validator {
     return checkSchema({
       ['owner']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['service']: {
         in: ['params'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -747,8 +747,8 @@ export class CustomValidator extends Validator {
     return checkSchema({
       ['owner']: {
         in: ['params'],
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 
@@ -761,22 +761,22 @@ export class CustomValidator extends Validator {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -789,22 +789,22 @@ export class CustomValidator extends Validator {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -817,22 +817,22 @@ export class CustomValidator extends Validator {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['limit']: {
         in: ['query'],
         optional: true,
         isInt: true,
-        toInt: true
+        toInt: true,
       },
       ['sort']: {
         in: ['query'],
-        optional: true
+        optional: true,
       },
       ['filters']: {
         in: ['query'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 
@@ -843,7 +843,7 @@ export class CustomValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['body'],
-        isString: true
+        isString: true,
       },
       ['results.*']: {
         in: ['body'],
@@ -853,9 +853,9 @@ export class CustomValidator extends Validator {
               return false;
             }
             return true;
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
@@ -866,19 +866,18 @@ export class CustomValidator extends Validator {
     return checkSchema({
       ['id']: {
         in: ['params'],
-        isString: true
+        isString: true,
       },
       ['rule_number']: {
         in: ['query'],
         optional: true,
-        isInt: true
+        isInt: true,
       },
       ['register_code']: {
         in: ['query'],
         optional: true,
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 }
-

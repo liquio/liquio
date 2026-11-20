@@ -1,4 +1,5 @@
 {
+  "provider": "rabbitmq",
   "amqpConnection": "amqp://rabbitmq",
   "maxHandlingMessages": 2,
   "readingQueueName": "bpmn-manager-incoming",

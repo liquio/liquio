@@ -2,6 +2,7 @@ import Sequelize from 'sequelize';
 
 import { Model } from './model';
 import { GatewayEntity } from '../entities/gateway';
+import { getModels } from '../lib/context';
 
 export class GatewayModel extends Model {
   static singleton: GatewayModel;
@@ -53,7 +54,7 @@ export class GatewayModel extends Model {
    * @returns {Promise<GatewayEntity>}
    */
   async findById(id) {
-    const gateway: any = await this.model.findByPk(id, { include: [{ model: global.models.workflow.model }] });
+    const gateway: any = await this.model.findByPk(id, { include: [{ model: getModels().workflow.model }] });
     if (!gateway) {
       return;
     }

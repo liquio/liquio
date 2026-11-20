@@ -2,6 +2,12 @@
   "console": [],
   "excludeParams": [
     "token",
-    "authorization"
+    "authorization",
+    "accessToken",
+    "refreshToken",
+    "access_token",
+    "refresh_token",
+    "id_token",
+    "password"
   ]
 }

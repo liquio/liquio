@@ -1,7 +1,8 @@
-
 import { matchedData } from 'express-validator';
 import { intersection } from 'lodash';
+
 import { Controller } from './controller';
+import { getLog, getModels } from '../lib/context';
 
 const PRESERVE_FIELDS_NO_ACCESS = ['description', 'type', 'showEmptyScreen'];
 const ACCESS_LIMITED_KEY = 'isAccessLimited';
@@ -37,7 +38,7 @@ export class CustomInterfaceController extends Controller {
 
     let customInterfaces;
     try {
-      customInterfaces = await global.models.customInterface.getAll({ route });
+      customInterfaces = await getModels().customInterface.getAll({ route });
     } catch (error) {
       return this.responseError(res, error);
     }
@@ -55,7 +56,7 @@ export class CustomInterfaceController extends Controller {
               if (!PRESERVE_FIELDS_NO_ACCESS.includes(key)) {
                 delete interfaceSchema[key];
 
-              // Special case for showEmptyScreen: delete 'shown' property
+                // Special case for showEmptyScreen: delete 'shown' property
               } else if (key === 'showEmptyScreen') {
                 delete interfaceSchema[key].shown;
               }
@@ -68,12 +69,11 @@ export class CustomInterfaceController extends Controller {
             customInterface.interfaceSchema = JSON.stringify(interfaceSchema);
           }
         }
-      } catch(error) {
-        global.log.save('custom-interface-schema-parse-error', { error: error.toString() }, 'error');
+      } catch (error) {
+        getLog().save('custom-interface-schema-parse-error', { error: error.toString() }, 'error');
       }
     }
 
     this.responseData(res, customInterfaces);
   }
 }
-

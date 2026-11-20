@@ -16,6 +16,11 @@ export class GlobalExceptionFilter<T> implements ExceptionFilter {
     const statusCode = this.getStatusCode<T>(exception);
     const message = this.getErrorMessage<T>(exception);
 
+    const retryAfter = (exception as { retryAfterSeconds?: unknown })?.retryAfterSeconds;
+    if (typeof retryAfter === 'number') {
+      response.set('Retry-After', String(retryAfter));
+    }
+
     response.status(statusCode).json({
       data: {
         result: {

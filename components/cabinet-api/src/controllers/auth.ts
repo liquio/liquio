@@ -1,9 +1,10 @@
 import _ from 'lodash';
 import bodyParser from 'body-parser';
+import { getIdApiClient, IdApiClient } from '@liquio/back-core';
 import type { Express, Request, Response, NextFunction } from 'express';
 
+import { getConfig } from '../lib/context';
 import Controller from './controller';
-import Auth from '../lib/auth';
 import Token from '../lib/token';
 import UnitModel from '../models/unit';
 import type UnitEntity from '../entities/unit';
@@ -16,7 +17,7 @@ const ROLES_SEPARATOR = ';';
  */
 class AuthController extends Controller {
   private static singleton: AuthController;
-  private auth: any;
+  private idApiClient: IdApiClient;
   private token: Token;
   private unitModel: UnitModel;
 
@@ -30,8 +31,8 @@ class AuthController extends Controller {
       super();
 
       // Auth controller config.
-      this.auth = new Auth().provider;
-      this.token = new Token((global.config as any).auth);
+      this.idApiClient = getIdApiClient();
+      this.token = new Token(getConfig().auth);
       this.unitModel = new UnitModel();
 
       AuthController.singleton = this;
@@ -66,17 +67,19 @@ class AuthController extends Controller {
       }
 
       // Get auth access and refresh tokens.
+      let tokenData: any;
       let authAccessToken: string;
       let authRefreshToken: string;
       try {
-        const tokenData = this.token.decrypt(token as string);
+        tokenData = this.token.decrypt(token as string);
         authAccessToken = tokenData.authTokens.accessToken;
         authRefreshToken = tokenData.authTokens.refreshToken;
       } catch (error) {
         return this.responseError(res, error as Error, 401);
       }
 
-      if (isCheckJwtOnly) {
+      // Trust JWT signature only while token is fresh. Stale token falls through to full session check in ID.
+      if (isCheckJwtOnly && this.token.isFresh(tokenData)) {
         return next();
       }
 
@@ -86,7 +89,7 @@ class AuthController extends Controller {
       // Get user info.
       let authUserInfo: any;
       try {
-        authUserInfo = await this.auth.getUser(authAccessToken);
+        authUserInfo = await this.idApiClient.getUser(authAccessToken);
       } catch (error) {
         return this.responseError(res, error as Error, 401);
       }
@@ -96,7 +99,7 @@ class AuthController extends Controller {
         // Try to get new auth access token by refresh token.
         let newAuthTokens: any;
         try {
-          newAuthTokens = await this.auth.renewTokens(authRefreshToken);
+          newAuthTokens = await this.idApiClient.renewTokens(authRefreshToken);
         } catch (error) {
           return this.responseError(res, error as Error, 401);
         }
@@ -106,7 +109,7 @@ class AuthController extends Controller {
 
         // Get user info.
         try {
-          authUserInfo = await this.auth.getUser(newAuthTokens.accessToken);
+          authUserInfo = await this.idApiClient.getUser(newAuthTokens.accessToken);
         } catch (error) {
           return this.responseError(res, error as Error, 401);
         }
@@ -121,10 +124,19 @@ class AuthController extends Controller {
 
         // Add new token to response headers.
         res.header('new_token', newToken);
+      } else if (!this.token.isFresh(tokenData)) {
+        // Session confirmed by ID - reissue token to restart JWT-only freshness window.
+        let newToken: string;
+        try {
+          newToken = this.token.generate({ authTokens: tokenData.authTokens, authUserInfo });
+        } catch (error) {
+          return this.responseError(res, error as Error, 401);
+        }
+        res.header('new_token', newToken);
       }
 
       // Append auth user info to request object.
-      (req as any).authUserInfo = this.auth.getMainUserInfo(authUserInfo, true, true);
+      (req as any).authUserInfo = this.idApiClient.getMainUserInfo(authUserInfo, true, true);
       (req as any).authUserId = authUserInfo && authUserInfo.userId;
 
       // Append userId and name to response object.
@@ -180,7 +192,7 @@ class AuthController extends Controller {
   async getUserUnitEntities(userId: string): Promise<{ head: UnitEntity[]; member: UnitEntity[]; all: UnitEntity[] }> {
     const units = await this.unitModel.getAll();
 
-    const defaultUnits = (global.config as any).auth.defaultUnits || [];
+    const defaultUnits = getConfig().auth.defaultUnits || [];
     const head = units.filter((v) => v.heads.includes(userId));
     const member = units.filter((v) => v.members.includes(userId) || defaultUnits.includes(v.id));
     const all = [...new Set([...head, ...member])];
@@ -235,16 +247,15 @@ class AuthController extends Controller {
     const { authUserInfo, authUserRoles } = req as any;
     const authUserUnits = this.getRequestUserUnits(req);
 
-    // Append full ava URL.
-    const avaUrl = authUserInfo && authUserInfo.avaUrl;
-    const fullAvaUrl = avaUrl && `${(global.config as any).auth.server}${avaUrl}`;
+    // The ava URL is already full (the id-api client built it).
+    const fullAvaUrl = authUserInfo && authUserInfo.avaUrl;
     const userInfo = {
       ...authUserInfo,
       authUserRoles,
       authUserUnits,
       fullAvaUrl,
     };
-    const normalizedUserInfo = this.auth.getMainUserInfo(userInfo, true, true);
+    const normalizedUserInfo = this.idApiClient.getMainUserInfo(userInfo, true, true);
 
     // Response.
     const userInfoToResponse = this.convertUnderscoreKeysToCamelCase(normalizedUserInfo);
@@ -272,7 +283,7 @@ class AuthController extends Controller {
       } = req as any;
       const { oldPassword, newPassword } = req.body as any;
 
-      const data = await this.auth.changePassword(email, oldPassword, newPassword);
+      const data = await this.idApiClient.changePassword(email, oldPassword, newPassword);
 
       this.responseData(res, data);
     } catch (error) {
@@ -282,9 +293,9 @@ class AuthController extends Controller {
 
   async generateUserTotp(req: Request, res: Response): Promise<void> {
     try {
-      const { authUserId } = req as any;
+      const { authUserId, authAccessToken } = req as any;
 
-      const data = await this.auth.generateUserTotp(authUserId);
+      const data = await this.idApiClient.generateUserTotp(authUserId, authAccessToken);
 
       this.responseData(res, data);
     } catch (error) {
@@ -294,10 +305,10 @@ class AuthController extends Controller {
 
   async enableUserTotpSecret(req: Request, res: Response): Promise<void> {
     try {
-      const { authUserId } = req as any;
+      const { authUserId, authAccessToken } = req as any;
       const { secret, code } = req.body as any;
 
-      const data = await this.auth.enableUserTotpSecret(authUserId, secret, code);
+      const data = await this.idApiClient.enableUserTotpSecret(authUserId, secret, code, authAccessToken);
 
       this.responseData(res, data);
     } catch (error) {
@@ -307,10 +318,10 @@ class AuthController extends Controller {
 
   async disableUserTotpSecret(req: Request, res: Response): Promise<void> {
     try {
-      const { authUserId } = req as any;
+      const { authUserId, authAccessToken } = req as any;
       const { code } = req.body as any;
 
-      const data = await this.auth.disableUserTotpSecret(authUserId, code);
+      const data = await this.idApiClient.disableUserTotpSecret(authUserId, code, authAccessToken);
 
       this.responseData(res, data);
     } catch (error) {
@@ -327,7 +338,7 @@ class AuthController extends Controller {
     try {
       const { authUserId } = req as any;
 
-      const data = await this.auth.deleteUser(authUserId);
+      const data = await this.idApiClient.deleteUser(authUserId);
 
       if (data?.success === false) {
         return this.responseError(res, { error: data.message } as any, 400);

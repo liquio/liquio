@@ -1,3 +1,5 @@
+import { getModels } from '../lib/context';
+
 export class CabinetMenuBusiness {
   private static singleton: CabinetMenuBusiness;
 
@@ -13,30 +15,30 @@ export class CabinetMenuBusiness {
   }
 
   async findById(id) {
-    return global.models.cabinetMenu.findById(id);
+    return getModels().cabinetMenu.findById(id);
   }
 
   async getAll(filters) {
-    return global.models.cabinetMenu.getAll(filters);
+    return getModels().cabinetMenu.getAll(filters);
   }
 
   async create(data) {
-    return global.models.cabinetMenu.create(data);
+    return getModels().cabinetMenu.create(data);
   }
 
   async update(id, data) {
-    return global.models.cabinetMenu.update(id, data);
+    return getModels().cabinetMenu.update(id, data);
   }
 
   async hasChildren(parentId) {
-    return global.models.cabinetMenu.hasChildren(parentId);
+    return getModels().cabinetMenu.hasChildren(parentId);
   }
 
   async deleteById(id) {
-    return global.models.cabinetMenu.deleteById(id);
+    return getModels().cabinetMenu.deleteById(id);
   }
 
   async sort(items, transaction) {
-    return global.models.cabinetMenu.sort(items, transaction);
+    return getModels().cabinetMenu.sort(items, transaction);
   }
 }

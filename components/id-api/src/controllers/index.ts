@@ -1,6 +1,7 @@
 import { Express, Router } from '../types';
 import { AuthController } from './auth.controller';
 import { EdsController } from './eds.controller';
+import { LdapController } from './ldap.controller';
 import { LoginHistoryController } from './login_history.controller';
 import { SignUpController } from './sign_up.controller';
 import { StatController } from './stat.controller';
@@ -15,6 +16,7 @@ export interface ControllersCollection {
   user: UserController;
   eds: EdsController;
   loginHistory: LoginHistoryController;
+  ldap: LdapController;
   userAdminAction: UserAdminActionController;
   test: TestController;
   stat: StatController;
@@ -33,6 +35,7 @@ export class Controllers {
       user: new UserController(router, express),
       eds: new EdsController(router, express),
       loginHistory: new LoginHistoryController(router, express),
+      ldap: new LdapController(router, express),
       userAdminAction: new UserAdminActionController(router, express),
       test: new TestController(router, express),
       stat: new StatController(router, express),

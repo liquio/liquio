@@ -1,0 +1,50 @@
+import { Log, ConsoleLogProvider } from '@liquio/back-core';
+
+import { Db } from './lib/db';
+import { createManagerMessageBus, DESTINATION_MANAGER, recordHandlerFailure } from './lib/message_bus';
+import { RouterService } from './services/router';
+import { WorkflowBusiness } from './businesses/workflow';
+import { RedisClient } from './lib/redis_client';
+import { setAppContext, getConfig } from './lib/context';
+import type { ManagerConfig } from './lib/config.types';
+
+/**
+ * Initializes globals and services of the manager.
+ * @param config Configuration object.
+ * @returns Initialized services.
+ */
+export async function bootstrap(config: ManagerConfig) {
+  setAppContext({ config });
+
+  // Init redis.
+  setAppContext({ redisClient: getConfig()?.redis?.isEnabled ? new RedisClient(getConfig().redis) : null });
+
+  // Init log.
+  const consoleLogProvider = new ConsoleLogProvider(config.log.console.name, {
+    excludeParams: config.log.excludeParams,
+    disableDefaultRedaction: config.log?.disableDefaultRedaction === true,
+  } as any);
+  const log = new Log([consoleLogProvider], ['console']);
+  setAppContext({ log });
+
+  const db = await Db.getInstance(config.db);
+  setAppContext({ db });
+
+  const workflowBusiness = new WorkflowBusiness();
+  await workflowBusiness.init();
+
+  // Init message bus.
+  const messageBus = createManagerMessageBus(config);
+  await messageBus.subscribe(DESTINATION_MANAGER, workflowBusiness.createFromMessage.bind(workflowBusiness), {
+    concurrency: config.message_queue.maxHandlingMessages || 1,
+    onFailure: recordHandlerFailure,
+  });
+  await messageBus.init();
+  setAppContext({ messageBus });
+
+  // Init router.
+  const routerService = new RouterService(config);
+  await routerService.init();
+
+  return { workflowBusiness, messageBus, routerService };
+}

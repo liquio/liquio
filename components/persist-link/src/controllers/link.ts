@@ -1,5 +1,29 @@
+// Constants.
+const MAX_JSON_MAP_ENTRIES = 100;
+const MAX_JSON_MAP_VALUE_LENGTH = 10000;
+
+/**
+ * Is valid template jsonMap: plain object of strings (paths or arrow function sources) with bounded size.
+ * @param {*} jsonMap JSON map.
+ * @returns {boolean}
+ */
+export function isValidJsonMap(jsonMap) {
+  if (jsonMap === undefined || jsonMap === null) {
+    return true;
+  }
+  if (typeof jsonMap !== 'object' || Array.isArray(jsonMap)) {
+    return false;
+  }
+  const entries = Object.entries(jsonMap);
+  return (
+    entries.length <= MAX_JSON_MAP_ENTRIES && entries.every(([, value]) => typeof value === 'string' && value.length <= MAX_JSON_MAP_VALUE_LENGTH)
+  );
+}
+
 // Import.
 import { getLog } from '../lib/context';
+import { describeOptions } from '../lib/log_redact';
+import { setFileSafetyHeaders } from '../lib/stream_response';
 import Controller from './controller';
 import FileConverterService from '../lib/file_converter';
 import LinkGenerator from '../lib/link_generator';
@@ -46,13 +70,13 @@ class LinkController extends Controller {
     if (!linkProvider) {
       getLog().save('create-link-error', {
         type,
-        options,
+        options: describeOptions(options),
         message: 'Provider not found for this type.',
       });
       return this.responseError(res, 'Provider not found for this type.', 400);
     }
     if (!isValidOptions) {
-      getLog().save('create-link-error', { type, options, message: 'Invalid provider options.' });
+      getLog().save('create-link-error', { type, options: describeOptions(options), message: 'Invalid provider options.' });
       return this.responseError(res, 'Invalid provider options.', 400);
     }
 
@@ -67,9 +91,9 @@ class LinkController extends Controller {
     } catch (error) {
       getLog().save('link-generation-error', {
         type,
-        options,
+        options: describeOptions(options),
         small,
-        definedHash,
+        hasDefinedHash: !!definedHash,
         error: error && error.message,
       });
       return this.responseError(res, "Can't generate link.");
@@ -80,11 +104,11 @@ class LinkController extends Controller {
     try {
       qrCode = await this.qr.getByType(link, qr);
     } catch (error) {
-      getLog().save('qr-generation-error', { link, error: error && error.message });
+      getLog().save('qr-generation-error', { error: error && error.message });
     }
 
     // Response.
-    this.responseData(res, qrCode ? { link, qrCode } : link);
+    this.responseData(res, qrCode ? { link, qrCode } : link, 200, { skipLog: true });
   }
 
   /**
@@ -117,7 +141,7 @@ class LinkController extends Controller {
 
     // Check.
     if (!linkProvider) {
-      getLog().save('open-link-error', { type, options, message: 'Provider not found.' });
+      getLog().save('open-link-error', { type, options: describeOptions(options), message: 'Provider not found.' });
       return this.responseError(res, 'Provider not found.');
     }
 
@@ -128,10 +152,12 @@ class LinkController extends Controller {
 
     // Open.
     try {
-      linkProvider.open(options, res, responseType, { showInBrowser });
+      await linkProvider.open(options, res, responseType, { showInBrowser });
     } catch (error) {
-      getLog().save('open-link-error', { type, options, message: error.message });
-      return this.responseError(res, 'Provider error.');
+      getLog().save('open-link-error', { type, options: describeOptions(options), message: error.message });
+      if (!res.headersSent) {
+        return this.responseError(res, 'Provider error.');
+      }
     }
   }
 
@@ -156,16 +182,18 @@ class LinkController extends Controller {
 
     // Check.
     if (!linkProvider) {
-      getLog().save('open-link-template-error', { type, options, message: 'Provider not found.' });
+      getLog().save('open-link-template-error', { type, options: describeOptions(options), message: 'Provider not found.' });
       return this.responseError(res, 'Provider not found.');
     }
 
     // Open.
     try {
-      linkProvider.getTemplate(options, res, responseType);
+      await linkProvider.getTemplate(options, res, responseType);
     } catch (error) {
-      getLog().save('open-link-template-error', { type, options, message: error.message });
-      return this.responseError(res, 'Provider error.');
+      getLog().save('open-link-template-error', { type, options: describeOptions(options), message: error.message });
+      if (!res.headersSent) {
+        return this.responseError(res, 'Provider error.');
+      }
     }
   }
 
@@ -211,6 +239,11 @@ class LinkController extends Controller {
    * @param {object} res HTTP response.
    */
   async createTemplate(req, res) {
+    // Check.
+    if (!isValidJsonMap(req.body?.jsonMap)) {
+      return this.responseError(res, 'Invalid jsonMap.', 400);
+    }
+
     // Create template.
     try {
       const template = await this.templateModel.create(req.body);
@@ -229,6 +262,11 @@ class LinkController extends Controller {
    * @param {object} res HTTP response.
    */
   async updateTemplate(req, res) {
+    // Check.
+    if (!isValidJsonMap(req.body?.jsonMap)) {
+      return this.responseError(res, 'Invalid jsonMap.', 400);
+    }
+
     // Update template.
     try {
       const template = await this.templateModel.update(req.params.id, req.body);
@@ -294,14 +332,14 @@ class LinkController extends Controller {
       // Check if provider supports file stream.
       if (!incomingFileStream) {
         getLog().save('open-and-convert-error', {
-          options,
+          options: describeOptions(options),
           message: 'Provider does not support file stream.',
         });
         return this.responseError(res, 'File conversion not supported for this provider.', 400);
       }
     } catch (error) {
       getLog().save('open-and-convert-get-stream-error', {
-        options,
+        options: describeOptions(options),
         error: error?.message,
       });
       return this.responseError(res, 'Failed to get file stream.');
@@ -319,7 +357,7 @@ class LinkController extends Controller {
       });
     } catch (error) {
       getLog().save('open-and-convert-conversion-error', {
-        options,
+        options: describeOptions(options),
         sourceFormat,
         targetFormat,
         error: error?.message,
@@ -332,11 +370,12 @@ class LinkController extends Controller {
       const handleStreamError = (error) => {
         getLog().save('open-and-convert-stream-error', {
           error: error?.message,
-          options,
+          options: describeOptions(options),
         });
       };
 
       // Set headers.
+      setFileSafetyHeaders(res);
       if (showInBrowser) {
         res.setHeader('Content-Disposition', 'inline');
       }
@@ -344,7 +383,7 @@ class LinkController extends Controller {
       convertedStream.on('error', handleStreamError).pipe(res).on('error', handleStreamError);
     } catch (error) {
       getLog().save('open-and-convert-pipe-error', {
-        options,
+        options: describeOptions(options),
         error: error?.message,
       });
       return this.responseError(res, 'Failed to stream converted file.');

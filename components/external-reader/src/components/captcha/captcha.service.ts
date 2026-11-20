@@ -5,13 +5,12 @@ import { createChallenge } from 'altcha-lib';
 import moment from 'moment';
 
 import { ConfigurationService } from '@components/configuration/configuration.service';
-import { Configuration } from '@components/configuration/configuration.types';
-
+import { ExternalReaderConfig } from '@components/configuration/configuration.types';
 import { Challenge } from './captcha.dto';
 
 @Injectable()
 export class CaptchaService {
-  private readonly cfg: Configuration['captcha'];
+  private readonly cfg: NonNullable<ExternalReaderConfig['captcha']>;
 
   constructor(private readonly config: ConfigurationService) {
     this.cfg = config.get('captcha') || {};
@@ -69,10 +68,7 @@ export class CaptchaService {
     }
 
     // Skip if the service or method is not in the enabled list
-    if (
-      !this.isEnabledFor.includes([service, '*'].join('.')) &&
-      !this.isEnabledFor.includes([service, method].join('.'))
-    ) {
+    if (!this.isEnabledFor.includes([service, '*'].join('.')) && !this.isEnabledFor.includes([service, method].join('.'))) {
       return null;
     }
 

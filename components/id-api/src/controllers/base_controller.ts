@@ -1,17 +1,21 @@
 import debug from 'debug';
 import { validationResult } from 'express-validator';
+import { Log, getTraceId } from '@liquio/back-core';
 
+import { publicError } from '../lib/http_error';
 import { Errors } from '../lib/errors';
 import { AuthMiddleware } from '../middleware/authenticate';
 import { LoginActionType, Models } from '../models';
 import { Services } from '../services';
-import { Express, NextFunction, Request, Response, Router } from '../types';
-import { Log, getTraceId } from '@liquio/back-core';
+import { Express, HttpStatusCode, NextFunction, Request, Response, Router } from '../types';
 
-const HTTP_STATUS_CODE_OK = 200;
-const HTTP_STATUS_CODE_SERVER_ERROR = 500;
 const EMPTY_DATA = {};
-const DEFAULT_ERROR_MESSAGE = 'Server error.';
+
+export enum ControllerErrorMessage {
+  SERVER_ERROR = 'Server error.',
+  INTERNAL = 'Internal error.',
+  INVALID_USER_ID = 'Invalid user ID.',
+}
 
 /**
  * Base controller class.
@@ -69,7 +73,7 @@ export class BaseController {
    * @param {object} [data] Data to response.
    * @param {number} [httpStatusCode] HTTP status code.
    */
-  responseData(res: Response, data = EMPTY_DATA, httpStatusCode = HTTP_STATUS_CODE_OK) {
+  responseData(res: Response, data = EMPTY_DATA, httpStatusCode: number = HttpStatusCode.Ok) {
     // Response.
     res.status(httpStatusCode).send(data);
   }
@@ -80,9 +84,9 @@ export class BaseController {
    * @param {string|Error} [error] Error instance or message.
    * @param {number} [httpStatusCode] HTTP status code.
    */
-  responseError(res: Response, error: any = DEFAULT_ERROR_MESSAGE, httpStatusCode = HTTP_STATUS_CODE_SERVER_ERROR) {
+  responseError(res: Response, error: any = ControllerErrorMessage.SERVER_ERROR, httpStatusCode: number = HttpStatusCode.InternalServerError) {
     // Define params.
-    const message = error instanceof Error ? error.message : error;
+    const message = error instanceof Error ? publicError(error, ControllerErrorMessage.SERVER_ERROR) : error;
     const errorFromList = Errors.getByMessage(message);
     const errorFromListCode = errorFromList?.code;
 
@@ -98,7 +102,8 @@ export class BaseController {
    * Prepare login history data.
    */
   prepareLoginHistoryData(req: Request, { actionType = 'login' }: { actionType?: LoginActionType }) {
-    const ip = [req.headers['x-forwarded-for'] || req.socket?.remoteAddress];
+    // `req.ip` honours `x-forwarded-for` only for hops allowed by `config.trustProxy`.
+    const ip = [req.ip ?? req.socket?.remoteAddress];
     const userAgent = req.headers['user-agent'] ?? null;
     const { userId, first_name: firstName, middle_name: middleName, last_name: lastName, isActive: isUserActive = true } = req.user || {};
     const userName = [lastName, firstName, middleName].filter((v) => !!v).join(' ');

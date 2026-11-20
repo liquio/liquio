@@ -4,6 +4,8 @@ import _ from 'lodash';
 
 import { Model } from './model';
 import { WorkflowTemplateEntity } from '../entities/workflow_template';
+import { getModels } from '../lib/context';
+import { SequelizeDbError } from '../lib/errors';
 
 export class WorkflowTemplateModel extends Model {
   static singleton: WorkflowTemplateModel;
@@ -92,9 +94,9 @@ export class WorkflowTemplateModel extends Model {
       },
       sort: [],
       attributes: {
-        include: [[global.models.getModel('workflowTemplateTag').formAggregationSubquery(), 'tags']],
+        include: [[getModels().getModel('workflowTemplateTag').formAggregationSubquery(), 'tags']],
       },
-      include: [{ model: global.models.getModel('workflowTemplateCategory') }],
+      include: [{ model: getModels().getModel('workflowTemplateCategory') }],
     };
 
     if (typeof filters.name !== 'undefined') {
@@ -124,7 +126,7 @@ export class WorkflowTemplateModel extends Model {
     }
 
     if (Array.isArray(filters.tags)) {
-      sequelizeOptions.filters[Sequelize.Op.and] = [global.models.getModel('workflowTemplateTag').formFilterSubquery(filters.tags.map(Number))];
+      sequelizeOptions.filters[Sequelize.Op.and] = [getModels().getModel('workflowTemplateTag').formFilterSubquery(filters.tags.map(Number))];
     }
 
     if (Array.isArray(filters.access_units)) {
@@ -149,7 +151,7 @@ export class WorkflowTemplateModel extends Model {
       let workflowTemplateEntity: any = this.prepareEntity(item);
 
       if (item.workflowTemplateCategory) {
-        workflowTemplateEntity.workflowTemplateCategory = global.models.workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
+        workflowTemplateEntity.workflowTemplateCategory = getModels().workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
       }
 
       if (item.get('tags')) {
@@ -265,7 +267,7 @@ export class WorkflowTemplateModel extends Model {
         this.db.query(selectQuery, { replacements: replacements }),
       ]);
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     const [[[{ count }]], [rows]] = result;
@@ -274,7 +276,7 @@ export class WorkflowTemplateModel extends Model {
       let workflowTemplateEntity: any = this.prepareEntity(item);
 
       if (item.workflowTemplateCategory) {
-        workflowTemplateEntity.workflowTemplateCategory = global.models.workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
+        workflowTemplateEntity.workflowTemplateCategory = getModels().workflowTemplateCategory.prepareEntity(item.workflowTemplateCategory);
       }
 
       return workflowTemplateEntity;
@@ -330,7 +332,7 @@ export class WorkflowTemplateModel extends Model {
         returning: true,
       } as any);
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
 
     // Get updatedRows.
@@ -371,7 +373,7 @@ export class WorkflowTemplateModel extends Model {
         transaction,
       });
     } catch (error) {
-      throw new global.SequelizeDbError(error);
+      throw new SequelizeDbError(error);
     }
     return this.prepareEntity(updatingResult?.[0]?.[0]);
   }

@@ -1,5 +1,4 @@
 import { Client, ClientConfig } from 'pg';
-
 import { Log } from '@liquio/back-core';
 
 interface PgPubSubConfig extends ClientConfig {
@@ -22,7 +21,7 @@ const RETRY_CONNECTION_TIME = 10 * 1000; // 10 seconds
  * Pub/Sub.
  */
 export class PgPubSub {
-  private static singleton: PgPubSub;
+  private static singleton: PgPubSub | undefined;
 
   private readonly config: PgPubSubConfig;
 
@@ -33,6 +32,8 @@ export class PgPubSub {
   private reconnectAttempts: number;
 
   private isReconnecting: boolean;
+
+  private isClosing = false;
 
   private subscriptions: Map<string, PubSubCallback[]> = new Map();
 
@@ -56,7 +57,7 @@ export class PgPubSub {
    * Get the initialized singleton instance.
    * @returns {PgPubSub}
    */
-  static getInstance(): PgPubSub {
+  static getInstance(): PgPubSub | undefined {
     return PgPubSub.singleton;
   }
 
@@ -70,7 +71,7 @@ export class PgPubSub {
       database: this.config.database,
       password: this.config.password,
       port: this.config.port,
-      ssl: this.config.ssl
+      ssl: this.config.ssl,
     });
 
     client.on('notification', async (msg) => {
@@ -90,8 +91,10 @@ export class PgPubSub {
       this.log.save('pgpubsub-error', {
         error: error.message,
         stack: error.stack,
-        isReconnecting: this.isReconnecting
+        isReconnecting: this.isReconnecting,
       });
+
+      if (this.isClosing) return;
 
       if (!this.isReconnecting) {
         this.reconnect();
@@ -100,6 +103,8 @@ export class PgPubSub {
 
     client.on('end', () => {
       this.log.save('pgpubsub-connection-ended', { isReconnecting: this.isReconnecting });
+
+      if (this.isClosing) return;
 
       if (!this.isReconnecting && !this.client) {
         this.reconnect();
@@ -116,7 +121,7 @@ export class PgPubSub {
    * Handles reconnection logic.
    */
   async reconnect(): Promise<void> {
-    if (this.reconnectTimer) return;
+    if (this.reconnectTimer || this.isClosing) return;
 
     this.isReconnecting = true;
 
@@ -127,15 +132,21 @@ export class PgPubSub {
     } catch (error) {
       this.log.save('pgpubsub-end-client-error', {
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
     }
 
     this.reconnectTimer = setInterval(async () => {
+      if (this.isClosing) {
+        clearInterval(this.reconnectTimer);
+        this.reconnectTimer = null;
+        return;
+      }
+
       try {
         this.log.save('pgpubsub-starting-to-reconnect', {
           reconnectAttempts: this.reconnectAttempts,
-          message: 'Attempting to reconnect...'
+          message: 'Attempting to reconnect...',
         });
 
         this.reconnectAttempts += 1;
@@ -143,7 +154,7 @@ export class PgPubSub {
 
         this.log.save('pgpubsub-reconnected-successfully', {
           reconnectAttempts: this.reconnectAttempts,
-          message: 'Reconnected successfully'
+          message: 'Reconnected successfully',
         });
 
         // Re-subscribe to channels.
@@ -161,10 +172,40 @@ export class PgPubSub {
         this.log.save('pgpubsub-failed-to-reconnect', {
           error: error.message,
           stack: error.stack,
-          reconnectAttempts: this.reconnectAttempts
+          reconnectAttempts: this.reconnectAttempts,
         });
       }
     }, this.config.retryConnectionTime || RETRY_CONNECTION_TIME);
+  }
+
+  /**
+   * Close the connection, stop reconnecting and release the singleton.
+   */
+  async close(): Promise<void> {
+    this.isClosing = true;
+
+    if (this.reconnectTimer) {
+      clearInterval(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.isReconnecting = false;
+    this.reconnectAttempts = 0;
+
+    try {
+      await this.client?.end();
+    } catch (error) {
+      this.log.save('pgpubsub-close-error', { error: error.message });
+    } finally {
+      this.client = null;
+    }
+
+    this.subscriptions.clear();
+
+    if (PgPubSub.singleton === this) {
+      PgPubSub.singleton = undefined;
+    }
+
+    this.log.save('pgpubsub-closed', {});
   }
 
   /**

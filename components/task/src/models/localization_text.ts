@@ -1,4 +1,5 @@
 import Sequelize from 'sequelize';
+
 import { Model } from './model';
 import { LocalizationTextEntity } from '../entities/localization_text';
 
@@ -13,7 +14,6 @@ export class LocalizationTextModel extends Model {
   constructor() {
     super();
     if (!LocalizationTextModel.singleton) {
-
       this.model = this.db.define(
         'localization_text',
         {
@@ -107,4 +107,3 @@ export class LocalizationTextModel extends Model {
     };
   }
 }
-

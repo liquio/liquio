@@ -5,6 +5,7 @@ export interface AccessTokenAttributes {
   clientId: number;
   expires: Date;
   userId: string;
+  authorizationVersion?: number;
   scope: string[];
 }
 
@@ -18,6 +19,7 @@ export class AccessTokenModel extends BaseModel<AccessTokenAttributes> {
     this.entity = this.sequelize.define(
       'access_tokens',
       {
+        authorizationVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
         accessToken: {
           type: DataTypes.UUIDV1,
           primaryKey: true,

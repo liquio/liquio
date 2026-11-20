@@ -10,14 +10,7 @@ import { PingModule } from '@components/ping/ping.module';
 import { ProvidersModule } from '@components/providers/providers.module';
 
 @Module({
-  imports: [
-    AuthModule,
-    PingModule,
-    ConfigurationModule,
-    ObservabilityModule,
-    CaptchaModule,
-    ProvidersModule,
-  ],
+  imports: [AuthModule, PingModule, ConfigurationModule, ObservabilityModule, CaptchaModule, ProvidersModule],
   providers: [
     {
       provide: APP_GUARD,

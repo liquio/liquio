@@ -1,6 +1,8 @@
-
 import { checkSchema } from 'express-validator';
+
 import { Validator } from './validator';
+
+const CAPTCHA_PARAM_REGEX = /^[A-Za-z0-9_-]{1,128}$/;
 
 /**
  * External reader validator.
@@ -23,6 +25,25 @@ export class ExternalReaderValidator extends Validator {
   }
 
   /**
+   * Get captcha challenge.
+   * Service and method are placed into the external reader URL path, so allow only safe segment characters.
+   */
+  getCaptchaChallenge() {
+    return checkSchema({
+      ['service']: {
+        in: ['params'],
+        isString: true,
+        matches: { options: CAPTCHA_PARAM_REGEX },
+      },
+      ['method']: {
+        in: ['params'],
+        isString: true,
+        matches: { options: CAPTCHA_PARAM_REGEX },
+      },
+    });
+  }
+
+  /**
    * Get data.
    */
   getData() {
@@ -40,17 +61,24 @@ export class ExternalReaderValidator extends Validator {
         isString: true,
         optional: true,
       },
+      ['extraParams']: {
+        in: ['body'],
+        optional: true,
+        custom: {
+          options: (value) => !!value && typeof value === 'object' && !Array.isArray(value),
+        },
+      },
       ['filters']: {
         in: ['body'],
         custom: {
-          options: value => {
+          options: (value) => {
             if (!value || typeof value !== 'object') {
               return false;
             }
             return true;
-          }
-        }
-      }
+          },
+        },
+      },
     });
   }
 
@@ -73,26 +101,32 @@ export class ExternalReaderValidator extends Validator {
         in: ['body'],
         optional: true,
         custom: {
-          options: value => {
+          options: (value) => {
             if (!value || typeof value !== 'object') {
               return false;
             }
             return true;
-          }
-        }
+          },
+        },
       },
       ['captchaPayload']: {
         in: ['body'],
         isString: true,
         optional: true,
       },
+      ['extraParams']: {
+        in: ['body'],
+        optional: true,
+        custom: {
+          options: (value) => !!value && typeof value === 'object' && !Array.isArray(value),
+        },
+      },
       ['requestId']: {
         in: ['body'],
         isString: true,
         optional: true,
-      }
+      },
     });
-
   }
 
   /**
@@ -102,9 +136,8 @@ export class ExternalReaderValidator extends Validator {
     return checkSchema({
       ['readers']: {
         in: ['query'],
-        optional: true
-      }
+        optional: true,
+      },
     });
   }
 }
-

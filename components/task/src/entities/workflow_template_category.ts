@@ -1,4 +1,3 @@
-
 import { Entity } from './entity';
 
 /**
@@ -32,4 +31,3 @@ export class WorkflowTemplateCategoryEntity extends Entity {
     return this.getFilterProperties();
   }
 }
-

@@ -33,45 +33,45 @@ export default class AfterhandlerModel extends Model {
             allowNull: false,
             primaryKey: true,
             type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV1
+            defaultValue: Sequelize.UUIDV1,
           },
           type: {
             allowNull: false,
-            type: Sequelize.ENUM('blockchain', 'elastic', 'plink')
+            type: Sequelize.ENUM('blockchain', 'elastic', 'plink'),
           },
           history_id: {
             type: Sequelize.UUID,
-            references: { model: 'history', key: 'id' }
+            references: { model: 'history', key: 'id' },
           },
           synced: {
             allowNull: false,
             defaultValue: false,
-            type: Sequelize.BOOLEAN
+            type: Sequelize.BOOLEAN,
           },
           has_error: {
             allowNull: false,
             defaultValue: false,
-            type: Sequelize.BOOLEAN
+            type: Sequelize.BOOLEAN,
           },
           error_message: {
             allowNull: true,
-            type: Sequelize.TEXT
+            type: Sequelize.TEXT,
           },
           created_by: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           updated_by: {
             allowNull: false,
-            type: Sequelize.STRING
-          }
+            type: Sequelize.STRING,
+          },
         },
         {
           tableName: 'afterhandlers',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       // Init singleton.
@@ -106,7 +106,7 @@ export default class AfterhandlerModel extends Model {
     // DB query.
     const afterhandlersRaw = await this.model.findAll({
       include: [{ model: this.historyModel.model, where: { data: { keyId: keyId } } }],
-      where: { synced: false }
+      where: { synced: false },
     });
     const afterhandlers = afterhandlersRaw.map((afterhandlerRaw) => new AfterhandlerEntity(afterhandlerRaw));
 
@@ -126,7 +126,7 @@ export default class AfterhandlerModel extends Model {
     const where = {
       type,
       synced: false,
-      history_id: { [Sequelize.Op.ne]: null }
+      history_id: { [Sequelize.Op.ne]: null },
     };
     const order = [['created_at', 'asc']];
     const [afterhandlerRaw] = await this.model.findAll({ include, where, order, limit: 1 });
@@ -157,7 +157,7 @@ export default class AfterhandlerModel extends Model {
       history_id: historyId,
       synced: false,
       created_by: user,
-      updated_by: user
+      updated_by: user,
     };
 
     // DB query.
@@ -196,15 +196,15 @@ export default class AfterhandlerModel extends Model {
       {
         synced: true,
         has_error: true,
-        error_message: error
+        error_message: error,
       },
       {
         where: {
           synced: false,
-          history_id: historyIds.map((history) => history.id)
+          history_id: historyIds.map((history) => history.id),
         },
-        returning: true
-      }
+        returning: true,
+      },
     );
 
     return updatedRowsCount;
@@ -213,7 +213,7 @@ export default class AfterhandlerModel extends Model {
   async getLastByKeyId(keyId) {
     return this.model.findOne({
       include: [{ model: this.historyModel.model, where: { key_id: keyId } }],
-      order: [['created_at', 'desc']]
+      order: [['created_at', 'desc']],
     });
   }
 
@@ -226,7 +226,7 @@ export default class AfterhandlerModel extends Model {
     // DB query.
     const [updatedRowsCount, [afterhandlerRaw]] = await this.model.update(
       { has_error: false, error_message: null },
-      { where: { id }, returning: true }
+      { where: { id }, returning: true },
     );
 
     // Define and return model response.
@@ -245,7 +245,7 @@ export default class AfterhandlerModel extends Model {
     // DB query.
     const [updatedRowsCount, [afterhandlerRaw]] = await this.model.update(
       { synced: true, has_error: true, error_message: error },
-      { where: { id }, returning: true }
+      { where: { id }, returning: true },
     );
 
     // Define and return model response.

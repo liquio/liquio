@@ -1,5 +1,5 @@
-
 import { checkSchema } from 'express-validator';
+
 import { Validator } from './validator';
 
 /**
@@ -12,7 +12,7 @@ export class LocalizationTextValidator extends Validator {
    * Constructor.
    * @param {object} validationConfig Validation config object.
    */
-  constructor (validationConfig) {
+  constructor(validationConfig) {
     super(validationConfig);
 
     // Define singleton.
@@ -25,19 +25,18 @@ export class LocalizationTextValidator extends Validator {
   /**
    * Schema.
    */
-  getAll () {
+  getAll() {
     return checkSchema({
       ['filters.localization_language_code']: {
         in: ['query'],
         optional: true,
-        isString: true
+        isString: true,
       },
       ['filters.key']: {
         in: ['query'],
         optional: true,
-        isString: true
-      }
+        isString: true,
+      },
     });
   }
 }
-

@@ -4,6 +4,8 @@ import { matchedData } from 'express-validator';
 import { Controller } from './controller';
 import { Stream } from '../lib/stream';
 import { FileStorageService } from '../services/filestorage';
+import { PublicError } from '../lib/public_error';
+import { getModels } from '../lib/context';
 
 /**
  * Admin file library controller.
@@ -25,7 +27,7 @@ export class FileLibraryController extends Controller {
 
   async list(req, res) {
     const { parent_id: parentId = null } = matchedData(req, { locations: ['query'] });
-    const items = await global.models.fileLibraryItem.getChildren({
+    const items = await getModels().fileLibraryItem.getChildren({
       parentId,
       userId: this.getRequestUserId(req),
       userUnitIds: this.getRequestUserUnitIds(req),
@@ -35,11 +37,11 @@ export class FileLibraryController extends Controller {
 
   async get(req, res) {
     const { id } = matchedData(req, { locations: ['params'] });
-    const item = await global.models.fileLibraryItem.getById(id);
+    const item = await getModels().fileLibraryItem.getById(id);
     if (!item) {
       return this.responseError(res, 'Not found.', 404);
     }
-    const canRead = await global.models.fileLibraryItem.canAccess(item, {
+    const canRead = await getModels().fileLibraryItem.canAccess(item, {
       userId: this.getRequestUserId(req),
       userUnitIds: this.getRequestUserUnitIds(req),
       permission: 'read',
@@ -48,7 +50,7 @@ export class FileLibraryController extends Controller {
       return this.responseError(res, 'Forbidden.', 403);
     }
 
-    const grants = await global.models.fileLibraryItem.getGrants(id);
+    const grants = await getModels().fileLibraryItem.getGrants(id);
     return this.responseData(res, { ...item, grants });
   }
 
@@ -58,7 +60,7 @@ export class FileLibraryController extends Controller {
       const userId = this.getRequestUserId(req);
       await this.checkParentWriteAccess(body.parent_id, req);
 
-      const item = await global.models.fileLibraryItem.createItem({
+      const item = await getModels().fileLibraryItem.createItem({
         type: 'folder',
         parentId: body.parent_id,
         name: body.name,
@@ -101,7 +103,7 @@ export class FileLibraryController extends Controller {
         return this.responseError(res, 'Can not upload file to filestorage.', 500);
       }
 
-      const item = await global.models.fileLibraryItem.createItem({
+      const item = await getModels().fileLibraryItem.createItem({
         type: 'file',
         parentId: query.parent_id,
         name: query.name,
@@ -128,7 +130,7 @@ export class FileLibraryController extends Controller {
         await this.checkParentWriteAccess(body.parent_id, req);
       }
 
-      const item = await global.models.fileLibraryItem.updateItem(id, {
+      const item = await getModels().fileLibraryItem.updateItem(id, {
         name: body.name,
         parentId: body.parent_id,
         visibility: body.visibility,
@@ -149,7 +151,7 @@ export class FileLibraryController extends Controller {
     try {
       const { id } = matchedData(req, { locations: ['params'] });
       await this.checkItemManageAccess(id, req);
-      const deletedRowsCount = await global.models.fileLibraryItem.softDelete(id, this.getRequestUserId(req));
+      const deletedRowsCount = await getModels().fileLibraryItem.softDelete(id, this.getRequestUserId(req));
       return this.responseData(res, { deletedRowsCount });
     } catch (error) {
       return this.responseError(res, error, this.getErrorStatus(error));
@@ -161,7 +163,7 @@ export class FileLibraryController extends Controller {
       const { id } = matchedData(req, { locations: ['params'] });
       const { grants } = matchedData(req, { locations: ['body'] });
       await this.checkItemManageAccess(id, req);
-      const updatedGrants = await global.models.fileLibraryItem.replaceGrants(id, grants, this.getRequestUserId(req));
+      const updatedGrants = await getModels().fileLibraryItem.replaceGrants(id, grants, this.getRequestUserId(req));
       return this.responseData(res, updatedGrants);
     } catch (error) {
       return this.responseError(res, error, this.getErrorStatus(error));
@@ -173,7 +175,7 @@ export class FileLibraryController extends Controller {
       const { id } = matchedData(req, { locations: ['params'] });
       const { expires_at: expiresAt = null } = matchedData(req, { locations: ['body'] });
       await this.checkItemManageAccess(id, req);
-      const item = await global.models.fileLibraryItem.createPublicLink(id, {
+      const item = await getModels().fileLibraryItem.createPublicLink(id, {
         expiresAt,
         updatedBy: this.getRequestUserId(req),
       });
@@ -190,7 +192,7 @@ export class FileLibraryController extends Controller {
     try {
       const { id } = matchedData(req, { locations: ['params'] });
       await this.checkItemManageAccess(id, req);
-      const item = await global.models.fileLibraryItem.disablePublicLink(id, this.getRequestUserId(req));
+      const item = await getModels().fileLibraryItem.disablePublicLink(id, this.getRequestUserId(req));
       if (!item) {
         return this.responseError(res, 'Not found.', 404);
       }
@@ -222,7 +224,7 @@ export class FileLibraryController extends Controller {
 
   async publicDownload(req, res) {
     const { slug } = matchedData(req, { locations: ['params'] });
-    const item = await global.models.fileLibraryItem.getPublicBySlug(slug);
+    const item = await getModels().fileLibraryItem.getPublicBySlug(slug);
     if (!item || item.type !== 'file' || !item.fileId) {
       return this.responseError(res, 'Not found.', 404);
     }
@@ -233,7 +235,7 @@ export class FileLibraryController extends Controller {
 
   async publicPreview(req, res) {
     const { slug } = matchedData(req, { locations: ['params'] });
-    const item = await global.models.fileLibraryItem.getPublicBySlug(slug);
+    const item = await getModels().fileLibraryItem.getPublicBySlug(slug);
     if (!item || item.type !== 'file' || !item.fileId) {
       return this.responseError(res, 'Not found.', 404);
     }
@@ -244,43 +246,43 @@ export class FileLibraryController extends Controller {
     if (!parentId) {
       return;
     }
-    const parent = await global.models.fileLibraryItem.getById(parentId);
+    const parent = await getModels().fileLibraryItem.getById(parentId);
     if (!parent || parent.type !== 'folder') {
-      throw new Error('Parent folder not found.');
+      throw new PublicError('Parent folder not found.');
     }
-    const canWrite = await global.models.fileLibraryItem.canAccess(parent, {
+    const canWrite = await getModels().fileLibraryItem.canAccess(parent, {
       userId: this.getRequestUserId(req),
       userUnitIds: this.getRequestUserUnitIds(req),
       permission: 'write',
     });
     if (!canWrite) {
-      throw new Error('Forbidden.');
+      throw new PublicError('Forbidden.');
     }
   }
 
   async checkItemManageAccess(id, req) {
-    const canManage = await global.models.fileLibraryItem.canAccess(id, {
+    const canManage = await getModels().fileLibraryItem.canAccess(id, {
       userId: this.getRequestUserId(req),
       userUnitIds: this.getRequestUserUnitIds(req),
       permission: 'manage',
     });
     if (!canManage) {
-      throw new Error('Forbidden.');
+      throw new PublicError('Forbidden.');
     }
   }
 
   async getReadableFileItem(id, req, permission) {
-    const item = await global.models.fileLibraryItem.getById(id);
+    const item = await getModels().fileLibraryItem.getById(id);
     if (!item || item.type !== 'file' || !item.fileId) {
-      throw new Error('File not found.');
+      throw new PublicError('File not found.');
     }
-    const canRead = await global.models.fileLibraryItem.canAccess(item, {
+    const canRead = await getModels().fileLibraryItem.canAccess(item, {
       userId: this.getRequestUserId(req),
       userUnitIds: this.getRequestUserUnitIds(req),
       permission,
     });
     if (!canRead) {
-      throw new Error('Forbidden.');
+      throw new PublicError('Forbidden.');
     }
     return item;
   }

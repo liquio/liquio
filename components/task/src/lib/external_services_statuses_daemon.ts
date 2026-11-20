@@ -1,6 +1,7 @@
+import { getBusinesses, getLog, getModels } from './context';
+
 const DEFAULT_INTERVAL_IN_MINUTES = 15;
 const DEFAULT_PART_SIZE = 10;
-
 
 export class ExternalServicesStatusesDaemon {
   private static singleton: ExternalServicesStatusesDaemon;
@@ -25,25 +26,27 @@ export class ExternalServicesStatusesDaemon {
    */
   async start() {
     setInterval(async () => {
-      global.log.save('external-services-statuses-daemon|run');
+      getLog().save('external-services-statuses-daemon|run');
 
       // Set received state to statuses who are stuck in pending state. Example: if within 15 minutes status has not to been processed
-      await global.models.externalServicesStatuses.setReceivedState(this.intervalInMinutes);
+      await getModels().externalServicesStatuses.setReceivedState(this.intervalInMinutes);
 
-      const statusesWithReceivedState = await global.models.externalServicesStatuses.getWithReceivedState(this.partSize);
+      const statusesWithReceivedState = await getModels().externalServicesStatuses.getWithReceivedState(this.partSize);
 
       if (!statusesWithReceivedState.length) {
-        global.log.save('external-services-status-daemon|skip', { reason: 'No statuses with received state.' });
+        getLog().save('external-services-status-daemon|skip', { reason: 'No statuses with received state.' });
         return;
       }
 
-      const handleResults = await Promise.allSettled(statusesWithReceivedState.map(async (status) => {
-        const serviceHandler = await global.businesses.externalServices.servicesHandlers[status.service]?.bind(global.businesses);
-        if (!serviceHandler) {
-          throw new Error(`Invalid status service name: ${status.service}`);
-        }
-        return await serviceHandler(status);
-      }));
+      const handleResults = await Promise.allSettled(
+        statusesWithReceivedState.map(async (status) => {
+          const serviceHandler = await getBusinesses().externalServices.servicesHandlers[status.service]?.bind(getBusinesses());
+          if (!serviceHandler) {
+            throw new Error(`Invalid status service name: ${status.service}`);
+          }
+          return await serviceHandler(status);
+        }),
+      );
 
       const fulfilledStatuses = [];
       const rejectedStatuses = [];
@@ -60,18 +63,16 @@ export class ExternalServicesStatusesDaemon {
       });
 
       if (fulfilledStatuses.length) {
-        await global.models.externalServicesStatuses.setFulfilledState(fulfilledStatuses);
+        await getModels().externalServicesStatuses.setFulfilledState(fulfilledStatuses);
       }
       if (rejectedStatuses.length) {
-        await global.models.externalServicesStatuses.setRejectedState(rejectedStatuses);
+        await getModels().externalServicesStatuses.setRejectedState(rejectedStatuses);
       }
 
-      global.log.save('external-services-statuses-daemon|end', {
+      getLog().save('external-services-statuses-daemon|end', {
         fulfilledStatuses: fulfilledStatuses.length,
-        rejectedStatuses: rejectedStatuses.length
+        rejectedStatuses: rejectedStatuses.length,
       });
-
     }, this.intervalInMilliseconds);
   }
 }
-

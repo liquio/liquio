@@ -1,11 +1,13 @@
 import _ from 'lodash';
 import * as transliteration from 'transliteration';
+import { matchedData } from 'express-validator';
+import { getTraceId, RegisterApiError } from '@liquio/back-core';
 
 import { Entity } from '../entities/entity';
-import { matchedData } from 'express-validator';
 import { File } from '../types/file';
 import { Stream } from '../lib/stream';
-import { getTraceId } from '@liquio/back-core';
+import { isPublicError, publicError } from '../lib/public_error';
+import { getLog } from '../lib/context';
 
 // Constants.
 const HTTP_STATUS_CODE_OK = 200;
@@ -15,6 +17,8 @@ const EMPTY_DATA = {};
 const DEFAULT_ERROR_MESSAGE = 'Server error.';
 const CONTENT_TYPE_HEADER = 'Content-Type';
 const CONTENT_DISPOSITION_HEADER = 'Content-Disposition';
+const CONTENT_TYPE_OPTIONS_HEADER = 'X-Content-Type-Options';
+const INLINE_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
 /**
  * Controller.
@@ -47,7 +51,7 @@ export class Controller {
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
 
     // Log.
-    global.log.save('http-response', { meta: responseMeta });
+    getLog().save('http-response', { meta: responseMeta });
 
     // Response.
     res.status(httpStatusCode).send(responseObject);
@@ -61,21 +65,35 @@ export class Controller {
    * @param {object[]} [details] Details.
    */
   responseError(res, error: any = DEFAULT_ERROR_MESSAGE, httpStatusCode = HTTP_STATUS_CODE_SERVER_ERROR, details = []) {
-    // Define params.
-    const message = (error && error.message) || error;
-
     // Set error status code if exists.
     if (error.httpStatusCode) {
       httpStatusCode = error.httpStatusCode;
+    } else if (error instanceof RegisterApiError && error.code === 'HTTP_ERROR' && error.status) {
+      // Register answered with an error status: keep it.
+      httpStatusCode = error.status;
     }
 
-    global.log.save('stack', error.stack);
+    // Error instances are hidden unless they are intentional (public) errors; strings and plain objects are trusted constants.
+    const isErrorInstance = error instanceof Error;
+    const isPublic = !isErrorInstance || isPublicError(error);
+    const message = isErrorInstance ? publicError(error, httpStatusCode) : (error && error.message) || error;
+
+    // Full details stay in the log only.
+    getLog().save('stack', error.stack);
+    if (!isPublic) {
+      getLog().save('response-error-hidden', { message: error.message, stack: error.stack, traceId: getTraceId() });
+    }
 
     // Define response object.
     const responseObject: { error: { message: string }; traceId: string; details?: any[] } = { error: { message }, traceId: getTraceId() };
 
-    if (details.length && Array.isArray(details)) {
+    if (!isPublic) {
+      // Details of a hidden error may carry internal data, so they are not sent.
+    } else if (details.length && Array.isArray(details)) {
       responseObject.details = details.filter(Boolean).map((detail) => {
+        if (detail instanceof Error && !isPublicError(detail)) {
+          return { message: publicError(detail, HTTP_STATUS_CODE_SERVER_ERROR) };
+        }
         if (typeof detail === 'object') {
           const { message, name, details, httpStatusCode } = detail;
           return { message, name, details, httpStatusCode };
@@ -92,7 +110,7 @@ export class Controller {
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
 
     // Log.
-    global.log.save('http-response', { meta: responseMeta, error: responseObject });
+    getLog().save('http-response', { meta: responseMeta, error: responseObject });
 
     // Response.
     res.status(httpStatusCode).send(responseObject);
@@ -112,7 +130,7 @@ export class Controller {
     const responseMeta = res.responseMeta ? { ...res.responseMeta, uriPattern: `${method}:${url}` } : { uriPattern: `${method}:${url}` };
 
     // Log.
-    global.log.save('http-response', { meta: responseMeta });
+    getLog().save('http-response', { meta: responseMeta });
 
     // Response.
     res.status(HTTP_STATUS_CODE_ACCEPTED).send(responseObject);
@@ -125,7 +143,7 @@ export class Controller {
    */
   redirect(res, ...params) {
     // Log.
-    global.log.save('http-redirect', Array.isArray(params) && params.length === 1 ? params[0] : params);
+    getLog().save('http-redirect', Array.isArray(params) && params.length === 1 ? params[0] : params);
 
     // Redirect.
     res.redirect(...params);
@@ -151,9 +169,15 @@ export class Controller {
   responseFile(res, file, contentType, fileName) {
     // Response.
     res.set(CONTENT_TYPE_HEADER, contentType);
+    res.set(CONTENT_TYPE_OPTIONS_HEADER, 'nosniff');
     if (fileName) {
-      const convertedFileName = _.toLower(transliteration.transliterate(fileName)).replace(/\s+/g, '_');
+      const convertedFileName = _.toLower(transliteration.transliterate(fileName))
+        .replace(/\s+/g, '_')
+        .replace(/["\\\r\n]/g, '');
       res.set(CONTENT_DISPOSITION_HEADER, `attachment; filename="${convertedFileName}"`);
+    } else if (!INLINE_CONTENT_TYPES.includes(String(contentType).split(';')[0].trim().toLowerCase())) {
+      // Only safe types may be rendered inline; everything else is a download.
+      res.set(CONTENT_DISPOSITION_HEADER, 'attachment');
     }
     res.send(file);
   }
@@ -276,7 +300,7 @@ export class Controller {
         }
         this.responseData(res, result);
       } catch (error) {
-        global.log.save('controller-error', { methodName, error: error.toString(), cause: error.cause, stack: error.stack });
+        getLog().save('controller-error', { methodName, error: error.toString(), cause: error.cause, stack: error.stack });
         return this.responseError(res, error);
       }
     };

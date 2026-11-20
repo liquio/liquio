@@ -1,10 +1,12 @@
-import { AuthService } from '../services/auth';
+import { getIdApiClient, IdApiClient, IdApiError } from '@liquio/back-core';
+
 import { Controller } from './controller';
 import { RedisClient } from '../lib/redis_client';
 import { Helpers } from '../lib/helpers';
+import { getBusinesses, getLog, getModels } from '../lib/context';
 
 export class OnboardingController extends Controller {
-  auth: any;
+  idApiClient: IdApiClient;
   redisClient: any;
 
   static instance;
@@ -12,13 +14,15 @@ export class OnboardingController extends Controller {
   constructor(config) {
     if (!OnboardingController.instance) {
       super(config);
-      this.auth = new AuthService().provider;
+      this.idApiClient = getIdApiClient();
 
-      this.redisClient = config?.redis?.isEnabled ? new RedisClient({
-        host: config.redis.host,
-        port: config.redis.port,
-        defaultTtl: config.redis.defaultTtl
-      }) : undefined;
+      this.redisClient = config?.redis?.isEnabled
+        ? new RedisClient({
+            host: config.redis.host,
+            port: config.redis.port,
+            defaultTtl: config.redis.defaultTtl,
+          })
+        : undefined;
 
       OnboardingController.instance = this;
     }
@@ -30,7 +34,7 @@ export class OnboardingController extends Controller {
       await this.executeDefaultOnboarding(req, res);
       await this.executeAdditionalOnboarding(req, res);
     } catch (error) {
-      global.log.save('onboarding-execution-error', { error: error.message });
+      getLog().save('onboarding-execution-error', { error: error.message });
     }
   }
 
@@ -58,9 +62,28 @@ export class OnboardingController extends Controller {
     }
   }
 
+  /**
+   * Update user onboarding in id-api. An id-api error response is only logged, as before: the callers
+   * (task finish) must not fail because of it. Network errors and timeouts are thrown.
+   * @param {string} userId User ID.
+   * @param {object} params Params.
+   * @param {string} params.onboardingTaskId Onboarding task ID.
+   * @param {boolean} [params.needOnboarding] Need onboarding indicator.
+   */
+  async updateUserOnboarding(userId, params: { onboardingTaskId: string; needOnboarding?: boolean }) {
+    try {
+      await this.idApiClient.updateUserOnboarding(userId, params as { onboardingTaskId: string; needOnboarding: boolean });
+    } catch (error) {
+      if (!(error instanceof IdApiError) || error.code !== 'HTTP_ERROR') {
+        throw error;
+      }
+      getLog().save('update-user-onboarding-error', { userId, status: error.status, error: error.message }, 'error');
+    }
+  }
+
   async markUserOnboardingDone(userId, task) {
     const userUnitIds = Helpers.getUserUnits(userId);
-    const [userInfo] = await this.auth.getUsersByIds([userId], true);
+    const [userInfo] = await this.idApiClient.getUsersByIds([userId], { withPrivateProps: true });
     const additionalOnboarding = this.config?.onboarding?.additionalOnboardingTemplates || [];
 
     const onboardingIndex = additionalOnboarding.findIndex(({ taskTemplateId }) => taskTemplateId === task.taskTemplateId);
@@ -68,10 +91,14 @@ export class OnboardingController extends Controller {
     if (additionalOnboarding[onboardingIndex]) {
       const { handler, handlerOptions } = additionalOnboarding[onboardingIndex];
       if (typeof this[handler] === 'function') {
-        const check = await this[handler]({
-          userId,
-          authUserInfo: userInfo,
-        }, null, handlerOptions);
+        const check = await this[handler](
+          {
+            userId,
+            authUserInfo: userInfo,
+          },
+          null,
+          handlerOptions,
+        );
         if (check) {
           // if onboarding still needed or waiting for some conditions
           // do nothing
@@ -95,17 +122,17 @@ export class OnboardingController extends Controller {
             unitIds: userUnitIds,
           };
 
-          global.log.save('onboarding-next-task', nextTaskData);
-          const task = await global.businesses.task.create(nextTaskData);
+          getLog().save('onboarding-next-task', nextTaskData);
+          const task = await getBusinesses().task.create(nextTaskData);
           if (task) {
-            return this.auth.updateUserOnboarding(userId, { onboardingTaskId: task.id, needOnboarding: true });
+            return this.updateUserOnboarding(userId, { onboardingTaskId: task.id, needOnboarding: true });
           }
         }
       }
       nextOnboardingIndex++;
     }
 
-    return this.auth.updateUserOnboarding(userId, { onboardingTaskId: '', needOnboarding: false });
+    return this.updateUserOnboarding(userId, { onboardingTaskId: '', needOnboarding: false });
   }
 
   async executeOnboarding(req, res, workflowTemplateId, taskTemplateId) {
@@ -116,11 +143,13 @@ export class OnboardingController extends Controller {
       const userId = this.getRequestUserId(req);
 
       if (onboardingTaskId) {
-        const onboardingTask = await global.models.task.findById(onboardingTaskId).catch(() => null);
+        const onboardingTask = await getModels()
+          .task.findById(onboardingTaskId)
+          .catch(() => null);
 
         if (onboardingTask?.finished) {
           if ([onboardingConfig.onboardingTemplate.taskTemplateId].includes(onboardingTask.taskTemplateId)) {
-            await this.auth.updateUserOnboarding(userId, { onboardingTaskId: '' });
+            await this.updateUserOnboarding(userId, { onboardingTaskId: '' });
           }
         } else if (onboardingTask) {
           res.header('onboarding-task-id', onboardingTaskId);
@@ -131,13 +160,13 @@ export class OnboardingController extends Controller {
       if (needOnboarding || onboardingTaskId) {
         const task = await this.createOnboardingTask(req, userId, workflowTemplateId, taskTemplateId);
         if (task) {
-          await this.auth.updateUserOnboarding(userId, { onboardingTaskId: task.id, needOnboarding: true });
+          await this.updateUserOnboarding(userId, { onboardingTaskId: task.id, needOnboarding: true });
           req.authUserInfo.onboardingTaskId = task.id;
           res.header('onboarding-task-id', task.id);
         }
       }
     } catch (error) {
-      global.log.save('onboarding-execution-error', { error: error.message });
+      getLog().save('onboarding-execution-error', { error: error.message });
     }
   }
 
@@ -146,7 +175,7 @@ export class OnboardingController extends Controller {
     const oauthToken = this.getRequestUserAccessToken(req);
     const unitIds = this.getRequestUserUnitIds(req);
 
-    return global.businesses.task.create({
+    return getBusinesses().task.create({
       workflowTemplateId,
       taskTemplateId,
       userInfo,
@@ -173,12 +202,14 @@ export class OnboardingController extends Controller {
       }
     }
 
-    const registerResponse: any = await global.businesses.register.getRecordsByKeyIdFullAccess(keyId, {
+    const registerResponse: any = await getBusinesses().register.getRecordsByKeyIdFullAccess(keyId, {
       data: {
         [property]: edrpou,
-      }
+      },
     });
-    const { data: [record] } = registerResponse;
+    const {
+      data: [record],
+    } = registerResponse;
 
     if (this.redisClient) {
       this.redisClient.set(cacheKey, JSON.stringify({ recordExisted: !!record }), 60);
@@ -187,4 +218,3 @@ export class OnboardingController extends Controller {
     return !record;
   }
 }
-

@@ -26,6 +26,14 @@ export class ConsoleLogProvider extends LogProvider {
   }
 
   /**
+   * Default redaction opt-out: `options.disableDefaultRedaction` (config `log.disableDefaultRedaction`,
+   * passed by the component) or env `LOG_DISABLE_DEFAULT_REDACTION=true`.
+   */
+  private isDefaultRedactionDisabled(): boolean {
+    return this.options?.disableDefaultRedaction === true || process.env.LOG_DISABLE_DEFAULT_REDACTION === 'true';
+  }
+
+  /**
    * Save.
    * @param {Date} timestamp Timestamp.
    * @param {string} type Log type.
@@ -53,7 +61,9 @@ export class ConsoleLogProvider extends LogProvider {
     const dataObjectToSave = { type: `${type}`, data: cutData, createdAt, logId, appInfo, level, traceId, traceMeta };
     let dataStringToSave;
     try {
-      dataStringToSave = sensitiveReplace(JSON.stringify(dataObjectToSave), this.options.excludeParams);
+      dataStringToSave = sensitiveReplace(JSON.stringify(dataObjectToSave), this.options.excludeParams, undefined, {
+        disableDefaults: this.isDefaultRedactionDisabled(),
+      });
     } catch {
       dataStringToSave = `${dataObjectToSave}`;
     }

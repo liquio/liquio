@@ -1,9 +1,10 @@
-import express from 'express';
-import http from 'http';
+import http from 'node:http';
 
-import { Config } from './config';
-import { Controllers, ControllersCollection } from './controllers';
+import express from 'express';
 import { Log } from '@liquio/back-core';
+
+import { IdApiConfig } from './config';
+import { Controllers, ControllersCollection } from './controllers';
 import {
   AuthMiddleware,
   useAppIdentHeaders,
@@ -21,14 +22,14 @@ import { Services } from './services';
 import { Express } from './types';
 
 export class Application {
-  protected express: Express & { config: Config };
+  protected express: Express & { config: IdApiConfig };
   protected log: Log;
   protected models: Models;
   protected services: Services;
   protected controllers!: Controllers;
   protected server?: http.Server;
 
-  constructor(private readonly config: Config) {
+  constructor(private readonly config: IdApiConfig) {
     this.express = express() as Express;
     this.express.set('query parser', 'extended');
     this.express.config = this.config;

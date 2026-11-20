@@ -1,5 +1,6 @@
 import Sequelize from 'sequelize';
 import _ from 'lodash';
+
 import { Model } from './model';
 import { UserInboxEntity } from '../entities/user_inbox';
 
@@ -19,42 +20,42 @@ export class UserInboxModel extends Model {
             allowNull: false,
             primaryKey: true,
             type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV1
+            defaultValue: Sequelize.UUIDV1,
           },
           user_id: {
             allowNull: false,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           document_id: {
             allowNull: false,
             type: Sequelize.UUID,
-            references: { model: 'documents', key: 'id' }
+            references: { model: 'documents', key: 'id' },
           },
           name: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           number: {
             allowNull: true,
-            type: Sequelize.STRING
+            type: Sequelize.STRING,
           },
           is_read: {
             allowNull: false,
             type: Sequelize.BOOLEAN,
-            defaultValue: false
+            defaultValue: false,
           },
           meta: {
             allowNull: false,
             type: Sequelize.JSONB,
-            defaultValue: {}
-          }
+            defaultValue: {},
+          },
         },
         {
           tableName: 'user_inboxes',
           underscored: true,
           createdAt: 'created_at',
-          updatedAt: 'updated_at'
-        }
+          updatedAt: 'updated_at',
+        },
       );
 
       this.model.paginate = this.paginate;
@@ -76,7 +77,7 @@ export class UserInboxModel extends Model {
     const sequelizeOptions: any = {
       currentPage,
       perPage,
-      filters: { ..._.pick(filters, ['name', 'number', 'is_read']), user_id: userId }
+      filters: { ..._.pick(filters, ['name', 'number', 'is_read']), user_id: userId },
     };
 
     sort = this.prepareSort(sort);
@@ -88,7 +89,7 @@ export class UserInboxModel extends Model {
     const userInboxes = await this.model.paginate(sequelizeOptions);
 
     // Convert data to entities.
-    userInboxes.data = userInboxes.data.map(item => {
+    userInboxes.data = userInboxes.data.map((item) => {
       return this.prepareEntity(item);
     });
 
@@ -118,7 +119,9 @@ export class UserInboxModel extends Model {
     const userInboxes = await this.model.findAll({ where: { user_id: userId, document_id: documentId } });
 
     const userInbox = userInboxes.length === 1 ? userInboxes : undefined;
-    if (!userInbox) { return; }
+    if (!userInbox) {
+      return;
+    }
 
     // Convert to entity and return.
     const userInboxEntity = this.prepareEntity(userInbox);
@@ -133,7 +136,9 @@ export class UserInboxModel extends Model {
   async findById(id) {
     const userInbox = await this.model.findByPk(id);
 
-    if (!userInbox) { return; }
+    if (!userInbox) {
+      return;
+    }
     return this.prepareEntity(userInbox);
   }
 
@@ -171,7 +176,7 @@ export class UserInboxModel extends Model {
    * @param {object} [meta] Meta object.
    * @param {Object} [sequelizeParams] Optional sequelize UPDATE params.
    */
-  async setMeta(id, meta = {}, sequelizeParams = { }) {
+  async setMeta(id, meta = {}, sequelizeParams = {}) {
     await this.model.update({ meta }, { where: { id }, ...sequelizeParams });
   }
 
@@ -200,7 +205,7 @@ export class UserInboxModel extends Model {
       isRead: item.is_read,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
-      meta: item.meta
+      meta: item.meta,
     });
   }
 
@@ -220,8 +225,7 @@ export class UserInboxModel extends Model {
       is_read: item.isRead,
       created_at: item.createdAt,
       updated_at: item.updatedAt,
-      meta: item.meta
+      meta: item.meta,
     };
   }
 }
-

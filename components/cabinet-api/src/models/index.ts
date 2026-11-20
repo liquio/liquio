@@ -1,3 +1,4 @@
+import { setAppContext } from '../lib/context';
 import UnitModel from './unit';
 
 // Constants.
@@ -53,7 +54,7 @@ class Models {
         {},
       );
 
-    global.models = this.models;
+    setAppContext({ models: this.models });
   }
 
   /**

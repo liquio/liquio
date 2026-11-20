@@ -13,19 +13,7 @@ export class CabinetMenuEntity extends Entity {
   access: Record<string, any>;
   enabled: boolean;
 
-  constructor({
-    id,
-    parentId,
-    order,
-    name,
-    description,
-    icon,
-    translations,
-    type,
-    options,
-    access,
-    enabled,
-  }) {
+  constructor({ id, parentId, order, name, description, icon, translations, type, options, access, enabled }) {
     super();
 
     this.id = id;
@@ -42,19 +30,7 @@ export class CabinetMenuEntity extends Entity {
   }
 
   getFilterProperties() {
-    return [
-      'id',
-      'parentId',
-      'order',
-      'name',
-      'description',
-      'icon',
-      'translations',
-      'type',
-      'options',
-      'access',
-      'enabled',
-    ];
+    return ['id', 'parentId', 'order', 'name', 'description', 'icon', 'translations', 'type', 'options', 'access', 'enabled'];
   }
 
   getFilterPropertiesBrief() {

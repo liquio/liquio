@@ -1,9 +1,13 @@
 import { Strategy } from 'passport-oauth2';
 import axios from 'axios';
+import { Log } from '@liquio/back-core';
 
 import { CallbackFn, Express } from '../types';
-import { Log } from '@liquio/back-core';
 import { Models, UserAttributes } from '../models';
+
+// WSO2 doesn't support an external logout call today — kept as a stub so the
+// caller can always invoke a strategy's logout() uniformly.
+export async function logout(): Promise<void> {}
 
 export async function wso2(app: Express) {
   const log = Log.getInstance();
@@ -30,8 +34,7 @@ export async function wso2(app: Express) {
 
     log.save('wso2|oauth2-metadata', { ...data }, 'info');
   } catch (error: any) {
-    const response = error.response?.data;
-    log.save('wso2|init', { status: 'error', error, response }, 'info');
+    log.save('wso2|init', { status: 'error', error: error?.message, httpStatus: error?.response?.status }, 'info');
     return;
   }
 
@@ -59,11 +62,9 @@ export async function wso2(app: Express) {
 
           userInfo = data;
 
-          log.save('wso2|user-info', { status: 'success', userInfo }, 'info');
+          log.save('wso2|user-info', { status: 'success' }, 'info');
         } catch (error: any) {
-          const response = error.response?.data;
-
-          log.save('wso2|user-info-fetch-error', { error, response }, 'error');
+          log.save('wso2|user-info-fetch-error', { error: error?.message, httpStatus: error?.response?.status }, 'error');
 
           return done(error);
         }
@@ -106,12 +107,15 @@ export async function wso2(app: Express) {
               .then((row) => row.dataValues);
           }
 
-          const userService = await Models.model('userServices').upsert({
-            userId: (existingUser || newUser!).userId,
-            provider: 'wso2',
-            provider_id: providerId,
-            data: userInfo,
-          });
+          const userService = await Models.model('userServices').upsert(
+            {
+              userId: (existingUser || newUser!).userId,
+              provider: 'wso2',
+              provider_id: providerId,
+              data: userInfo,
+            },
+            { conflictFields: ['provider', 'provider_id'] },
+          );
 
           const session = {
             ...(existingUser || newUser!),

@@ -10,6 +10,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noImplicitAny": false,
+    "types": ["node", "jest"],
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
@@ -18,13 +19,6 @@
     "noEmitOnError": false,
     "ignoreDeprecations": "6.0"
   },
-  "include": [
-    "./**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "eslint.config.js",
-    "jest.config.js"
-  ]
+  "include": ["./**/*"],
+  "exclude": ["node_modules", "dist", "eslint.config.js", "jest.config.js"]
 }

@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+
 import Controller from './controller';
 import Notifier from '../lib/notifier';
 

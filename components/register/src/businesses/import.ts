@@ -1,12 +1,14 @@
 import crypto from 'crypto';
+
 import Sequelize from 'sequelize';
-import Ajv from 'ajv';
 
 import Business from './business';
 import RegisterModel from '../models/register';
 import KeyModel from '../models/key';
 import RecordModel from '../models/record';
 import { RedisClient } from '../lib/redis_client';
+import JsonSchema from '../lib/json_schema';
+import { getConfig } from '../lib/context';
 
 // Constants.
 const AUTO_CLEAR_INTERVAL = 1000 * 60 * 60 * 24; // 1 day.
@@ -14,7 +16,7 @@ const IMPORT_IN_ONE_TIME_COUNT = 100;
 const STATUSES = {
   Importing: 'Importing',
   Imported: 'Imported',
-  Failed: 'Failed'
+  Failed: 'Failed',
 };
 
 /**
@@ -149,12 +151,16 @@ export default class ImportBusiness extends Business {
     { key, register, records, options = {} },
     removeOldRecords = false,
     user = 'system',
-    accessInfo = { userId: null, userName: null }
+    accessInfo = { userId: null, userName: null },
   ) {
     await this.validate({ key, register, records, options });
     const importId = this.generateImportId();
-    this.import(importId, { key, register, records, options }, removeOldRecords, user, accessInfo);
-    setTimeout(() => this.clearToImport(importId), AUTO_CLEAR_INTERVAL);
+    // Runs in the background: the caller polls the import status. import() records the failure in that status,
+    // so the rejection only needs logging here - left unhandled it would take the whole process down.
+    this.import(importId, { key, register, records, options }, removeOldRecords, user, accessInfo).catch((error) =>
+      this.log.save('import-failed', { importId, error: error?.message }, 'error'),
+    );
+    setTimeout(() => this.clearToImport(importId), AUTO_CLEAR_INTERVAL).unref?.();
     return importId;
   }
 
@@ -184,7 +190,7 @@ export default class ImportBusiness extends Business {
     { key, register, records, options = {} },
     removeOldRecords = false,
     user = 'system',
-    accessInfo = { userId: null, userName: null }
+    accessInfo = { userId: null, userName: null },
   ) {
     // Define params.
     const onlySchema = options['onlySchema'] ?? false;
@@ -213,7 +219,8 @@ export default class ImportBusiness extends Business {
     } catch (error) {
       // Set error status.
       this.toImport[importId].status = ImportBusiness.Statuses.Failed;
-      this.toImport[importId].details.error = error?.message;
+      this.log.save('import-error', { importId, error: error?.message, stack: error?.stack });
+      this.toImport[importId].details.error = 'Import failed.';
       await this.updateToImportState(importId);
       throw error;
     }
@@ -326,6 +333,14 @@ export default class ImportBusiness extends Business {
     }
     const historyMeta = { accessInfo };
     const person = { id: accessInfo?.userId, name: accessInfo?.userName };
+
+    // Encryption state comes from the target key, never from the imported file (export drops it).
+    const { data: targetKey } = (await this.keyModel.findById(record.keyId)) || {};
+    if (!targetKey) {
+      throw new Error('Key of the record to import does not exist.');
+    }
+    record = { ...record, isEncrypted: !!targetKey.isEncrypted };
+
     if (existingRecord) {
       await this.recordModel.update(record.id, { ...record, user, person }, true, historyMeta);
       this.toImport[importId].details.updatedRecordsCount++;
@@ -360,7 +375,7 @@ export default class ImportBusiness extends Business {
     { key, register, records },
     removeOldRecords = false,
     user = 'system',
-    accessInfo = { userId: null, userName: null }
+    accessInfo = { userId: null, userName: null },
   ) {
     // Remove old records if need it.
     if (removeOldRecords) {
@@ -373,13 +388,13 @@ export default class ImportBusiness extends Business {
         {
           register_id: register.id,
           key_id: key.id,
-          id: { [Sequelize.Op.notIn]: records.map((record) => record.id) }
+          id: { [Sequelize.Op.notIn]: records.map((record) => record.id) },
         },
         undefined,
         removeCounterCb,
         user,
         person,
-        historyMeta
+        historyMeta,
       );
       this.toImport[importId].details.removedOldRecordsCount = removedRecords;
       this.toImport[importId].details.removedOldRecords = true;
@@ -400,7 +415,7 @@ export default class ImportBusiness extends Business {
 
     if (this.toImport[importId]) {
       ({ status, details } = this.toImport[importId]);
-    } else if (global.config?.redis?.isEnabled) {
+    } else if (getConfig()?.redis?.isEnabled) {
       try {
         const serializedData = await RedisClient.getInstance().get(['register', 'importId', importId]);
         ({ status, details } = JSON.parse(serializedData));
@@ -440,8 +455,8 @@ export default class ImportBusiness extends Business {
         updatedRecordsCount: 0,
         removedOldRecords: false,
         removedOldRecordsCount: 0,
-        error: null
-      }
+        error: null,
+      },
     };
 
     await this.updateToImportState(importId);
@@ -460,9 +475,9 @@ export default class ImportBusiness extends Business {
    * @see https://github.com/ajv-validator/ajv
    */
   async checkExistingRecordsByJsonSchema(keyId, jsonSchema) {
-    // Create JSON schema validator.
-    const ajv = new Ajv();
-    const validation = ajv.compile(jsonSchema);
+    // Validate the same way records are validated (Liquio keywords such as customTypes and public allowed).
+    // JsonSchema strips customTypes from the schema it gets, so hand it a copy: the key is saved with jsonSchema next.
+    const { validation } = new JsonSchema(structuredClone(jsonSchema));
 
     // Check existing records by JSON schema.
     const { data: existingRecords } = await this.recordModel.getByKeyId(keyId);
@@ -492,7 +507,6 @@ export default class ImportBusiness extends Business {
     } else {
       this.toImport = {};
     }
-    if (global.gc) global.gc();
   }
 
   async updateToImportState(importId) {
@@ -500,7 +514,7 @@ export default class ImportBusiness extends Business {
 
     const serializedData = JSON.stringify(this.toImport[importId]);
 
-    if (global.config?.redis?.isEnabled) {
+    if (getConfig()?.redis?.isEnabled) {
       await RedisClient.getInstance().set(['register', 'importId', importId], serializedData, AUTO_CLEAR_INTERVAL / 1000);
     }
   }

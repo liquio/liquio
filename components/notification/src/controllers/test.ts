@@ -1,14 +1,17 @@
 // Imports.
 import axios from 'axios';
 import { Router } from 'express';
+
 import { checkAuth } from './auth';
 import { conf } from '../config/config';
+import { getLog } from '../lib/context';
 
 const router = Router();
 
 // Constants.
 const MESSAGE_PONG = 'pong';
 const FALSE_STRING = 'false';
+const ERROR_UNAVAILABLE = 'unavailable';
 const AUTH_SERVICE_NAME = 'id';
 const PERSIST_LINK_SERVICE_NAME = 'plink';
 const PERSIST_LINK_PING_URL = 'https://persist-link-test-court-services/test/ping';
@@ -33,15 +36,24 @@ export class TestController {
   registerRoutes() {
     // Add routes.
     router.get('/test/ping', this.ping.bind(this));
-    router.get('/test/ping_with_auth', checkAuth, this.ping.bind(this));
+    router.get('/test/ping_with_auth', checkAuth, this.pingWithAuth.bind(this));
   }
 
   /**
-   * Ping.
+   * Public liveness ping. Reveals nothing but the pong message.
    * @param {object} req HTTP request.
    * @param {object} res HTTP response.
    */
   async ping(req: any, res: any) {
+    res.send({ message: MESSAGE_PONG });
+  }
+
+  /**
+   * Authenticated ping with optional downstream health check.
+   * @param {object} req HTTP request.
+   * @param {object} res HTTP response.
+   */
+  async pingWithAuth(req: any, res: any) {
     // Define params.
     const healthCheck = req.query.health_check;
 
@@ -59,7 +71,7 @@ export class TestController {
         authServicePingResponse = await this.sendPingRequest(AUTH_SERVICE_NAME);
       } catch (error: any) {
         console.log(error && error.message);
-        authServicePingResponseError = error && error.message;
+        authServicePingResponseError = ERROR_UNAVAILABLE;
       }
       responseData.correctAuthServiceConnection =
         (authServicePingResponse &&
@@ -88,7 +100,7 @@ export class TestController {
         persistLinkPingResponse = await this.sendPingRequest(PERSIST_LINK_SERVICE_NAME);
       } catch (error: any) {
         console.log(error && error.message);
-        persistLinkPingResponseError = error && error.message;
+        persistLinkPingResponseError = ERROR_UNAVAILABLE;
       }
       responseData.correctPeristLinkConnection =
         (persistLinkPingResponse &&
@@ -131,7 +143,8 @@ export class TestController {
       case AUTH_SERVICE_NAME: {
         pingUrl = ((conf as any).pingRoutes.authService || AUTH_SERVICE_PING_URL) + '_with_auth';
         const basicAuthToken =
-          (conf as any).auth_server.basicAuthToken || Buffer.from((conf as any).auth_server.user + ':' + (conf as any).auth_server.password, 'utf8').toString('base64');
+          (conf as any).auth_server.basicAuthToken ||
+          Buffer.from((conf as any).auth_server.user + ':' + (conf as any).auth_server.password, 'utf8').toString('base64');
         headers = { Authorization: basicAuthToken.startsWith('Basic ') ? basicAuthToken : 'Basic ' + basicAuthToken };
         break;
       }
@@ -168,7 +181,7 @@ export class TestController {
     const serviceVersionInfo = (conf as any) && (conf as any).versions && (conf as any).versions.services.find((v: any) => v.name === serviceName);
     const serviceMinVersion = (serviceVersionInfo && serviceVersionInfo.minVersion) || DEFAULT_VERSION;
     if (!serviceMinVersion || !serviceVersion) {
-      global.log.save('can-not-find-service-min-version');
+      getLog().save('can-not-find-service-min-version');
       return false;
     }
 
