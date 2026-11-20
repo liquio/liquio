@@ -99,17 +99,12 @@ export class HttpRequest {
       }
       return body;
     } catch (error) {
-      // Handle axios errors
-      if (error.response) {
-        // Server responded with error status - only return the data part
-        const body = parseBody(error.response.data);
-        if (withFullResponse) {
-          return { response: createSerializableResponse(error.response), body };
-        }
-        return body;
-      }
+      // axios only rejects here for transport failures (connect/timeout/aborted or broken body stream),
+      // including ones after headers arrived, so a partial response must not be returned as a result.
       // Network or other errors - throw a clean error message
-      throw new Error(error.message || 'Network error');
+      const wrapped = new Error(error.message || 'Network error');
+      (wrapped as any).cause = error;
+      throw wrapped;
     }
   }
 

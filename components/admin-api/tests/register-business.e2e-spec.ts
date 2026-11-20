@@ -12,7 +12,7 @@ const ERROR_ROUTES: Array<[string, string, string, any?]> = [
   ['get', '/registers/1', 'get'],
   ['post', '/registers', 'post', { name: 'Register', description: 'Description' }],
   ['put', '/registers/1', 'get', { name: 'Register', description: 'Description' }],
-  ['delete', '/registers/1', 'get'],
+  ['delete', '/registers/1', 'delete'],
   ['get', '/registers/keys', 'get'],
   ['get', '/registers/keys/all', 'get'],
   ['get', '/registers/keys/synced?ids=1', 'get'],
@@ -99,8 +99,8 @@ describe('Register routes: upstream errors, files and xlsx', () => {
         .post('/registers/import')
         .query({ force: 'false', rewrite_schema: 'false', clear_records: 'false', add_data: 'false', file: 'true' })
         .matchHeader('content-type', 'application/octet-stream')
-        .reply(200, function (_uri, requestBody) {
-          received = Buffer.from(requestBody as any);
+        .reply(200, async (request: Request) => {
+          received = Buffer.from(await request.arrayBuffer());
           return 'register-answer';
         });
 
@@ -254,9 +254,9 @@ describe('Register routes: upstream errors, files and xlsx', () => {
         .get('/records')
         .query(true)
         .times(2)
-        .reply(function (uri) {
-          return uri.includes('Alice') ? [200, { data: [{ id: 'existing' }] }] : [200, { data: [] }];
-        });
+        .reply((request: Request) =>
+          decodeURIComponent(request.url).includes('Alice') ? [200, { data: [{ id: 'existing' }] }] : [200, { data: [] }],
+        );
       app
         .nock(REGISTER)
         .put('/records/existing')

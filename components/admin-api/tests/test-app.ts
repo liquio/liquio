@@ -6,7 +6,7 @@ import { randomBytes } from 'crypto';
 
 import supertest = require('supertest');
 import * as pg from 'pg';
-import nock = require('nock');
+import nock from 'nock';
 import createDebug = require('debug');
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
