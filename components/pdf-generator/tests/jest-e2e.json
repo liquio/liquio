@@ -6,6 +6,7 @@
   "testRegex": "tests/.*\\.e2e-spec\\.ts$",
   "transform": { "^.+\\.(t|j)s$": "ts-jest" },
   "setupFiles": ["<rootDir>/tests/setup-env.ts"],
+  "setupFilesAfterEnv": ["<rootDir>/tests/helpers/restore-nock.ts"],
   "collectCoverage": true,
   "coverageProvider": "v8",
   "collectCoverageFrom": ["src/**/*.ts", "!src/**/*.spec.ts", "!src/main.ts"],
