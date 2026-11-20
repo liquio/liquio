@@ -16,11 +16,11 @@
     "lint": "eslint \"**/*.{js,ts}\"",
     "lint:fix": "eslint \"**/*.{js,ts}\" --fix",
     "migration-up": "sequelize db:migrate",
-    "test": "jest src",
-    "test:watch": "jest src --watch",
-    "test:cov": "jest src --coverage",
-    "test:e2e": "jest --config jest.e2e.config.js --verbose",
-    "ci:e2e": "jest --config jest.e2e.config.js --ci --maxWorkers=2 --coverageDirectory=coverage/e2e"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js src",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js src --watch",
+    "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js src --coverage",
+    "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.e2e.config.js --verbose",
+    "ci:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.e2e.config.js --ci --maxWorkers=2 --coverageDirectory=coverage/e2e"
   },
   "dependencies": {
     "@liquio/back-core": "^1.4.0",
@@ -54,7 +54,7 @@
     "eslint-plugin-import-x": "^4.18.1",
     "eslint-plugin-prettier": "^5.5.6",
     "jest": "^30.5.2",
-    "nock": "^14.0.17",
+    "nock": "^15.0.6",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",
