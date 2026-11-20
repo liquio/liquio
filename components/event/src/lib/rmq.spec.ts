@@ -90,3 +90,46 @@ describe('Rmq connection handlers', () => {
     await expect(rmq.close()).resolves.toBeUndefined();
   });
 });
+
+describe('Rmq init sequencing', () => {
+  it('initQueues and subscribeToConsuming resolve only after broker callbacks', async () => {
+    const calls: string[] = [];
+    const pending: Array<() => void> = [];
+    const ok = (name: string) =>
+      jest.fn((...args: any[]) => {
+        const cb = args[args.length - 1];
+        pending.push(() => {
+          calls.push(name);
+          cb(null, {});
+        });
+      });
+    const rmq: any = Object.create(Rmq.prototype);
+    rmq.options = { readingExchangeName: 'ex', readingQueueName: 'rq', writingQueueName: 'wq' };
+    rmq.channels = {
+      reading: { assertExchange: ok('ex'), assertQueue: ok('rq'), bindQueue: ok('bind'), consume: ok('consume') },
+      writing: { assertQueue: ok('wq') },
+    };
+
+    let done = false;
+    const run = (async () => {
+      await rmq.initQueues();
+      await rmq.subscribeToConsuming(async () => true);
+      done = true;
+    })();
+    for (let i = 0; i < 5; i++) {
+      await new Promise((r) => setImmediate(r));
+      expect(done).toBe(false);
+      pending.shift()?.();
+    }
+    await run;
+    expect(calls).toEqual(['ex', 'rq', 'wq', 'bind', 'consume']);
+  });
+
+  it('rejects when bindQueue fails', async () => {
+    const rmq: any = Object.create(Rmq.prototype);
+    rmq.options = { readingExchangeName: 'ex', readingQueueName: 'rq' };
+    rmq.channels = { reading: { bindQueue: (...a: any[]) => a[a.length - 1](new Error('bind')), consume: jest.fn() } };
+    await expect(rmq.subscribeToConsuming(async () => true)).rejects.toThrow('bind');
+    expect(rmq.channels.reading.consume).not.toHaveBeenCalled();
+  });
+});
