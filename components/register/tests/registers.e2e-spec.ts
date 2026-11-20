@@ -160,7 +160,8 @@ describe('RegistersController', () => {
           expect(response.body.errors[0]).toEqual({
             location: 'body',
             msg: expect.any(String),
-            param: 'description',
+            path: 'description',
+            type: 'field',
           });
         });
     });
@@ -250,7 +251,8 @@ describe('RegistersController', () => {
           expect(response.body.errors[0]).toEqual({
             location: 'body',
             msg: expect.any(String),
-            param: 'description',
+            path: 'description',
+            type: 'field',
           });
         });
     });
