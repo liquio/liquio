@@ -5,7 +5,7 @@ import passport from 'passport';
 import axios from 'axios';
 
 import { CallbackFn, Request } from '../../../types';
-import { Config } from '../../../config';
+import { IdApiConfig } from '../../../config';
 
 const sha1 = (text: string) => {
   return crypto.createHash('sha1').update(text).digest('hex');
@@ -14,12 +14,12 @@ const sha1 = (text: string) => {
 export type BankIDStrategyVerify = (req: Request, accessToken: string, refreshToken: string, profile: any, done: CallbackFn) => void;
 
 export class BankIDStrategy extends passport.Strategy {
-  public readonly options: NonNullable<Config['auth_providers']['bankid']>;
+  public readonly options: NonNullable<IdApiConfig['auth_providers']['bankid']>;
   public readonly name: string;
 
   private readonly verify: BankIDStrategyVerify;
 
-  constructor(options: Config['auth_providers']['bankid'], verify: BankIDStrategyVerify) {
+  constructor(options: IdApiConfig['auth_providers']['bankid'], verify: BankIDStrategyVerify) {
     super();
 
     this.options = options!;

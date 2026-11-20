@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 
 import bcrypt from 'bcrypt';
 
-import { Config } from '../config';
+import { IdApiConfig } from '../config';
 import { BaseService } from './base_service';
 
 export const MIN_PASSWORD_LENGTH = 8;
@@ -13,7 +13,7 @@ export const REMEMBER_LAST_PASSWORDS = 5;
 export const MIN_SECURE_TOKEN_LENGTH = 16;
 
 export class PasswordManagerService extends BaseService {
-  private readonly cfg: Config['passwordManager'];
+  private readonly cfg: IdApiConfig['passwordManager'];
   private readonly characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
   public readonly minPasswordLength: number;

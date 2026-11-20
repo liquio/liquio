@@ -25,7 +25,7 @@
     "ci:e2e": "jest --config jest.e2e.config.js --ci --maxWorkers=2 --coverageDirectory=coverage/e2e"
   },
   "dependencies": {
-    "@liquio/back-core": "^1.0.2",
+    "@liquio/back-core": "^1.4.0",
     "adm-zip": "^0.6.1",
     "axios": "^1.19.0",
     "body-parser": "^2.4.0",
@@ -35,14 +35,14 @@
     "lodash": "^4.17.21",
     "mime-types": "^3.0.2",
     "moment": "^2.31.0",
-    "multiconf": "^4.2.2",
     "pg": "^8.23.1",
     "sequelize": "^6.30.0",
     "sequelize-cli": "^6.6.5",
     "swagger-ui-express": "^5.0.1",
     "transliteration": "^2.7.0",
     "ua-en-translit": "^3.1.2",
-    "xml2js": "^0.6.0"
+    "xml2js": "^0.6.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

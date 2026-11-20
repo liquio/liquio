@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 
+import { Config } from '@liquio/back-core';
 import supertest from 'supertest';
 import * as pg from 'pg';
 import amqp from 'amqplib';
@@ -11,7 +12,6 @@ import nock from 'nock';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
-import * as Multiconf from 'multiconf';
 
 import { bootstrap } from '../src/bootstrap';
 import { getConfig, getDb, getLog } from '../src/lib/context';
@@ -70,7 +70,7 @@ const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_MANAGER';
 
 // Obtain the default configuration object.
-const defaultConfig = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_`);
+const defaultConfig = Config.load({ configPath: CONFIG_PATH, secretPath: null, envPrefix: `${LIQUIO_CONFIG_PREFIX}_` }).toObject();
 
 // Workflow template routed to a specific event queue; seeded by the routing e2e test.
 export const SPECIAL_WORKFLOW_TEMPLATE_ID = 988192;

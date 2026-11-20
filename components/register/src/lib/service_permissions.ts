@@ -1,4 +1,4 @@
-import { Config } from './config';
+import { RegisterConfig } from './config';
 
 /** Per-user permission entry (`auth.servicePermissions[user]`). */
 export interface ServicePermission {
@@ -34,36 +34,9 @@ export interface PermissionDecision {
   route: string;
 }
 
-type Auth = Config['auth'];
+type Auth = RegisterConfig['auth'];
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-
-/** Validate `auth.servicePermissions` / `auth.strict`. Returns problems (setting names only). */
-export function checkServicePermissionsConfig(auth: Auth | undefined): string[] {
-  const problems: string[] = [];
-  const permissions = auth?.servicePermissions;
-  if (auth?.strict !== undefined && typeof auth.strict !== 'boolean') {
-    problems.push('auth.strict must be a boolean.');
-  }
-  if (permissions === undefined || permissions === null) return problems;
-  if (!isObject(permissions)) return [...problems, 'auth.servicePermissions must be an object.'];
-
-  for (const [user, entry] of Object.entries(permissions)) {
-    const name = `auth.servicePermissions.${user}`;
-    if (!isObject(entry)) {
-      problems.push(`${name} must be an object.`);
-      continue;
-    }
-    const { routes, keys } = entry as ServicePermission;
-    if (routes !== undefined && (!Array.isArray(routes) || !routes.every((r) => typeof r === 'string'))) {
-      problems.push(`${name}.routes must be an array of strings.`);
-    }
-    if (keys !== undefined && (!Array.isArray(keys) || !keys.every((k) => typeof k === 'string' || typeof k === 'number'))) {
-      problems.push(`${name}.keys must be an array of key ids.`);
-    }
-  }
-  return problems;
-}
 
 /** Basic users from `auth.tokens` that have neither a permission entry nor `limitedAccess`, i.e. full access. */
 export function listUnrestrictedUsers(auth: Auth | undefined): string[] {

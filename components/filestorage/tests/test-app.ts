@@ -9,8 +9,7 @@ import nock from 'nock';
 import * as pg from 'pg';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
-import * as Multiconf from 'multiconf';
-import { Log, ConsoleLogProvider } from '@liquio/back-core';
+import { Config, Log, ConsoleLogProvider } from '@liquio/back-core';
 
 import { bootstrap } from '../src/bootstrap';
 import { setAppContext, getDb } from '../src/lib/context';
@@ -105,13 +104,13 @@ export class TestApp {
     return app;
   }
 
-  // Run this before all tests. Overrides are pushed through env vars (Multiconf's own override
-  // mechanism, see node_modules/multiconf's README), so both our own config object below and
+  // Run this before all tests. Overrides are pushed through env vars (the config loader's env override
+  // mechanism), so both our own config object below and
   // src/lib/config.ts's separate module-level singleton (used by Preview's no-arg constructor)
   // resolve to the exact same values.
   static async beforeAll({ providers, preview }: { providers?: any; preview?: any } = {}) {
     // Read the base template once, only to compute full override objects to push back as env vars.
-    const templateConfig = Multiconf.get(CONFIG_PATH, ENV_PREFIX);
+    const templateConfig = Config.load({ configPath: CONFIG_PATH, secretPath: null, envPrefix: ENV_PREFIX }).toObject();
 
     process.env.CONFIG_PATH = CONFIG_PATH;
     process.env.LIQUIO_CONFIG_PREFIX = LIQUIO_CONFIG_PREFIX;

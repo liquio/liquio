@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 
-import { Configuration, ConfigurationService } from './configuration/configuration.service';
+import { SignToolConfig, ConfigurationService } from './configuration/configuration.service';
 import { applyBodyLimit } from './common/body-limit';
 import { requireClientCert } from './common/tls';
 import { LoggingInterceptor } from './observability/logging.interceptor';
@@ -8,8 +8,8 @@ import { LoggerService } from './observability/logger.service';
 import { ErrorsInterceptor } from './observability/errors.interceptor';
 import { useSwagger } from './swagger';
 
-export function configureApp(app: INestApplication, logger: LoggerService, opts: { requireClientCert?: boolean } = {}): Configuration['server'] {
-  const config: Configuration['server'] = app.get(ConfigurationService).get('server');
+export function configureApp(app: INestApplication, logger: LoggerService, opts: { requireClientCert?: boolean } = {}): SignToolConfig['server'] {
+  const config: SignToolConfig['server'] = app.get(ConfigurationService).get('server');
 
   if (opts.requireClientCert) {
     app.use(requireClientCert());

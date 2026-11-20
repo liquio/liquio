@@ -19,7 +19,8 @@ import typeOf from './lib/type_of';
 import { HttpClient } from './lib/http_client';
 import { ExternalServicesStatusesDaemon } from './lib/external_services_statuses_daemon';
 import { loadConfig } from './lib/config';
-import { assertBasicAuthConfig, assertDownloadTokenConfig, assertTestAuthConfig, buildSandboxConfig } from './lib/config_validation';
+import type { TaskConfig } from './lib/config.types';
+import { buildSandboxConfig, findTestAuthWarnings } from './lib/config_validation';
 import * as JSONPath from './lib/jsonpath';
 import { Keywords } from './services/document_validator/keywords';
 import { initIdApiClient } from './lib/id_api';
@@ -115,18 +116,11 @@ export class BpmnTaskCore {
     process.title = processTitle;
 
     // Init config.
-    const config: any = loadConfig(configPath);
+    const config: TaskConfig = loadConfig(configPath);
 
     setAppContext({ config });
 
-    // Do not start with a publicly known default Basic token (or none in production).
-    assertBasicAuthConfig(config);
-
-    // Do not sign download tokens with a placeholder, empty or short secret.
-    assertDownloadTokenConfig(config);
-
-    // Do not let test_users tokens bypass auth in production.
-    assertTestAuthConfig(config);
+    findTestAuthWarnings(config).forEach((message) => console.warn(message));
 
     this.sandbox = new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);
     Keywords.init();

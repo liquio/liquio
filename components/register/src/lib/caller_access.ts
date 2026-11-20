@@ -1,4 +1,4 @@
-import { Config } from './config';
+import { RegisterConfig } from './config';
 
 export interface RequestedSecurityFlags {
   allow_see_all_records?: unknown;
@@ -29,7 +29,7 @@ function decodeRequestedTokens(value: unknown): string[] {
   return Array.isArray(value) ? value.map((v) => decodeURIComponent(v)) : [];
 }
 
-function getServerAllowTokens(config: Pick<Config, 'auth'>, user: string | undefined): string[] {
+function getServerAllowTokens(config: Pick<RegisterConfig, 'auth'>, user: string | undefined): string[] {
   const map = config?.auth?.userAllowTokens;
   if (map === undefined || map === null) return [];
   if (typeof map !== 'object' || Array.isArray(map)) {
@@ -51,7 +51,7 @@ function getServerAllowTokens(config: Pick<Config, 'auth'>, user: string | undef
  */
 export function resolveCallerAccess(
   req: { auth?: { user?: string } },
-  config: Pick<Config, 'auth'>,
+  config: Pick<RegisterConfig, 'auth'>,
   requested: RequestedSecurityFlags = {},
 ): CallerAccess {
   const user = req?.auth?.user;

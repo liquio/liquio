@@ -1,18 +1,18 @@
 import https from 'node:https';
 
-import type { Config } from '../config';
+import type { IdApiConfig } from '../config';
 import { getInternalHttpsAgent, internalRequestOptions } from './internal_transport';
 
 const PEM = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
 
 describe('internal transport TLS', () => {
   it('uses the default verifying agent without a CA', () => {
-    expect(getInternalHttpsAgent({} as Config)).toBeUndefined();
-    expect(internalRequestOptions({ internalTransport: {} } as Config)).toEqual({});
+    expect(getInternalHttpsAgent({} as IdApiConfig)).toBeUndefined();
+    expect(internalRequestOptions({ internalTransport: {} } as IdApiConfig)).toEqual({});
   });
 
   it('trusts the configured CA and keeps verification on', () => {
-    const config = { internalTransport: { ca: PEM } } as Config;
+    const config = { internalTransport: { ca: PEM } } as IdApiConfig;
     const agent: any = getInternalHttpsAgent(config);
     expect(agent).toBeInstanceOf(https.Agent);
     expect(agent.options.rejectUnauthorized).toBe(true);
@@ -21,7 +21,7 @@ describe('internal transport TLS', () => {
   });
 
   it('ignores an attempt to disable verification', () => {
-    const config = { internalTransport: { ca: [PEM], rejectUnauthorized: false } } as unknown as Config;
+    const config = { internalTransport: { ca: [PEM], rejectUnauthorized: false } } as unknown as IdApiConfig;
     expect((getInternalHttpsAgent(config) as any).options.rejectUnauthorized).toBe(true);
   });
 });

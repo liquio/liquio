@@ -23,13 +23,12 @@
     "ci:e2e": "jest --config jest.e2e.config.js --ci --maxWorkers=2 --coverageDirectory=coverage/e2e"
   },
   "dependencies": {
-    "@liquio/back-core": "^1.0.2",
+    "@liquio/back-core": "^1.4.0",
     "axios": "^1.20.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.3.0",
     "moment": "^2.18.1",
-    "multiconf": "^4.0.0",
     "node-cache": "^4.1.1",
     "node-cron": "^1.2.0",
     "nodemailer": "^10.0.15",
@@ -37,7 +36,8 @@
     "sequelize": "^6.37.8",
     "sequelize-cli": "^6.6.5",
     "xml-stream": "^0.4.5",
-    "xmlbuilder": "^15.1.1"
+    "xmlbuilder": "^15.1.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

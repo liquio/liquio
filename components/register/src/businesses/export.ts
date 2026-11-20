@@ -7,7 +7,7 @@ import RecordModel from '../models/record';
 import KeyEntity from '../entities/key';
 import RegisterEntity from '../entities/register';
 import RecordEntity from '../entities/record';
-import { Config } from '../lib/config';
+import { RegisterConfig } from '../lib/config';
 import { RedisClient } from '../lib/redis_client';
 import { ExportAccess, ExportKeyForbiddenError, RESTRICTED_EXPORT_ACCESS, isKeyExportable, projectRecordsForExport } from '../lib/export_access';
 import { getConfig } from '../lib/context';
@@ -33,7 +33,7 @@ export default class ExportBusiness extends Business {
   toExport: { [key: string]: any };
   exportTimeouts: Map<string, NodeJS.Timeout>;
 
-  constructor(config: Config) {
+  constructor(config: RegisterConfig) {
     // Define singleton.
     if (!ExportBusiness.singleton) {
       super(config);

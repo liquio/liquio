@@ -9,11 +9,11 @@ import typeOf from '../../src/lib/typeOf';
 import Models from '../../src/models';
 import Router from '../../src/router';
 import Encryption from '../../src/lib/encryption';
-import { Config } from '../../src/lib/config';
+import { RegisterConfig } from '../../src/lib/config';
 import { RedisClient } from '../../src/lib/redis_client';
 import { setAppContext, getDb, getAfterhandler } from '../../src/lib/context';
 
-export const config: Config = {
+export const config: RegisterConfig = {
   access_log: { keyIds: ['16', '505'] },
   admin: { swagger: true },
   app: { processTitle: 'bpmn-register' },
@@ -160,7 +160,7 @@ process.on('unhandledRejection', (error) => {
 process.title = config.app?.processTitle;
 
 // Start async thread.
-export async function startApp(config: Config) {
+export async function startApp(config: RegisterConfig) {
   // Init sandbox (this harness doesn't set the app-context log, so pass the logger explicitly).
   new Sandbox({ ...config.sandbox, getLog: () => log });
 

@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
-import { Configuration, ConfigurationService } from './configuration/configuration.service';
+import { SignToolConfig, ConfigurationService } from './configuration/configuration.service';
 import { configureApp } from './app.setup';
 import { loadHttpsOptions } from './common/tls';
 import { LoggerService } from './observability/logger.service';
@@ -13,7 +13,7 @@ async function bootstrap() {
   const logger = new LoggerService(als);
 
   // Opt-in HTTPS (server.tls.enabled). Resolved before the app starts so unreadable cert files fail fast.
-  const bootConfig = new ConfigurationService(logger).get('server') as Configuration['server'];
+  const bootConfig = new ConfigurationService(logger).get('server') as SignToolConfig['server'];
   const httpsOptions = loadHttpsOptions(bootConfig.tls);
 
   const app = await NestFactory.create(AppModule, { logger, ...(httpsOptions ? { httpsOptions } : {}) });

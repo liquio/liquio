@@ -1,7 +1,8 @@
-const Multiconf = require('multiconf');
-const fs = require('fs');
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config/filestorage';
-const SECRET_PATH = process.env.SECRET_PATH;
-const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_FILESTORAGE';
-const config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`);
-module.exports = config.db;
+const { z } = require('zod');
+const { Config, resolveEnvPrefix } = require('@liquio/back-core');
+
+module.exports = Config.load({
+  defaultConfigPath: '../config/filestorage',
+  envPrefix: resolveEnvPrefix('LIQUIO_CFG_FILESTORAGE'),
+  schema: z.looseObject({ db: z.looseObject({}) }),
+}).toObject().db;

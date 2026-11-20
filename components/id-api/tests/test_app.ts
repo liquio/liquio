@@ -14,7 +14,7 @@ import pg from 'pg';
 import supertest from 'supertest';
 
 import { Application } from '../src/application';
-import { Config } from '../src/config';
+import { IdApiConfig } from '../src/config';
 import { AuthMiddleware } from '../src/middleware';
 import { Models } from '../src/models';
 import { Services } from '../src/services';
@@ -50,7 +50,7 @@ jest.mock('@liquio/back-core', () => {
   };
 });
 
-export const config: Config = baseConfig as Config;
+export const config: IdApiConfig = baseConfig as IdApiConfig;
 jest.mock('../src/config', () => {
   return {
     loadConfig: jest.fn(() => config),

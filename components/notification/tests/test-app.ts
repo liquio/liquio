@@ -9,8 +9,7 @@ import * as pg from 'pg';
 import nock from 'nock';
 import createDebug from 'debug';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
-import * as Multiconf from 'multiconf';
-import { Log, resetIdApiClient } from '@liquio/back-core';
+import { Config, Log, resetIdApiClient } from '@liquio/back-core';
 
 import { buildAdapters } from '../src/bootstrap';
 import { createConsoleLogProvider } from '../src/lib/console_log_provider';
@@ -90,7 +89,12 @@ const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_NOT
 // Obtain the default configuration object the same way src/config/config.ts does, without
 // importing that module directly - it has its own CONFIG_PATH resolution and side effects we
 // don't want to entangle this harness with.
-const rawConfig: any = Multiconf.get(CONFIG_TEMPLATE_PATH, `${LIQUIO_CONFIG_PREFIX}_`).config;
+const rawConfig: any = Config.load({
+  configPath: CONFIG_TEMPLATE_PATH,
+  secretPath: null,
+  envPrefix: `${LIQUIO_CONFIG_PREFIX}_`,
+  transform: (raw: any) => raw.config,
+}).toObject();
 const defaultEnv = rawConfig.default_env || 'production';
 const versionsConfText = readFileSync(path.join(__dirname, '../src/config/versions.json.default'), 'utf8');
 const versionsConf = JSON.parse(versionsConfText || '{}');

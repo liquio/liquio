@@ -53,8 +53,7 @@ jest.mock('@liquio/back-core', () => {
 // Mock the configuration module
 const configOverride: any = {};
 jest.mock('../src/lib/config', () => {
-  const Multiconf = require('multiconf');
-  const baseConfig = Multiconf.get('../../config-templates/event');
+  const baseConfig = require('@liquio/back-core').Config.load({ configPath: '../../config-templates/event', secretPath: null }).toObject();
 
   const getMerged = () => ({ ...baseConfig, ...configOverride });
 

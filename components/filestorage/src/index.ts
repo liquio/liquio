@@ -25,12 +25,5 @@ process.title = config.app.processTitle;
 
 // Start async thread.
 (async () => {
-  try {
-    await bootstrap(config, log);
-  } catch (error) {
-    if (!(error instanceof Error) || !error.message.startsWith('Invalid auth config')) {
-      throw error;
-    }
-    process.exit(1);
-  }
+  await bootstrap(config, log);
 })();

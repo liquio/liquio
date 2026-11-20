@@ -5,7 +5,7 @@ import { matchedData, query, validationResult } from 'express-validator';
 import moment from 'moment';
 import { Op } from 'sequelize';
 
-import { Config, DEFAULT_CODE_RETRIES, DEFAULT_CODE_LENGTH } from '../config';
+import { IdApiConfig, DEFAULT_CODE_RETRIES, DEFAULT_CODE_LENGTH } from '../config';
 import { calculateUserCode } from '../lib/calculate_user_code';
 import { generatePinCode } from '../lib/helpers';
 import { HttpError, oauthErrorBody } from '../lib/http_error';
@@ -72,7 +72,7 @@ export class AuthService extends BaseService {
   private readonly oAuth2Server!: OAuth2Server;
   private readonly oAuth2Model!: OAuthModel;
   private readonly mappr = require('mappr');
-  private readonly cfg!: Config['oauth'];
+  private readonly cfg!: IdApiConfig['oauth'];
 
   constructor(...args: ConstructorParameters<typeof BaseService>) {
     super(...args);

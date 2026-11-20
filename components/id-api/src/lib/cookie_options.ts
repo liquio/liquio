@@ -1,15 +1,15 @@
 import { CookieOptions, Request } from 'express';
 
-import { Config, DEFAULT_COOKIE_DOMAIN } from '../config';
+import { IdApiConfig, DEFAULT_COOKIE_DOMAIN } from '../config';
 
-type CookieSettings = NonNullable<Config['cookies']>;
+type CookieSettings = NonNullable<IdApiConfig['cookies']>;
 
 /**
  * Cookie `Secure` attribute. `auto` (default) follows the request protocol: it is `true` for HTTPS requests
  * (including requests behind a TLS-terminating ingress when `trustProxy` is configured) and `false` for plain HTTP,
  * so local http development keeps working.
  */
-export function resolveSecure(config: Pick<Config, 'cookies'>): boolean | 'auto' {
+export function resolveSecure(config: Pick<IdApiConfig, 'cookies'>): boolean | 'auto' {
   const secure = config.cookies?.secure;
   return secure === undefined ? 'auto' : secure;
 }
@@ -18,7 +18,7 @@ export function resolveSecure(config: Pick<Config, 'cookies'>): boolean | 'auto'
  * SameSite defaults to `lax`: the session cookie must be sent on the top-level redirect back from external
  * identity providers (OAuth/OIDC), which `strict` would break.
  */
-export function resolveSameSite(config: Pick<Config, 'cookies'>): NonNullable<CookieSettings['sameSite']> {
+export function resolveSameSite(config: Pick<IdApiConfig, 'cookies'>): NonNullable<CookieSettings['sameSite']> {
   return config.cookies?.sameSite ?? 'lax';
 }
 
@@ -28,7 +28,7 @@ export function resolveSameSite(config: Pick<Config, 'cookies'>): NonNullable<Co
  */
 export function profileCookieOptions(
   req: Pick<Request, 'secure'>,
-  config: Pick<Config, 'cookies' | 'domain'>,
+  config: Pick<IdApiConfig, 'cookies' | 'domain'>,
   extra: CookieOptions = {},
 ): CookieOptions {
   const secure = resolveSecure(config);

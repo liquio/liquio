@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 
 import { RedisClient } from '@liquio/back-core';
 
-import { Config } from '../config';
+import { IdApiConfig } from '../config';
 import { BaseService } from './base_service';
 
 export const DEFAULT_TTL_IN_SECONDS = 300; // 5 minutes.
@@ -27,7 +27,7 @@ interface RawRedisClient {
  * registry) over `@liquio/back-core`'s `RedisClient`.
  */
 export class RedisService extends BaseService {
-  private readonly cfg: Config['redis'];
+  private readonly cfg: IdApiConfig['redis'];
   private readonly redisClient?: RedisClient;
 
   constructor(...args: ConstructorParameters<typeof BaseService>) {

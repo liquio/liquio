@@ -1,7 +1,7 @@
 // @ts-nocheck
 import http from 'node:http';
-import { join } from 'path';
-import { randomBytes } from 'crypto';
+import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
 
 import supertest = require('supertest');
 import * as portfinder from 'portfinder';
@@ -10,7 +10,7 @@ import nock = require('nock');
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 import * as jsonwebtoken from 'jsonwebtoken';
-import multiconf from 'multiconf';
+import { Config } from '@liquio/back-core';
 
 import { bootstrap } from '../src/bootstrap';
 import RedisClient from '../src/lib/redis_client';
@@ -32,7 +32,7 @@ jest.mock('@liquio/back-core', () => {
 });
 
 const CONFIG_PATH = join(__dirname, '../../../config-templates/cabinet-api');
-const defaultConfig = multiconf.get(CONFIG_PATH, 'LIQUIO_CFG_CABINET_TEST_');
+const defaultConfig = Config.load({ configPath: CONFIG_PATH, secretPath: null, envPrefix: 'LIQUIO_CFG_CABINET_TEST_' }).toObject();
 
 // Fake credentials, never real ones.
 export const ID_URL = 'http://id.local:8100';

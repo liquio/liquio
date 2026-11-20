@@ -4,7 +4,7 @@ import OAuth2Server from '@node-oauth/oauth2-server';
 import { matchedData, query } from 'express-validator';
 import { Log, appendTraceMeta } from '@liquio/back-core';
 
-import { Config } from '../config';
+import { IdApiConfig } from '../config';
 import { profileCookieOptions } from '../lib/cookie_options';
 import { generatePinCode } from '../lib/helpers';
 import { oauthErrorBody } from '../lib/http_error';
@@ -43,7 +43,7 @@ export class AuthMiddleware {
     realm: string;
     realmHash: string;
   };
-  private readonly config: Config;
+  private readonly config: IdApiConfig;
   private readonly serviceClients: ServiceClientRegistry;
   private legacyWarned = false;
   private readonly service = Services.service.bind(Services);

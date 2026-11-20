@@ -15,10 +15,11 @@ import { typeOf } from './lib/type_of';
 import { initIdApiClient } from './lib/id_api';
 import { installTlsOverrides } from './lib/tls';
 import { buildSandboxConfig } from './lib/sandbox_config';
+import type { EventConfig } from './lib/config.types';
 import { setAppContext, getLog, getConfig } from './lib/context';
 
 export class App {
-  config: any;
+  config: EventConfig;
   sandbox: any;
   typeOf: any;
   log: any;
@@ -32,7 +33,7 @@ export class App {
   messageBus: any;
   routerService: any;
 
-  constructor(config: any) {
+  constructor(config: EventConfig) {
     this.config = config;
     setAppContext({ config });
     this.sandbox = new Sandbox({ ...buildSandboxConfig(config.sandbox), getLog } as any);
@@ -186,7 +187,7 @@ export class App {
   }
 }
 
-export async function bootstrap(config: any) {
+export async function bootstrap(config: EventConfig) {
   const app = new App(config);
   app.useGlobalTypeOf();
   app.useLog();

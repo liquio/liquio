@@ -17,17 +17,12 @@ import { parseJSONCSchema, validateJSONCSchema } from '../src/lib/jsonc_helper';
 import { XmlJsConverter } from '../src/lib/xml_js_converter';
 import { Db } from '../src/lib/db';
 import { TestUserChecker } from '../src/lib/test_user_checker';
-import {
-  assertNoPlaceholderSecrets,
-  assertTaskTokenIsNotDefault,
-  findPlaceholderSecrets,
-  findPlaceholderSecretWarnings,
-  KNOWN_DEFAULT_TASK_TOKEN_HASHES,
-} from '../src/lib/config_check';
+import { findPlaceholderSecrets, findPlaceholderSecretWarnings, KNOWN_DEFAULT_TASK_TOKEN_HASHES } from '../src/lib/config_check';
 import { getInternalHttpsAgent, getPlainHttpInternalUrls, warnPlainHttpInternalUrls } from '../src/lib/internal_transport';
 import * as errors from '../src/lib/errors';
 import { HttpClient } from '../src/lib/http_client';
 import { buildSandboxConfig } from '../src/lib/sandbox_config';
+import { adminApiConfigSchema } from '../src/lib/config.schema';
 import { getConfig, getDb } from '../src/lib/context';
 
 const NOTIFIER = 'http://notification:8080';
@@ -61,21 +56,23 @@ describe('Library modules', () => {
       auth: { jwtSecret: 'secret', basicAuthToken: 'secret', clientSecret: 'secret' },
       sign: { token: 'secret' },
       task: { token: 'Basic dGVzdDp0ZXN0' },
+      log: { console: {} },
+      message_queue: {},
     });
 
     it('accepts a config without placeholder secrets', () => {
       expect(findPlaceholderSecrets(goodConfig())).toEqual([]);
-      expect(findPlaceholderSecretWarnings(goodConfig())).toEqual([]);
-      expect(assertNoPlaceholderSecrets(goodConfig())).toEqual([]);
+      expect(adminApiConfigSchema.safeParse(goodConfig()).success).toBe(true);
     });
 
     it('rejects placeholder secrets outside of dev and tolerates them in dev', () => {
       const config: any = goodConfig();
       config.db.password = '<REDACTED>';
       config.auth.jwtSecret = '';
-      expect(() => assertNoPlaceholderSecrets(config)).toThrow(/db\.password/);
+      expect(adminApiConfigSchema.safeParse(config).success).toBe(false);
       config.server.environment = 'dev';
-      expect(assertNoPlaceholderSecrets(config)).toEqual(expect.arrayContaining(['db.password', 'auth.jwtSecret']));
+      expect(adminApiConfigSchema.safeParse(config).success).toBe(true);
+      expect(findPlaceholderSecrets(config)).toEqual(expect.arrayContaining(['db.password', 'auth.jwtSecret']));
     });
 
     it('checks the slave database password and warns about optional secrets', () => {
@@ -88,10 +85,8 @@ describe('Library modules', () => {
 
     it('refuses the task token that is a publicly known default', () => {
       expect(KNOWN_DEFAULT_TASK_TOKEN_HASHES.length).toBeGreaterThan(0);
-      expect(() => assertTaskTokenIsNotDefault({ task: { token: 'Basic dGVzdDp0ZXN0' }, server: { environment: 'production' } })).not.toThrow();
-      expect(() => assertTaskTokenIsNotDefault({ task: { token: '' }, server: { environment: 'production' } })).toThrow(/task\.token/);
-      expect(() => assertTaskTokenIsNotDefault({ task: { token: '' }, server: { environment: 'dev' } })).not.toThrow();
-      expect(() => assertTaskTokenIsNotDefault({} as any)).toThrow();
+      expect(adminApiConfigSchema.safeParse(goodConfig()).success).toBe(true);
+      expect(adminApiConfigSchema.safeParse({ ...goodConfig(), task: { token: '' } }).success).toBe(false);
     });
   });
 

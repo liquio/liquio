@@ -12,8 +12,7 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 import { RabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as jsonwebtoken from 'jsonwebtoken';
-import * as Multiconf from 'multiconf';
-import { resetIdApiClient, resetRegisterApiClient } from '@liquio/back-core';
+import { Config, resetIdApiClient, resetRegisterApiClient } from '@liquio/back-core';
 
 import { bootstrap } from '../src/bootstrap';
 import { getConfig, getDb, getMessageBus, getModels, getRedis, getSlaveDb, setAppContext } from '../src/lib/context';
@@ -74,7 +73,7 @@ const CONFIG_PATH = process.env.CONFIG_PATH || join(__dirname, '../../../config-
 const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_ADMIN_API';
 
 // Obtain the default configuration object
-const defaultConfig = Multiconf.get(CONFIG_PATH, `${LIQUIO_CONFIG_PREFIX}_HANDLER_`);
+const defaultConfig = Config.load({ configPath: CONFIG_PATH, secretPath: null, envPrefix: `${LIQUIO_CONFIG_PREFIX}_HANDLER_` }).toObject();
 
 export class TestApp {
   static pgContainer;

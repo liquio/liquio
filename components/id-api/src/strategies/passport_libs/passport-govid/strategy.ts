@@ -6,7 +6,7 @@ import { ContentInfo } from 'pkijs';
 import { Strategy } from 'passport-strategy';
 import { Log } from '@liquio/back-core';
 
-import { Config } from '../../../config';
+import { IdApiConfig } from '../../../config';
 import { isPublicError, publicError } from '../../../lib/http_error';
 import { sanitizeProviderProfile } from '../../../lib/public_services';
 import { Request, StrategyVerify } from '../../../types';
@@ -52,12 +52,12 @@ export function consumeGovIdState(req: Request, received: unknown): boolean {
 export class GovIdStrategy extends Strategy {
   private readonly log = Log.getInstance();
   private readonly timeout: number;
-  private readonly options: NonNullable<Config['auth_providers']['govid']>;
+  private readonly options: NonNullable<IdApiConfig['auth_providers']['govid']>;
   private readonly verify?: StrategyVerify;
 
   public readonly name = 'govid';
 
-  constructor(options: NonNullable<Config['auth_providers']['govid']>, verify?: StrategyVerify) {
+  constructor(options: NonNullable<IdApiConfig['auth_providers']['govid']>, verify?: StrategyVerify) {
     super();
     this.options = options;
     this.verify = verify;

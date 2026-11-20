@@ -1,18 +1,17 @@
-import { exec } from 'child_process';
-import { Server } from 'http';
+import { exec } from 'node:child_process';
+import { Server } from 'node:http';
 
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import debug from 'debug';
-import Multiconf from 'multiconf';
 import { Sequelize } from 'sequelize';
 import supertest from 'supertest';
-import { Log, ConsoleLogProvider, LogProvider } from '@liquio/back-core';
+import { Config as ConfigLoader, Log, ConsoleLogProvider, LogProvider } from '@liquio/back-core';
 
 import { insertData } from './fixtures';
 import ExportBusiness from '../src/businesses/export';
 import { bootstrap } from '../src/bootstrap';
-import { Config } from '../src/lib/config';
+import { RegisterConfig } from '../src/lib/config';
 import { PgPubSub } from '../src/lib/pgpubsub';
 import { RedisClient } from '../src/lib/redis_client';
 import { setAppContext, resetAppContext, getAfterhandler } from '../src/lib/context';
@@ -29,7 +28,7 @@ export interface TestHarnessOptions {
 export class TestHarness {
   private postgresContainer?: StartedPostgreSqlContainer;
   private redisContainer?: StartedRedisContainer;
-  private config: Config;
+  private config: RegisterConfig;
   private server?: Server;
   private db?: Sequelize;
   private isExternalDb: boolean = false;
@@ -37,10 +36,14 @@ export class TestHarness {
   private uniqueDbName?: string;
 
   constructor() {
-    this.config = Multiconf.get(process.env.CONFIG_PATH || '../../config-templates/register', 'KITSOFT_REGISTER_') as unknown as Config;
+    this.config = ConfigLoader.load<RegisterConfig>({
+      configPath: process.env.CONFIG_PATH || '../../config-templates/register',
+      secretPath: null,
+      envPrefix: 'KITSOFT_REGISTER_',
+    }).toObject();
   }
 
-  getConfig(): Config {
+  getConfig(): RegisterConfig {
     return this.config;
   }
 
@@ -291,7 +294,7 @@ export class TestHarness {
     setAppContext({ log });
   }
 
-  private async setupDatabase(config: Config): Promise<StartedPostgreSqlContainer | undefined> {
+  private async setupDatabase(config: RegisterConfig): Promise<StartedPostgreSqlContainer | undefined> {
     const isExternalDb = !!process.env.DB_HOST;
     this.isExternalDb = isExternalDb;
 
@@ -359,7 +362,7 @@ export class TestHarness {
     }
   }
 
-  private async setupRedis(config: Config) {
+  private async setupRedis(config: RegisterConfig) {
     const isExternalRedis = !!process.env.REDIS_HOST;
 
     if (isExternalRedis) {

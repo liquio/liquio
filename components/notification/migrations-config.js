@@ -1,7 +1,14 @@
-const Multiconf = require('multiconf');
-const fs = require('fs');
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config/notification';
-const SECRET_PATH = process.env.SECRET_PATH;
-const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_NOTIFICATION';
-const { config } = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`);
+const { Config, resolveEnvPrefix } = require('@liquio/back-core');
+const { z } = require('zod');
+const isObject = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+const config = Config.load({
+  defaultConfigPath: '../config/notification',
+  envPrefix: resolveEnvPrefix('LIQUIO_CFG_NOTIFICATION'),
+  transform: (raw) => raw.config,
+  schema: z.looseObject({ default_env: z.string() }).superRefine((cfg, ctx) => {
+    if (!isObject(cfg[cfg.default_env]?.db)) {
+      ctx.addIssue({ code: 'custom', path: [cfg.default_env, 'db'], message: 'is not defined' });
+    }
+  }),
+}).toObject();
 module.exports = config[config.default_env].db;

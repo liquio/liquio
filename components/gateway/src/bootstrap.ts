@@ -9,8 +9,9 @@ import { createGatewayMessageBus, recordHandlerFailure, DESTINATION_GATEWAY } fr
 import { RouterService } from './services/router';
 import { GatewayBusiness } from './businesses/gateway';
 import { RedisClient } from './lib/redis_client';
+import type { GatewayConfig } from './lib/config.types';
 
-export async function bootstrap(config: Record<string, any>) {
+export async function bootstrap(config: GatewayConfig) {
   setAppContext({ config });
 
   // Init redis.

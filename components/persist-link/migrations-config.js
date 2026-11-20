@@ -1,10 +1,14 @@
-const fs = require('node:fs');
+const { Config, resolveEnvPrefix } = require('@liquio/back-core');
+const { z } = require('zod');
 
-const Multiconf = require('multiconf');
+// Before this change the default prefix had a double underscore; it is still accepted.
+const LEGACY_DEFAULT_PREFIX = 'LIQUIO_CFG_PERSIST_LINK__';
 
-const CONFIG_PATH = process.env.CONFIG_PATH || '../config/persist-link';
-const SECRET_PATH = process.env.SECRET_PATH;
-const LIQUIO_CONFIG_PREFIX = process.env.LIQUIO_CONFIG_PREFIX || 'LIQUIO_CFG_PERSIST_LINK_';
-const config = Multiconf.get([CONFIG_PATH, ...(SECRET_PATH && fs.existsSync(SECRET_PATH) ? [SECRET_PATH] : [])], `${LIQUIO_CONFIG_PREFIX}_`);
+const config = Config.load({
+  defaultConfigPath: '../config/persist-link',
+  envPrefix: resolveEnvPrefix('LIQUIO_CFG_PERSIST_LINK'),
+  legacyEnvPrefixes: process.env.LIQUIO_CONFIG_PREFIX ? [] : [LEGACY_DEFAULT_PREFIX],
+  schema: z.looseObject({ db: z.looseObject({}) }),
+}).toObject();
 
 module.exports = config.db;
