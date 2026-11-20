@@ -128,11 +128,11 @@
     "clipboard-polyfill": "^4.1.1",
     "deep-diff": "^1.0.2",
     "diagram-js": "8.8.0",
-    "filesize": "^6.4.0",
+    "filesize": "^11.0.33",
     "hellosign-embedded": "^2.12.3",
     "history": "^4.10.1",
     "immutability-helper": "^3.1.1",
-    "js-beautify": "1.15.4",
+    "js-beautify": "2.0.3",
     "json5": "^2.2.3",
     "material-ui-phone-number": "^3.0.0",
     "mime-types": "^2.1.35",
@@ -144,6 +144,6 @@
     "react-syntax-highlighter": "^15.5.0",
     "react-youtube": "^10.1.0",
     "remark-gfm": "^3.0.1",
-    "terser": "5.15.1"
+    "terser": "5.51.2"
   }
 }

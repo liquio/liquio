@@ -12,7 +12,7 @@ import {
 
 import SelectFileArea from 'components/SelectFileArea';
 
-import filesize from 'filesize';
+import { filesize } from 'filesize';
 import cx from 'classnames';
 
 export interface FileLimit {
@@ -90,7 +90,7 @@ const SelectFilesDialogContent = ({
         error={showEmptyNameError}
         id={setId('text-input')}
       />
-      {!file && (
+      {file && (
         <Card className={classes.card} id={setId('card')}>
           <CardContent
             className={classes.cardContent}
@@ -118,7 +118,7 @@ const SelectFilesDialogContent = ({
               color="textSecondary"
               id={setId('file-size')}
             >
-              {filesize((file as unknown as File).size)}
+              {filesize((file as unknown as File).size, { standard: 'jedec' })}
             </Typography>
           </CardContent>
         </Card>

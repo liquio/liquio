@@ -275,6 +275,11 @@ updates:
     labels:
       - "dependencies"
       - "front-core"
+    ignore:
+      # history 5 is incompatible with react-router-dom 5 and react-router-redux 4;
+      # it can only move together with a router upgrade
+      - dependency-name: "history"
+        update-types: ["version-update:semver-major"]
 
   # Test Suite
   - package-ecosystem: "npm"
