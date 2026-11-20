@@ -17,7 +17,8 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js src",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch src",
     "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage src",
-    "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.e2e.config.js --verbose"
+    "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.e2e.config.js --verbose",
+    "ci:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.e2e.config.js --ci --maxWorkers=2 --coverageDirectory=coverage/e2e"
   },
   "dependencies": {
     "@liquio/back-core": "^1.4.0",
