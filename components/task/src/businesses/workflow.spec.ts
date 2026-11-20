@@ -37,6 +37,10 @@ describe('WorkflowBusiness', () => {
     },
   };
 
+  afterAll(() => {
+    nock.restore();
+  });
+
   beforeEach(() => {
     setAppContext({ config });
   });
@@ -214,8 +218,8 @@ describe('WorkflowBusiness', () => {
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function (uri, requestBody) {
-          capturedRequestBody = requestBody;
+        .reply(async (request: Request) => {
+          capturedRequestBody = await request.json();
           return [200, mockElasticsearchResponse];
         });
 
@@ -266,8 +270,8 @@ describe('WorkflowBusiness', () => {
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function (uri, requestBody) {
-          capturedRequestBody = requestBody;
+        .reply(async (request: Request) => {
+          capturedRequestBody = await request.json();
           return [200, mockElasticsearchResponse];
         });
 
@@ -293,8 +297,8 @@ describe('WorkflowBusiness', () => {
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function (uri, requestBody) {
-          capturedRequestBody = requestBody;
+        .reply(async (request: Request) => {
+          capturedRequestBody = await request.json();
           return [200, mockElasticsearchResponse];
         });
 
@@ -429,8 +433,8 @@ describe('WorkflowBusiness', () => {
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function (uri, requestBody) {
-          capturedRequestBody = requestBody;
+        .reply(async (request: Request) => {
+          capturedRequestBody = await request.json();
           return [200, mockElasticsearchResponse];
         });
 
@@ -450,8 +454,8 @@ describe('WorkflowBusiness', () => {
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function (uri, requestBody) {
-          capturedRequestBody = requestBody;
+        .reply(async (request: Request) => {
+          capturedRequestBody = await request.json();
           return [200, mockElasticsearchResponse];
         });
 
@@ -478,8 +482,8 @@ describe('WorkflowBusiness', () => {
       let capturedRequestBody;
       nock('https://elasticsearch.example.com')
         .post('/search')
-        .reply(function (uri, requestBody) {
-          capturedRequestBody = requestBody;
+        .reply(async (request: Request) => {
+          capturedRequestBody = await request.json();
           return [200, mockElasticsearchResponse];
         });
 

@@ -38,6 +38,10 @@ const mockHttpClient: any = {
 };
 
 describe('ExternalReader', () => {
+  afterAll(() => {
+    nock.restore();
+  });
+
   beforeEach(() => {
     setAppContext({ config: mockConfig, log: mockLog, httpClient: mockHttpClient });
   });
@@ -243,8 +247,8 @@ describe('ExternalReader', () => {
       let capturedRequestBody;
       nock('https://external-reader.example.com')
         .post('/test-service/test-method')
-        .reply(function (uri, requestBody) {
-          capturedRequestBody = requestBody;
+        .reply(async (request: Request) => {
+          capturedRequestBody = await request.json();
           return [200, mockResponse];
         });
 
