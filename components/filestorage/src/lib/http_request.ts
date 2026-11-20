@@ -114,11 +114,8 @@ export class HttpRequest {
       // Return parsed body object - only the data part to avoid circular refs
       return parseBody(response.data);
     } catch (error) {
-      // Handle axios errors
-      if (error.response) {
-        // Server responded with error status - only return the data part
-        return parseBody(error.response.data);
-      }
+      // Non-2xx statuses resolve in the try path (validateStatus), so any error here is a transport failure
+      // (timeout, aborted or broken body stream) and must reject instead of returning a partial body.
       // Network or other errors - throw a clean error message
       const wrappedError = new Error(error.message || 'Network error');
       (wrappedError as any).cause = error;
@@ -180,19 +177,8 @@ export class HttpRequest {
         },
       };
     } catch (error) {
-      // Handle axios errors
-      if (error.response) {
-        // Server responded with error status - return detailed error info
-        return {
-          body: parseBody(error.response.data),
-          headers: error.response.headers,
-          rawResponse: {
-            status: error.response.status,
-            statusText: error.response.statusText,
-            headers: error.response.headers,
-          },
-        };
-      }
+      // Non-2xx statuses resolve in the try path (validateStatus), so any error here is a transport failure
+      // (timeout, aborted or broken body stream) and must reject instead of returning a partial body.
       // Network or other errors - throw a clean error message
       const wrappedError = new Error(error.message || 'Network error');
       (wrappedError as any).cause = error;

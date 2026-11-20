@@ -66,13 +66,16 @@ describe('Group B - event workflow service', () => {
         .post('/tasks/by-other-system')
         .query({ a: '1' })
         .matchHeader('authorization', 'fake-token')
-        .reply(200, (_uri, body: any) => ({
-          ok: true,
-          wf: body.workflowTemplateId,
-          files: body.initData.files.length,
-          att: body.initData.attachmentsSignatures.length,
-          sig: body.initData.signatures,
-        }));
+        .reply(200, async (request: Request) => {
+          const body: any = await request.json();
+          return {
+            ok: true,
+            wf: body.workflowTemplateId,
+            files: body.initData.files.length,
+            att: body.initData.attachmentsSignatures.length,
+            sig: body.initData.signatures,
+          };
+        });
       jest.spyOn(getModels().documentSignature, 'findByDocumentId').mockResolvedValue([{ signature: JSON.stringify(['sig-1']) }] as any);
       const res = await service.createWorkflowsExternal({
         createWorkflowsExternal: [{ fileIds: ['f1'], p7sFileIds: ['p1'], attachmentsSignaturesIds: ['a1'], signaturesDocumentId: 'doc1', files: [] }],
@@ -112,7 +115,10 @@ describe('Group B - event workflow service', () => {
       const scope = nock('http://ext-bpmn.test')
         .post(`/external_services/workflow/${WF}/task_template/7`)
         .query({ a: '1' })
-        .reply(200, (_u, body: any) => ({ doc: body.document, files: body.files.length, att: body.attachmentsSignatures.length }));
+        .reply(200, async (request: Request) => {
+          const body: any = await request.json();
+          return { doc: body.document, files: body.files.length, att: body.attachmentsSignatures.length };
+        });
       const res = await service.sendStatusExternal({
         sendStatusExternal: {
           workflowId: WF,

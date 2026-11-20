@@ -108,11 +108,8 @@ export class HttpRequest {
       // Return parsed body object - only the data part to avoid circular refs
       return parseBody(response.data);
     } catch (error: any) {
-      // Handle axios errors
-      if (error.response) {
-        // Server responded with error status - only return the data part
-        return parseBody(error.response.data);
-      }
+      // axios only rejects here for transport failures (connect/timeout/aborted or broken body stream),
+      // including ones after headers arrived, so a partial response must not be returned as a result.
       // Network or other errors - throw a clean error message
       const wrapped = new Error(error.message || 'Network error');
       (wrapped as any).cause = error;

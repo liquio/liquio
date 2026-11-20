@@ -14,10 +14,11 @@
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint \"**/*.ts\"",
     "lint:fix": "eslint \"**/*.ts\" --fix",
-    "test": "jest src",
-    "test:watch": "jest --watch src",
-    "test:cov": "jest --coverage src",
-    "test:e2e": "jest --config jest.e2e.config.js --verbose"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js src",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch src",
+    "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage src",
+    "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.e2e.config.js --verbose",
+    "ci:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.e2e.config.js --ci --maxWorkers=2 --coverageDirectory=coverage/e2e"
   },
   "dependencies": {
     "@liquio/back-core": "^1.4.0",
@@ -53,7 +54,7 @@
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-prettier": "^5.5.7",
     "jest": "^30.5.2",
-    "nock": "^14.0.10",
+    "nock": "^15.0.6",
     "portfinder": "^1.0.37",
     "supertest": "^7.3.2",
     "ts-jest": "^29.4.12",

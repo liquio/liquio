@@ -66,8 +66,8 @@ describe('Main proxy', () => {
     app
       .nock(TASK_URL)
       .get('/navigation-tree')
-      .reply(200, function () {
-        received = this.req.headers;
+      .reply(200, (request: Request) => {
+        received = Object.fromEntries(request.headers);
         return { data: [] };
       });
 

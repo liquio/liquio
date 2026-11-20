@@ -274,8 +274,8 @@ describe('Group C - liquio registers provider', () => {
     it('createRecord posts the record with access info', async () => {
       const scope = nock(REG)
         .post('/records', { registerId: 1, data: { a: 1 } })
-        .reply(200, function () {
-          expect(decodeAccessInfo(this.req.headers['access-info'] as string)).toMatchObject({ workflowId: 'wf-1', who: 'me' });
+        .reply(200, (request: Request) => {
+          expect(decodeAccessInfo(request.headers.get('access-info') as string)).toMatchObject({ workflowId: 'wf-1', who: 'me' });
           return { data: { id: 'new' } };
         });
       expect(await provider.createRecord({ registerId: 1, data: { a: 1 } }, ctx({}, { accessInfo: { who: 'me' } }))).toEqual({ data: { id: 'new' } });
@@ -354,7 +354,7 @@ describe('Group C - liquio registers provider', () => {
     it('returns version info from response headers', async () => {
       nock(REG)
         .get('/test/ping')
-        .matchHeader('token', (v) => v === undefined)
+        .matchHeader('token', (v) => !v)
         .reply(200, { pong: true }, { version: '1.2.3', customer: 'cust', environment: 'test' });
       expect(await provider.sendPingRequest()).toEqual({ version: '1.2.3', customer: 'cust', environment: 'test', body: { pong: true } });
     });

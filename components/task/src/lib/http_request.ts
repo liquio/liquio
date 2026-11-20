@@ -121,8 +121,8 @@ export class HttpRequest {
     // Do request.
     const response = await axios(axiosConfig);
 
-    // Clean up agents in test environment
-    if (process.env.NODE_ENV === 'test') {
+    // Clean up agents in test environment (a stream still needs its socket).
+    if (process.env.NODE_ENV === 'test' && requestOptions.responseType !== 'stream') {
       if (axiosConfig.httpAgent) {
         axiosConfig.httpAgent.destroy();
       }

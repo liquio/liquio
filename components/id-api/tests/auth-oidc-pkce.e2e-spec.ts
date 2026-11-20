@@ -60,9 +60,8 @@ describe('AuthController - OIDC - PKCE', () => {
 
     nock(dexUrl)
       .post('/token')
-      .reply((_, requestBody) => {
-        const bodyText = typeof requestBody === 'string' ? requestBody : String(requestBody);
-        const params = new URLSearchParams(bodyText);
+      .reply(async (request: Request) => {
+        const params = new URLSearchParams(await request.text());
         observedCodeVerifier = params.get('code_verifier') || undefined;
 
         return [

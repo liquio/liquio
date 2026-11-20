@@ -1,4 +1,4 @@
-import nock = require('nock');
+import nock from 'nock';
 
 import { TestApp } from './test-app';
 import { prepareFixtures } from './fixtures';

@@ -73,8 +73,8 @@ describe('Files with the minio provider', () => {
     let authorization: string | undefined;
     const scope = nock(MINIO_SERVER)
       .put(OBJECT_PATH)
-      .reply(function () {
-        authorization = this.req.headers['authorization'] as string;
+      .reply((request: Request) => {
+        authorization = request.headers.get('authorization') ?? undefined;
         return [200, '', { etag: '"fake-etag"' }];
       });
     await app

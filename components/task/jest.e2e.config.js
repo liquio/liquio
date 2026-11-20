@@ -24,8 +24,9 @@ const config = {
   coverageDirectory: 'coverage',
   coverageThreshold: { global: { statements: 80, lines: 80 } },
   bail: false,
-  // node-fetch v3 and its dependencies are ESM only; the app loads them with a dynamic import().
-  transformIgnorePatterns: ['/node_modules/(?!(raw-body|node-fetch|data-uri-to-buffer|fetch-blob|formdata-polyfill)/)'],
+  // Recycles workers whose memory grows past the limit between test files.
+  workerIdleMemoryLimit: '1GB',
+  // ESM-only dependencies (raw-body 4, node-fetch 3) load natively because tests run with --experimental-vm-modules.
 };
 
 module.exports = config;

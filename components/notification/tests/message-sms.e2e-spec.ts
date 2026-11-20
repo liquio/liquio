@@ -129,8 +129,8 @@ describe('Message Controller: SMS and complex sending', () => {
       app
         .nock('https://api.corezoid.com')
         .post(/\/api\/1\/json\/\/(\d+)\/[0-9a-f]{40}$/)
-        .reply(200, function (uri: string) {
-          ref = `${/\/(\d+)\/[0-9a-f]{40}$/.exec(uri)![1]}ref`;
+        .reply(200, (request: Request) => {
+          ref = `${/\/(\d+)\/[0-9a-f]{40}$/.exec(new URL(request.url).pathname)![1]}ref`;
           return { request_proc: 'ok' };
         });
       await authed(app.request().post('/message/phonesList')).send({

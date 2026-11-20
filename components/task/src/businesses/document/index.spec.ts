@@ -13,6 +13,10 @@ initIdApiClient({});
 getRegisterApiClient({});
 
 describe('DocumentBusiness', () => {
+  afterAll(() => {
+    nock.restore();
+  });
+
   setAppContext({
     config: {
       storage: {},

@@ -45,6 +45,7 @@ jobs:
           # fails loudly here instead of as a testcontainers startup timeout.
           ALL='[
             {"name":"admin-api",       "images":"postgres:16 redis:8"},
+            {"name":"cabinet-api",     "images":"postgres:16 redis:8"},
             {"name":"event",           "images":"postgres:16 redis:8"},
             {"name":"external-reader", "images":""},
             {"name":"filestorage",     "images":"postgres:16"},

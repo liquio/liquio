@@ -37,6 +37,7 @@ describe('RemoteStaticCache', () => {
 
   afterAll(() => {
     nock.enableNetConnect();
+    nock.restore();
   });
 
   beforeEach(() => {

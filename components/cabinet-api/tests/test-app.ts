@@ -6,7 +6,7 @@ import { randomBytes } from 'node:crypto';
 import supertest = require('supertest');
 import * as portfinder from 'portfinder';
 import * as pg from 'pg';
-import nock = require('nock');
+import nock from 'nock';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer } from '@testcontainers/redis';
 import * as jsonwebtoken from 'jsonwebtoken';

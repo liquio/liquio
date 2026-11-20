@@ -89,8 +89,8 @@ describe('Custom APIs', () => {
         .nock(CUSTOM_URL)
         .get('/items/42')
         .query({ page: '2' })
-        .reply(200, function () {
-          received = this.req.headers;
+        .reply(200, (request: Request) => {
+          received = Object.fromEntries(request.headers);
           return { id: 42 };
         });
 
@@ -190,8 +190,8 @@ describe('Custom APIs', () => {
       app
         .nock(ANOTHER_URL)
         .get('/open')
-        .reply(200, function () {
-          received = this.req.headers;
+        .reply(200, (request: Request) => {
+          received = Object.fromEntries(request.headers);
           return { open: true };
         });
 

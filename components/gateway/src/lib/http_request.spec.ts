@@ -1,3 +1,6 @@
+import http from 'node:http';
+import { AddressInfo } from 'node:net';
+
 import nock from 'nock';
 
 import { HttpRequest } from './http_request';
@@ -299,5 +302,53 @@ describe('HttpRequest', () => {
 
       await expect(HttpRequest.send(requestOptions)).rejects.toThrow();
     });
+  });
+
+  describe('send with a broken response body', () => {
+    let server: http.Server;
+    let url: string;
+    let pending: http.ServerResponse[] = [];
+    let handler: (res: http.ServerResponse) => void;
+
+    beforeAll(async () => {
+      nock.enableNetConnect('127.0.0.1');
+      server = http.createServer((_req, res) => {
+        pending.push(res);
+        handler(res);
+      });
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
+    });
+
+    afterEach(() => {
+      pending.forEach((res) => res.destroy());
+      pending = [];
+    });
+
+    afterAll(async () => {
+      pending.forEach((res) => res.destroy());
+      (server as any).closeAllConnections?.();
+      await new Promise((resolve) => server.close(resolve));
+      nock.disableNetConnect();
+    });
+
+    it('rejects when the connection drops after the headers', async () => {
+      handler = (res) => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.write('{"partial":');
+        setImmediate(() => res.destroy());
+      };
+
+      await expect(HttpRequest.send({ url, method: 'GET', timeout: 2000 })).rejects.toThrow();
+    }, 10_000);
+
+    it('rejects when the body does not arrive before the timeout', async () => {
+      handler = (res) => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.write('{"partial":');
+      };
+
+      await expect(HttpRequest.send({ url, method: 'GET', timeout: 300 })).rejects.toThrow();
+    }, 10_000);
   });
 });
