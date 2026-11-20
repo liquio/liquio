@@ -10,4 +10,6 @@ module.exports = {
   coverageDirectory: 'coverage',
   bail: false,
   coverageThreshold: { global: { statements: 80, lines: 80 } },
+  // Recycles workers whose memory grows past the limit between test files.
+  workerIdleMemoryLimit: '1GB',
 };
