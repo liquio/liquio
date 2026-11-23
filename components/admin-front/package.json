@@ -100,7 +100,7 @@
     "js-sha256": "0.11.0",
     "jspdf": "^3.0.4",
     "jszip": "3.8.0",
-    "jwt-decode": "2.2.0",
+    "jwt-decode": "4.0.0",
     "leaflet": "1.9.4",
     "lodash": "4.18.1",
     "material-symbols": "^0.44.12",
