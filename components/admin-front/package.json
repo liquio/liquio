@@ -160,7 +160,7 @@
     "redux": "5.0.1",
     "redux-logger": "3.0.6",
     "redux-thunk": "3.1.0",
-    "remark-gfm": "^3.0.1",
+    "remark-gfm": "^4.0.1",
     "sanitize-html": "2.13.1",
     "save-svg-as-png": "1.4.17",
     "screenfull": "6.0.2",
