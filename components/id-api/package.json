@@ -28,7 +28,7 @@
   "dependencies": {
     "@liquio/back-core": "^1.4.0",
     "@node-oauth/oauth2-server": "^5.3.1",
-    "asn1js": "^3.0.10",
+    "asn1js": "^4.1.0",
     "axios": "^1.20.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.3.0",
