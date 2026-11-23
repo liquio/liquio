@@ -153,7 +153,7 @@
     "react-translate": "7.0.1",
     "react-virtualized": "9.22.2",
     "react-window": "1.8.6",
-    "react-window-infinite-loader": "1.0.7",
+    "react-window-infinite-loader": "2.0.2",
     "react-youtube": "^10.1.0",
     "redux": "5.0.1",
     "redux-logger": "3.0.6",
