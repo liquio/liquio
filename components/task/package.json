@@ -76,7 +76,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lodash": "^4.17.27",
     "@types/node": "^26.6.5",
-    "amqplib": "^0.10.9",
+    "amqplib": "^2.4.0",
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.17.1",
