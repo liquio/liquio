@@ -29,7 +29,7 @@
     "@nestjs/schedule": "^12.0.2",
     "@nestjs/swagger": "^12.0.5",
     "@peculiar/webcrypto": "^1.5.0",
-    "asn1js": "^4.0.0",
+    "asn1js": "^4.1.0",
     "body-parser": "^1.20.2",
     "pkijs": "^4.0.1",
     "reflect-metadata": "^0.2.2",
