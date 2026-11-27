@@ -48,7 +48,7 @@
     "multistream": "^4.1.0",
     "node-fetch": "^3.3.0",
     "pdf-parse": "^1.1.1",
-    "pg": "^8.22.0",
+    "pg": "^8.23.1",
     "pg-hstore": "^2.3.4",
     "prop-by-path": "^1.1.2",
     "qs": "^6.17.1",
